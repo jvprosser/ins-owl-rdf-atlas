@@ -1,11 +1,19 @@
 """
-Studio spike S1: Can a custom tool invoke a registered MCP tool?
+spike_s1_record_iceberg_mcp — REQUIRED custom-tool step for the S1 spike.
 
-Target MCP: existing Impala Iceberg server (execute_query, get_schema).
-Register it on the workflow with IMPALA_* env vars, attach this tool, run once.
+When the user asks to run spike S1 / test Iceberg MCP orchestration, you MUST
+call THIS tool (do not stop after using iceberg-mcp-server alone).
 
-Pass = tool returns an MCP result without the LLM writing SQL.
-Fail = no in-process bridge; document env/modules probed.
+Intended agent sequence when iceberg-mcp-server is attached with
+execute_query and get_schema:
+
+1) Call MCP execute_query with sql SHOW DATABASES (or get_schema).
+2) Call this tool with action=record_agent_mcp_result and pass the MCP
+   response in mcp_result (string or JSON).
+3) Optionally call again with action=probe_inprocess_bridge to test whether
+   tool.py can invoke MCP without the agent.
+
+Writes spike_s1_mcp_from_tool.json under SESSION_DIRECTORY (/workspace).
 """
 
 from __future__ import annotations
@@ -14,35 +22,60 @@ import argparse
 import json
 import os
 import traceback
-from typing import Any
+from typing import Any, Literal, Optional, Union
 
 from pydantic import BaseModel, Field
 
-# Tools exposed by the Impala Iceberg MCP under test
 MCP_TOOLS_AVAILABLE = ("execute_query", "get_schema")
+
+ActionName = Literal[
+    "record_agent_mcp_result",
+    "probe_inprocess_bridge",
+]
 
 
 class UserParameters(BaseModel):
-    """Hints for which registered MCP server/tool to try from tool.py."""
+    """Config for which MCP server/tool names the spike refers to."""
 
     mcp_server_name: str = Field(
         default="iceberg-mcp-server",
-        description="Registered MCP server name in Agent Studio (Impala Iceberg)",
+        description="Registered MCP server name (Impala Iceberg)",
     )
     mcp_tool_name: str = Field(
         default="execute_query",
-        description="MCP tool to invoke: execute_query | get_schema",
+        description="MCP tool the agent should use: execute_query | get_schema",
     )
 
 
 class ToolParameters(BaseModel):
+    """
+    Runtime args. The agent chooses `action` — that is what causes this tool
+    to be invoked as a distinct step from the attached MCP tools.
+    """
+
+    action: ActionName = Field(
+        description=(
+            "Required action for this custom tool. "
+            "Use record_agent_mcp_result after you called iceberg-mcp-server "
+            "(execute_query or get_schema), and pass that MCP output in mcp_result. "
+            "Use probe_inprocess_bridge to test whether this tool can call MCP itself."
+        )
+    )
     sql: str = Field(
         default="SHOW DATABASES",
-        description="Read-only SQL for execute_query (ignored when tool is get_schema)",
+        description="SQL used with execute_query (for logging / bridge probe)",
     )
     database: str = Field(
         default="",
-        description="Optional database name for get_schema; empty = MCP default",
+        description="Optional database for get_schema",
+    )
+    mcp_result: Optional[Union[str, dict, list]] = Field(
+        default=None,
+        description=(
+            "REQUIRED when action=record_agent_mcp_result. "
+            "Paste the full raw result returned by iceberg-mcp-server "
+            "execute_query or get_schema."
+        ),
     )
 
 
@@ -94,7 +127,7 @@ def _probe_environment() -> dict[str, Any]:
                     [a for a in dir(mod) if not a.startswith("_")]
                 )[:40],
             }
-        except Exception as exc:  # noqa: BLE001 — spike must record failures
+        except Exception as exc:  # noqa: BLE001
             imports[name] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
     return {
         "cwd": os.getcwd(),
@@ -106,12 +139,9 @@ def _probe_environment() -> dict[str, Any]:
 
 
 def _mcp_arguments(config: UserParameters, args: ToolParameters) -> dict[str, Any]:
-    """Build MCP tool arguments for execute_query or get_schema."""
     tool = config.mcp_tool_name
     if tool == "get_schema":
-        if args.database:
-            return {"database": args.database}
-        return {}
+        return {"database": args.database} if args.database else {}
     if tool == "execute_query":
         return {"query": args.sql}
     raise ValueError(
@@ -122,7 +152,6 @@ def _mcp_arguments(config: UserParameters, args: ToolParameters) -> dict[str, An
 def _try_call_patterns(
     config: UserParameters, args: ToolParameters
 ) -> list[dict[str, Any]]:
-    """Try plausible Studio MCP bridges; each attempt is isolated."""
     attempts: list[dict[str, Any]] = []
     mcp_args = _mcp_arguments(config, args)
 
@@ -140,7 +169,6 @@ def _try_call_patterns(
                 }
             )
 
-    # Pattern 1: globals injected into tool module
     def via_globals():
         for key in ("call_mcp_tool", "invoke_mcp", "mcp_call", "studio_call_mcp"):
             fn = globals().get(key)
@@ -153,7 +181,6 @@ def _try_call_patterns(
 
     record("globals_bridge", via_globals)
 
-    # Pattern 2: common env pointing at a callable endpoint / token (observation only + http)
     def via_env_http():
         base = (
             os.environ.get("MCP_GATEWAY_URL")
@@ -183,7 +210,6 @@ def _try_call_patterns(
 
     record("env_http_gateway", via_env_http)
 
-    # Pattern 3: import studio SDK-style helpers if present
     def via_studio_sdk():
         errors = []
         for mod_name, attr in (
@@ -204,17 +230,13 @@ def _try_call_patterns(
 
     record("studio_sdk_import", via_studio_sdk)
 
-    # Pattern 4: mcp Python client against a stdio command from env (explicit opt-in)
     def via_mcp_sdk_stdio():
         cmd = os.environ.get("SPIKE_MCP_STDIO_COMMAND")
         if not cmd:
-            raise RuntimeError(
-                "SPIKE_MCP_STDIO_COMMAND not set "
-                "(intentionally skip spawning MCP outside Studio registration)"
-            )
+            raise RuntimeError("SPIKE_MCP_STDIO_COMMAND not set")
         raise RuntimeError(
             f"SPIKE_MCP_STDIO_COMMAND is set ({cmd!r}) but auto-spawn is not "
-            "implemented in this spike — treat as manual follow-up"
+            "implemented in this spike"
         )
 
     record("mcp_sdk_stdio_opt_in", via_mcp_sdk_stdio)
@@ -222,30 +244,91 @@ def _try_call_patterns(
     return attempts
 
 
-def run_tool(config: UserParameters, args: ToolParameters) -> Any:
-    probe = _probe_environment()
+def _action_record_agent_mcp_result(
+    config: UserParameters, args: ToolParameters
+) -> dict[str, Any]:
+    if args.mcp_result is None or args.mcp_result == "":
+        return {
+            "pass": False,
+            "action": args.action,
+            "interpretation": (
+                "FAIL: action=record_agent_mcp_result requires mcp_result. "
+                "Call iceberg-mcp-server execute_query (or get_schema) first, "
+                "then call this tool again with that output in mcp_result."
+            ),
+            "next_step_for_agent": (
+                f"1) Call MCP tool {config.mcp_tool_name} on {config.mcp_server_name} "
+                f"with {_mcp_arguments(config, args)}. "
+                "2) Call spike_s1_record_iceberg_mcp with "
+                "action=record_agent_mcp_result and mcp_result=<MCP output>."
+            ),
+        }
+
+    preview = args.mcp_result
+    if isinstance(preview, (dict, list)):
+        preview_text = json.dumps(preview, default=str)[:2000]
+    else:
+        preview_text = str(preview)[:2000]
+
+    return {
+        "pass": True,
+        "action": args.action,
+        "path": "agent_then_custom_tool",
+        "mcp_server_name": config.mcp_server_name,
+        "mcp_tool_name": config.mcp_tool_name,
+        "mcp_arguments": _mcp_arguments(config, args),
+        "mcp_result_preview": preview_text,
+        "mcp_result_type": type(args.mcp_result).__name__,
+        "interpretation": (
+            "PASS: Agent used attached iceberg-mcp-server, then called this custom "
+            "tool with the MCP payload. This is the supported orchestration path "
+            "when MCP tools must remain on the agent."
+        ),
+    }
+
+
+def _action_probe_inprocess_bridge(
+    config: UserParameters, args: ToolParameters
+) -> dict[str, Any]:
     attempts = _try_call_patterns(config, args)
     any_ok = any(a.get("ok") for a in attempts)
+    return {
+        "pass": any_ok,
+        "action": args.action,
+        "path": "tool_calls_mcp_inprocess",
+        "attempts_ok": [a["pattern"] for a in attempts if a.get("ok")],
+        "attempts_failed": [a["pattern"] for a in attempts if not a.get("ok")],
+        "attempts": attempts,
+        "interpretation": (
+            "PASS: tool.py can invoke MCP without the agent."
+            if any_ok
+            else "FAIL: no in-process MCP bridge from tool.py. "
+            "Keep using action=record_agent_mcp_result (agent calls MCP, then this tool)."
+        ),
+    }
+
+
+def run_tool(config: UserParameters, args: ToolParameters) -> Any:
+    probe = _probe_environment()
+
+    if args.action == "record_agent_mcp_result":
+        outcome = _action_record_agent_mcp_result(config, args)
+    elif args.action == "probe_inprocess_bridge":
+        outcome = _action_probe_inprocess_bridge(config, args)
+    else:
+        outcome = {
+            "pass": False,
+            "action": args.action,
+            "interpretation": f"Unknown action: {args.action!r}",
+        }
 
     report = {
         "spike": "S1_mcp_from_tool",
-        "pass": any_ok,
-        "mcp_server_name": config.mcp_server_name,
-        "mcp_tool_name": config.mcp_tool_name,
         "mcp_tools_available": list(MCP_TOOLS_AVAILABLE),
-        "mcp_arguments": _mcp_arguments(config, args),
         "sql": args.sql,
         "database": args.database or None,
         "probe": probe,
-        "attempts": attempts,
-        "interpretation": (
-            "PASS: at least one in-process/gateway pattern returned a result — "
-            "wire Iceberg facade through that bridge."
-            if any_ok
-            else "FAIL: no Studio MCP bridge found from tool.py. "
-            "MCP may be agent-only; escalate or add a platform bridge before "
-            "build_claim_graph can use MCP from tools."
-        ),
+        **outcome,
     }
 
     out_path = os.path.join(_session_dir(), "spike_s1_mcp_from_tool.json")
@@ -253,13 +336,16 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
         json.dump(report, f, indent=2, default=str)
 
     return {
-        "pass": report["pass"],
-        "interpretation": report["interpretation"],
-        "attempts_ok": [a["pattern"] for a in attempts if a.get("ok")],
-        "attempts_failed": [a["pattern"] for a in attempts if not a.get("ok")],
+        "pass": report.get("pass"),
+        "action": args.action,
+        "interpretation": report.get("interpretation"),
+        "next_step_for_agent": report.get("next_step_for_agent"),
+        "path": report.get("path"),
+        "mcp_result_preview": report.get("mcp_result_preview"),
+        "attempts_ok": report.get("attempts_ok"),
+        "attempts_failed": report.get("attempts_failed"),
         "artifact": out_path,
         "session_directory": _session_dir(),
-        "interesting_env_keys": list(probe.get("env_interesting", {}).keys()),
     }
 
 

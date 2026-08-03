@@ -1,54 +1,61 @@
-# Spike S1 — MCP callable from `tool.py`
+# Spike S1 — Iceberg MCP on the agent + custom tool action
 
-Uses the **existing Impala Iceberg MCP** (not the Hive fork).
+You **must** attach `iceberg-mcp-server` with `execute_query` and `get_schema`.  
+This custom tool does **not** replace those MCP tools. It adds a required **action** the agent must call afterward.
 
-## MCP registration (workflow)
+## Why a custom tool if MCP is attached?
 
-Server tools: `execute_query`, `get_schema`
-
-Environment variables (set when attaching MCP to the workflow):
-
-| Variable | Purpose |
+| Capability | On the agent |
 |---|---|
-| `IMPALA_HOST` | Impala host |
-| `IMPALA_PORT` | Impala port |
-| `IMPALA_USER` | User |
-| `IMPALA_PASSWORD` | Password |
-| `IMPALA_DATABASE` | Default database |
+| Talk to Impala (`execute_query` / `get_schema`) | MCP tools |
+| Prove orchestration / write spike artifact / later build graph | **This custom tool** |
 
-Register name in Studio as `iceberg-mcp-server` (or match whatever name you used; pass it as user-param `mcp_server_name`).
+`tool.py` cannot “pull” the agent. The agent calls tools based on **tool description + `action` Field + your prompt**.
 
-## Setup
+## Agent sequence (primary path)
 
-1. Register / attach the Impala Iceberg MCP with the `IMPALA_*` vars above.
-2. Register this folder as a custom tool (`tool.py` + `requirements.txt` only).
-3. Run the tool.
+1. Call MCP `execute_query` with `SHOW DATABASES` (or `get_schema`).
+2. Call **this tool** with:
+   - `action`: `record_agent_mcp_result`
+   - `mcp_result`: \<paste MCP output\>
 
-### Example tool params
+That is the path that works when MCP stays on the agent.
 
-`execute_query` (default):
+### Optional second call
 
-```json
-{"sql": "SHOW DATABASES"}
+- `action`: `probe_inprocess_bridge` — tests whether `tool.py` can call MCP itself (usually fails; still useful).
+
+## Suggested agent prompt
+
+```text
+Run spike S1.
+1) Use iceberg-mcp-server execute_query with SHOW DATABASES.
+2) You MUST then call spike_s1_record_iceberg_mcp with
+   action=record_agent_mcp_result and mcp_result set to the MCP tool output.
+3) Optionally call the same tool with action=probe_inprocess_bridge.
+Do not finish after step 1 alone.
 ```
 
-`get_schema`:
+In Studio, set the custom tool’s display name to something like  
+`spike_s1_record_iceberg_mcp` so it matches the docstring.
+
+## Example tool-params
+
+After MCP returns:
 
 ```json
-{"database": "car_insurance_claims"}
+{
+  "action": "record_agent_mcp_result",
+  "sql": "SHOW DATABASES",
+  "mcp_result": "<paste execute_query result here>"
+}
 ```
 
-with user-params:
+## MCP workflow env (on the server, not this tool)
 
-```json
-{"mcp_server_name": "iceberg-mcp-server", "mcp_tool_name": "get_schema"}
-```
+`IMPALA_HOST`, `IMPALA_PORT`, `IMPALA_USER`, `IMPALA_PASSWORD`, `IMPALA_DATABASE`
 
 ## Pass / fail
 
-- **Pass:** `pass: true` and an attempt pattern returns MCP output.
-- **Fail:** `pass: false` — read `spike_s1_mcp_from_tool.json` in `/workspace` (`SESSION_DIRECTORY`).
-
-## Note
-
-This spike does **not** spawn the MCP process or use `IMPALA_*` from the tool sandbox. Those vars belong on the **MCP server** registration. The spike only looks for a Studio-provided bridge so `tool.py` can call the already-registered MCP.
+- **Pass (expected):** `action=record_agent_mcp_result` with non-empty `mcp_result` → artifact in `/workspace`.
+- **Bridge probe:** `probe_inprocess_bridge` may fail; that means keep the agent→MCP→custom-tool path.
