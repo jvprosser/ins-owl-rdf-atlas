@@ -1,0 +1,199 @@
+# Style B router playbook — rules as Git-reviewed config (not Iceberg UI).
+# NOTE: do not use YAML key `on:` — in YAML 1.1 it is a boolean synonym for true.
+
+version: 1
+ontology_relpath: ontology/claims_mvt.ttl
+probes_relpath: probes
+iri_base: https://example.org/ins/
+claim_iri_template: https://example.org/ins/id/Claim/{claim_id}
+
+loop:
+  max_route_passes: 8
+  no_progress_limit: 2
+
+# Evaluation order: integrity → lane → gaps → financial → subro → SIU
+priorities:
+  - R0.1
+  - R0.4
+  - R1.1
+  - R1.2
+  - R5.1
+  - R2.3
+  - R2.1
+  - R2.2
+  - R2.5
+  - R3.2
+  - R3.4
+  - R4.1
+  - R4.3
+  - R1.3
+  - R1.4
+
+probes:
+  R0.1:
+    file: R0_1_claim_exists.rq
+    form: ASK
+  R0.4:
+    file: R0_4_triangle.rq
+    form: ASK
+  R1.1:
+    file: R1_1_claim_status.rq
+    form: SELECT
+  R1.2:
+    file: R1_2_litigation_active.rq
+    form: ASK
+  R1.3:
+    file: R1_3_bi_involved.rq
+    form: ASK
+  R1.4:
+    file: R1_4_pd_involved.rq
+    form: ASK
+  R2.1:
+    file: R2_1_missing_police_report.rq
+    form: ASK
+  R2.2:
+    file: R2_2_missing_fault.rq
+    form: ASK
+  R2.3:
+    file: R2_3_missing_adjuster.rq
+    form: ASK
+  R2.5:
+    file: R2_5_bi_missing_injury.rq
+    form: ASK
+  R3.2:
+    file: R3_2_unresolved_offer.rq
+    form: ASK
+  R3.4:
+    file: R3_4_accepted_offer_no_payment.rq
+    form: ASK
+  R4.1:
+    file: R4_1_subrogation_gap.rq
+    form: ASK
+  R4.3:
+    file: R4_3_subro_no_recovery.rq
+    form: ASK
+  R5.1:
+    file: R5_1_siu_suspected.rq
+    form: ASK
+  R6.1:
+    file: R6_1_claim_context.rq
+    form: CONSTRUCT
+
+actions:
+  R0.1:
+    - when: ASK_FALSE
+      step: FixDataQuality
+      agent: DataQualityAgent
+      lane: DATA_QUALITY
+      needs_llm: false
+      tools: [build_claim_graph, validate_claim_graph, write_audit_event]
+  R0.4:
+    - when: ASK_FALSE
+      step: FixDataQuality
+      agent: DataQualityAgent
+      lane: DATA_QUALITY
+      needs_llm: false
+      tools: [build_claim_graph, validate_claim_graph, write_audit_event]
+  R1.1:
+    - when: SELECT_EQUALS
+      match_value: CLOSED
+      step: CloseoutAudit
+      agent: CloseoutAgent
+      lane: CLOSEOUT
+      needs_llm: false
+      tools: [write_audit_event, promote_audit_run]
+      terminal: true
+  R1.2:
+    - when: ASK_TRUE
+      step: LitigationSupport
+      agent: LitigationAgent
+      lane: LITIGATION
+      needs_llm: false
+      tools: [get_litigation_view, write_audit_event]
+  R5.1:
+    - when: ASK_TRUE
+      step: SiuInvestigation
+      agent: SiuAgent
+      lane: SIU
+      needs_llm: false
+      tools: [write_audit_event]
+  R2.3:
+    - when: ASK_TRUE
+      step: AssignAdjuster
+      agent: DataQualityAgent
+      lane: DATA_QUALITY
+      needs_llm: false
+      tools: [build_claim_graph, write_audit_event]
+  R2.1:
+    - when: ASK_TRUE
+      step: RequestPoliceReport
+      agent: PdClaimsAgent
+      lane: PD
+      needs_llm: true
+      tools: [write_audit_event]
+  R2.2:
+    - when: ASK_TRUE
+      step: DetermineFault
+      agent: PdClaimsAgent
+      lane: PD
+      needs_llm: false
+      tools: [write_audit_event]
+  R2.5:
+    - when: ASK_TRUE
+      step: CaptureInjuryDetails
+      agent: BiClaimsAgent
+      lane: BI
+      needs_llm: true
+      tools: [get_bi_view, write_audit_event]
+  R3.2:
+    - when: ASK_TRUE
+      step: FollowUpOffer
+      agent: SettlementAgent
+      lane: GENERAL
+      needs_llm: false
+      tools: [write_audit_event]
+  R3.4:
+    - when: ASK_TRUE
+      step: IssuePayment
+      agent: SettlementAgent
+      lane: GENERAL
+      needs_llm: false
+      tools: [write_audit_event]
+  R4.1:
+    - when: ASK_TRUE
+      step: OpenSubrogationCase
+      agent: SubrogationAgent
+      lane: PD
+      needs_llm: false
+      tools: [get_subrogation_view, write_audit_event]
+  R4.3:
+    - when: ASK_TRUE
+      step: PursueSubrogationRecovery
+      agent: SubrogationAgent
+      lane: PD
+      needs_llm: false
+      tools: [get_subrogation_view, write_audit_event]
+  R1.3:
+    - when: ASK_TRUE
+      step: BiClaimsReview
+      agent: BiClaimsAgent
+      lane: BI
+      needs_llm: false
+      tools: [get_bi_view, write_audit_event]
+  R1.4:
+    - when: ASK_TRUE
+      step: PdClaimsReview
+      agent: PdClaimsAgent
+      lane: PD
+      needs_llm: false
+      tools: [write_audit_event]
+
+default_action:
+  step: HumanReviewOrWait
+  agent: HumanReviewAgent
+  lane: GENERAL
+  needs_llm: false
+  tools: [write_audit_event]
+  terminal: true
+
+context_probe: R6.1

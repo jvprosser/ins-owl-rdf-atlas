@@ -1,0 +1,9 @@
+# probe_id: R0.4
+# form: ASK
+# purpose: Claim policy covers claim vehicle (triangle)
+PREFIX ex: <https://example.org/ins/>
+ASK {
+  <{{claim_iri}}> ex:arisesFromPolicy ?policy ;
+                  ex:involvesVehicle ?vehicle .
+  ?policy ex:coversVehicle ?vehicle .
+}

@@ -1,0 +1,8 @@
+# probe_id: R1.1
+# form: SELECT
+# purpose: Claim status code for lane selection
+PREFIX ex: <https://example.org/ins/>
+SELECT ?status
+WHERE {
+  <{{claim_iri}}> ex:claimStatusCode ?status .
+}
