@@ -1,0 +1,29 @@
+[project]
+name = "ins-claims-agent"
+version = "0.1.0"
+description = "Cloudera Agent Studio tools for RDF/SPARQL claim routing over Iceberg/Atlas/Ranger MCP"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "rdflib>=7.0.0",
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ins_claims_agent"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/ins_claims_agent" = "ins_claims_agent"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
