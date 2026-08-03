@@ -22,16 +22,15 @@ import argparse
 import json
 import os
 import traceback
-from typing import Any, Literal, Optional, Union
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
 MCP_TOOLS_AVAILABLE = ("execute_query", "get_schema")
-
-ActionName = Literal[
+ALLOWED_ACTIONS = (
     "record_agent_mcp_result",
     "probe_inprocess_bridge",
-]
+)
 
 
 class UserParameters(BaseModel):
@@ -51,11 +50,15 @@ class ToolParameters(BaseModel):
     """
     Runtime args. The agent chooses `action` — that is what causes this tool
     to be invoked as a distinct step from the attached MCP tools.
+
+    Note: Agent Studio extracts this class in isolation — use only builtin /
+    typing annotations here (no custom Enum/alias types).
     """
 
-    action: ActionName = Field(
+    action: str = Field(
         description=(
             "Required action for this custom tool. "
+            "Must be exactly one of: record_agent_mcp_result | probe_inprocess_bridge. "
             "Use record_agent_mcp_result after you called iceberg-mcp-server "
             "(execute_query or get_schema), and pass that MCP output in mcp_result. "
             "Use probe_inprocess_bridge to test whether this tool can call MCP itself."
@@ -69,12 +72,12 @@ class ToolParameters(BaseModel):
         default="",
         description="Optional database for get_schema",
     )
-    mcp_result: Optional[Union[str, dict, list]] = Field(
+    mcp_result: Optional[str] = Field(
         default=None,
         description=(
             "REQUIRED when action=record_agent_mcp_result. "
             "Paste the full raw result returned by iceberg-mcp-server "
-            "execute_query or get_schema."
+            "execute_query or get_schema (as a string)."
         ),
     )
 
@@ -310,16 +313,20 @@ def _action_probe_inprocess_bridge(
 
 def run_tool(config: UserParameters, args: ToolParameters) -> Any:
     probe = _probe_environment()
+    action = (args.action or "").strip()
 
-    if args.action == "record_agent_mcp_result":
+    if action == "record_agent_mcp_result":
         outcome = _action_record_agent_mcp_result(config, args)
-    elif args.action == "probe_inprocess_bridge":
+    elif action == "probe_inprocess_bridge":
         outcome = _action_probe_inprocess_bridge(config, args)
     else:
         outcome = {
             "pass": False,
-            "action": args.action,
-            "interpretation": f"Unknown action: {args.action!r}",
+            "action": action,
+            "interpretation": (
+                f"Unknown action: {action!r}. "
+                f"Allowed: {', '.join(ALLOWED_ACTIONS)}"
+            ),
         }
 
     report = {
@@ -337,7 +344,7 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
 
     return {
         "pass": report.get("pass"),
-        "action": args.action,
+        "action": action,
         "interpretation": report.get("interpretation"),
         "next_step_for_agent": report.get("next_step_for_agent"),
         "path": report.get("path"),
