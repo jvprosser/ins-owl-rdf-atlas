@@ -1,22 +1,34 @@
 #!/usr/bin/env bash
 # Vendor shared code + assets into each Agent Studio tool folder for upload.
+# Uses only POSIX cp/rm (no rsync).
 set -euo pipefail
+
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 SRC="$(cd "$ROOT/../src" && pwd)"
 ASSETS="$ROOT/runtime_assets"
+REPO="$(cd "$ROOT/../.." && pwd)"
+
+copy_tree() {
+  # copy_tree SRC_DIR DEST_DIR  — replace DEST with a fresh copy of SRC
+  local src="$1"
+  local dest="$2"
+  rm -rf "$dest"
+  mkdir -p "$(dirname "$dest")"
+  cp -R "$src" "$dest"
+}
 
 # Refresh assets from repo root when present
-REPO="$(cd "$ROOT/../.." && pwd)"
 if [[ -d "$REPO/ontology" ]]; then
-  rsync -a --delete "$REPO/ontology/" "$ASSETS/ontology/"
-  rsync -a --delete "$REPO/probes/" "$ASSETS/probes/"
-  rsync -a --delete "$REPO/playbook/" "$ASSETS/playbook/"
+  mkdir -p "$ASSETS"
+  copy_tree "$REPO/ontology" "$ASSETS/ontology"
+  copy_tree "$REPO/probes" "$ASSETS/probes"
+  copy_tree "$REPO/playbook" "$ASSETS/playbook"
 fi
 
 for tool in build_claim_graph validate_claim_graph route_claim; do
   dest="$ROOT/$tool"
-  rsync -a --delete "$ROOT/shared/" "$dest/shared/"
-  rsync -a --delete "$ASSETS/" "$dest/runtime_assets/"
-  rsync -a --delete "$SRC/ins_claims_agent/" "$dest/ins_claims_agent/"
+  copy_tree "$ROOT/shared" "$dest/shared"
+  copy_tree "$ASSETS" "$dest/runtime_assets"
+  copy_tree "$SRC/ins_claims_agent" "$dest/ins_claims_agent"
   echo "Bundled $tool"
 done
