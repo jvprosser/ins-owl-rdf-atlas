@@ -1,0 +1,21 @@
+# probe_id: R6.1
+# form: CONSTRUCT
+# purpose: Compact claim neighborhood for worker context pack
+PREFIX ex: <https://example.org/ins/>
+CONSTRUCT {
+  <{{claim_iri}}> ?p ?o .
+  ?o ?p2 ?o2 .
+}
+WHERE {
+  <{{claim_iri}}> ?p ?o .
+  OPTIONAL {
+    <{{claim_iri}}> ?rel ?o .
+    ?o ?p2 ?o2 .
+    FILTER(?rel IN (
+      ex:fromLossEvent, ex:arisesFromPolicy, ex:involvesVehicle,
+      ex:underPolicyCoverage, ex:hasClaimPartyRole, ex:hasSubrogationCase,
+      ex:hasLitigationCase, ex:hasInjury, ex:hasOffer, ex:hasReserve,
+      ex:hasPoliceReport, ex:hasFaultDetermination, ex:hasLifecycle
+    ))
+  }
+}

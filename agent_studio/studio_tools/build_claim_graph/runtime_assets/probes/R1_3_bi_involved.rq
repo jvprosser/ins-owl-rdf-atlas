@@ -1,0 +1,12 @@
+# probe_id: R1.3
+# form: ASK
+PREFIX ex: <https://example.org/ins/>
+ASK {
+  {
+    <{{claim_iri}}> ex:hasInjury ?inj .
+  } UNION {
+    <{{claim_iri}}> ex:underPolicyCoverage ?pc .
+    ?pc ex:ofCoverageType ?cov .
+    ?cov ex:coverageTypeCode "BI_LIABILITY" .
+  }
+}

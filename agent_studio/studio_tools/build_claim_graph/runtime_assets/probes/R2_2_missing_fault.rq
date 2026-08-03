@@ -1,0 +1,9 @@
+# probe_id: R2.2
+# form: ASK
+PREFIX ex: <https://example.org/ins/>
+ASK {
+  <{{claim_iri}}> a ex:AutoClaim .
+  FILTER NOT EXISTS {
+    <{{claim_iri}}> ex:hasFaultDetermination ?fd .
+  }
+}
