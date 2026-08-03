@@ -153,12 +153,17 @@ Agent calls them in order; LLM does not invent SQL.
 
 **Question:** Can a custom tool invoke a registered MCP tool in-process, or only the agent?
 
+**Spike MCP (existing Impala Iceberg server)**
+
+- Tools: `execute_query`, `get_schema`
+- Workflow env: `IMPALA_HOST`, `IMPALA_PORT`, `IMPALA_USER`, `IMPALA_PASSWORD`, `IMPALA_DATABASE`
+- Stub: `agent_studio/studio_tools/spikes/s1_mcp_from_tool/`
+
 **Spike workflow**
 
-1. Register upstream Iceberg MCP (`execute_query` only is enough).  
-2. Minimal custom tool: in `run_tool`, attempt to call MCP `execute_query` with  
-   `SELECT 1` (or `SHOW DATABASES`).  
-3. Record *how* the call is made (Studio-documented bridge, SDK, env, unavailable, etc.).
+1. Register that MCP on the workflow with `IMPALA_*` vars.  
+2. Run the spike tool; default call is `execute_query` / `SHOW DATABASES` (or `get_schema`).  
+3. Record *how* the call is made (Studio bridge, SDK, env gateway, unavailable, etc.).
 
 | Result | Implication |
 |---|---|

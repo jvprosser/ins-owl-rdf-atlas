@@ -1,8 +1,10 @@
 """
 Studio spike S1: Can a custom tool invoke a registered MCP tool?
 
-Register Iceberg MCP on the workflow/agent, attach this tool, run once.
-Pass = tool returns an MCP execute_query result without the LLM writing SQL.
+Target MCP: existing Impala Iceberg server (execute_query, get_schema).
+Register it on the workflow with IMPALA_* env vars, attach this tool, run once.
+
+Pass = tool returns an MCP result without the LLM writing SQL.
 Fail = no in-process bridge; document env/modules probed.
 """
 
@@ -12,28 +14,35 @@ import argparse
 import json
 import os
 import traceback
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
+# Tools exposed by the Impala Iceberg MCP under test
+MCP_TOOLS_AVAILABLE = ("execute_query", "get_schema")
+
 
 class UserParameters(BaseModel):
-    """Optional hints if Studio documents an MCP bridge name."""
+    """Hints for which registered MCP server/tool to try from tool.py."""
 
     mcp_server_name: str = Field(
-        default="iceberg-mcp-server-hive",
-        description="Registered MCP server name to try",
+        default="iceberg-mcp-server",
+        description="Registered MCP server name in Agent Studio (Impala Iceberg)",
     )
     mcp_tool_name: str = Field(
         default="execute_query",
-        description="MCP tool to invoke",
+        description="MCP tool to invoke: execute_query | get_schema",
     )
 
 
 class ToolParameters(BaseModel):
     sql: str = Field(
         default="SHOW DATABASES",
-        description="Read-only SQL to send via MCP execute_query",
+        description="Read-only SQL for execute_query (ignored when tool is get_schema)",
+    )
+    database: str = Field(
+        default="",
+        description="Optional database name for get_schema; empty = MCP default",
     )
 
 
@@ -41,13 +50,29 @@ def _session_dir() -> str:
     return os.environ.get("SESSION_DIRECTORY", os.getcwd())
 
 
+def _redact(key: str, value: str) -> str:
+    upper = key.upper()
+    if any(tok in upper for tok in ("PASSWORD", "SECRET", "TOKEN", "KEY", "CREDENTIAL")):
+        return "***REDACTED***"
+    return value
+
+
 def _probe_environment() -> dict[str, Any]:
     interesting = {
-        k: v
+        k: _redact(k, v)
         for k, v in sorted(os.environ.items())
         if any(
             token in k.upper()
-            for token in ("MCP", "STUDIO", "AGENT", "SESSION", "WORKFLOW", "CML", "CAI")
+            for token in (
+                "MCP",
+                "STUDIO",
+                "AGENT",
+                "SESSION",
+                "WORKFLOW",
+                "CML",
+                "CAI",
+                "IMPALA",
+            )
         )
     }
     candidate_modules = [
@@ -80,9 +105,26 @@ def _probe_environment() -> dict[str, Any]:
     }
 
 
-def _try_call_patterns(config: UserParameters, sql: str) -> list[dict[str, Any]]:
+def _mcp_arguments(config: UserParameters, args: ToolParameters) -> dict[str, Any]:
+    """Build MCP tool arguments for execute_query or get_schema."""
+    tool = config.mcp_tool_name
+    if tool == "get_schema":
+        if args.database:
+            return {"database": args.database}
+        return {}
+    if tool == "execute_query":
+        return {"query": args.sql}
+    raise ValueError(
+        f"Unsupported mcp_tool_name={tool!r}; expected one of {MCP_TOOLS_AVAILABLE}"
+    )
+
+
+def _try_call_patterns(
+    config: UserParameters, args: ToolParameters
+) -> list[dict[str, Any]]:
     """Try plausible Studio MCP bridges; each attempt is isolated."""
     attempts: list[dict[str, Any]] = []
+    mcp_args = _mcp_arguments(config, args)
 
     def record(name: str, fn) -> None:
         try:
@@ -103,7 +145,10 @@ def _try_call_patterns(config: UserParameters, sql: str) -> list[dict[str, Any]]
         for key in ("call_mcp_tool", "invoke_mcp", "mcp_call", "studio_call_mcp"):
             fn = globals().get(key)
             if callable(fn):
-                return {"via": key, "value": fn(config.mcp_server_name, config.mcp_tool_name, query=sql)}
+                return {
+                    "via": key,
+                    "value": fn(config.mcp_server_name, config.mcp_tool_name, **mcp_args),
+                }
         raise RuntimeError("No call_mcp_tool/invoke_mcp/mcp_call in tool globals")
 
     record("globals_bridge", via_globals)
@@ -123,7 +168,7 @@ def _try_call_patterns(config: UserParameters, sql: str) -> list[dict[str, Any]]
             {
                 "server": config.mcp_server_name,
                 "tool": config.mcp_tool_name,
-                "arguments": {"query": sql},
+                "arguments": mcp_args,
             }
         ).encode("utf-8")
         req = urllib.request.Request(
@@ -151,7 +196,7 @@ def _try_call_patterns(config: UserParameters, sql: str) -> list[dict[str, Any]]
                 fn = getattr(mod, attr)
                 return {
                     "via": f"{mod_name}.{attr}",
-                    "value": fn(config.mcp_server_name, config.mcp_tool_name, query=sql),
+                    "value": fn(config.mcp_server_name, config.mcp_tool_name, **mcp_args),
                 }
             except Exception as exc:  # noqa: BLE001
                 errors.append(f"{mod_name}.{attr}: {type(exc).__name__}: {exc}")
@@ -179,7 +224,7 @@ def _try_call_patterns(config: UserParameters, sql: str) -> list[dict[str, Any]]
 
 def run_tool(config: UserParameters, args: ToolParameters) -> Any:
     probe = _probe_environment()
-    attempts = _try_call_patterns(config, args.sql)
+    attempts = _try_call_patterns(config, args)
     any_ok = any(a.get("ok") for a in attempts)
 
     report = {
@@ -187,7 +232,10 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
         "pass": any_ok,
         "mcp_server_name": config.mcp_server_name,
         "mcp_tool_name": config.mcp_tool_name,
+        "mcp_tools_available": list(MCP_TOOLS_AVAILABLE),
+        "mcp_arguments": _mcp_arguments(config, args),
         "sql": args.sql,
+        "database": args.database or None,
         "probe": probe,
         "attempts": attempts,
         "interpretation": (
