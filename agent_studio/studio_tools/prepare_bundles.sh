@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Vendor shared code + assets into each Agent Studio tool folder for upload.
+# DEPRECATED for Path A: Studio tools are thin tool.py + requirements.txt (git pin).
+# Kept only for local reference / emergency offline bundles.
 # Uses only POSIX cp/rm (no rsync).
 set -euo pipefail
 

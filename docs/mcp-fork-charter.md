@@ -14,10 +14,11 @@ Fork two MCP servers to close platform gaps for claim-graph agents, while keepin
 
 ## Upstream servers
 
-| Fork working name | Upstream | Owns |
-|---|---|---|
-| `iceberg-mcp-server-hive-claims` | [frothkoetter/iceberg-mcp-server-hive](https://github.com/frothkoetter/iceberg-mcp-server-hive) | Iceberg read + WAP branches + claim/audit helpers |
-| `data-contract-mcp-server-claims` | [frothkoetter/data-contract-mcp-server](https://github.com/frothkoetter/data-contract-mcp-server) | Atlas catalog + ODCS contracts + ontology-binding helpers |
+| Fork working name | Upstream | Owns | Status |
+|---|---|---|---|
+| `iceberg-mcp-server-claims` | [cloudera/iceberg-mcp-server](https://github.com/cloudera/iceberg-mcp-server) (Impala) | Iceberg read + claim spine/signals + audit helpers | **In-repo Path A** — `mcp_forks/iceberg-mcp-server-claims/` |
+| `iceberg-mcp-server-hive-claims` | [frothkoetter/iceberg-mcp-server-hive](https://github.com/frothkoetter/iceberg-mcp-server-hive) | Same claim helpers + true WAP branches | Optional later if Hive branch API is required |
+| `data-contract-mcp-server-claims` | [frothkoetter/data-contract-mcp-server](https://github.com/frothkoetter/data-contract-mcp-server) | Atlas catalog + ODCS contracts + ontology-binding helpers | Deferred |
 
 **Not forked now**
 
@@ -28,7 +29,7 @@ Fork two MCP servers to close platform gaps for claim-graph agents, while keepin
 
 1. **Additive forks** — keep upstream tools; add helpers; avoid breaking signatures.
 2. **One Atlas MCP** — data-contract fork is the only Atlas interface in Agent Studio.
-3. **WAP by default** — agent audit writes go to Iceberg branches, not silent main-table edits.
+3. **WAP when available** — Hive fork: audit writes to Iceberg branches. Impala Path A fork: `table_append` keyed by `run_id` (no branch API).
 4. **Thin MCP, thin Python** — MCP = platform I/O; Python = graph build, SPARQL route, validate, specialist logic.
 5. **No SPARQL-in-MCP** — graph querying stays in-process (`rdflib` et al.).
 6. **Allow-listed power** — no open-ended DDL/write-on-main helpers in Phase 1.
@@ -37,17 +38,20 @@ Fork two MCP servers to close platform gaps for claim-graph agents, while keepin
 
 ### A) Iceberg fork — P0 tools
 
-| Tool | Responsibility |
-|---|---|
-| `get_claim_spine(claim_id, database?)` | Return claim + loss + policy + vehicle + current roles + lifecycle for graph build |
-| `get_claim_routing_signals(claim_id, database?)` | Return flags + existence signals (subrogation/litigation/injury/offer/reserve/docs) |
-| `begin_agent_audit_run(run_id, database, source_branch?)` | Create standardized audit branch(es), e.g. `branch_agent_run_<run_id>` |
-| `append_agent_audit_event(run_id, event_json)` | Insert router/tool/decision events on audit branch |
-| `append_agent_audit_evidence(run_id, evidence_json)` | Insert SPARQL/validation/graph excerpts on audit branch |
-| `promote_agent_audit_run(run_id)` | Fast-forward accepted audit branch(es) |
-| `abandon_agent_audit_run(run_id)` | Drop/mark abandoned audit branch(es) |
+Implemented for Impala in `mcp_forks/iceberg-mcp-server-claims/` (also keeps `execute_query` / `get_schema`).
 
-**Depends on:** audit table DDL existing (or documented prerequisite) in `car_insurance_claims` (or agent audit database).
+| Tool | Responsibility | Impala Path A |
+|---|---|---|
+| `get_claim_spine(claim_id, database?)` | Claim + loss + policy + vehicle + current roles + lifecycle | Curated SQL |
+| `get_claim_routing_signals(claim_id, database?)` | Flags + existence signals | Curated SQL |
+| `begin_agent_audit_run(run_id, database, source_branch?)` | Start audit run | Validate; `mode=table_append` (no branch) |
+| `append_agent_audit_event(run_id, event_json)` | Router/tool/decision events | `INSERT` main `agent_run_audit` |
+| `append_agent_audit_evidence(run_id, evidence_json)` | SPARQL/validation/graph excerpts | `INSERT` main `agent_run_evidence` |
+| `promote_agent_audit_run(run_id)` | Accept audit run | No-op success on Impala |
+| `abandon_agent_audit_run(run_id)` | Drop/mark abandoned | `DELETE` rows for `run_id` |
+
+**Depends on:** audit table DDL existing in `car_insurance_claims` (see `ddl/hive_iceberg/`).  
+**Path A runtime (post-S1):** agent calls these MCP tools, then passes JSON into custom Python tools (tools cannot call MCP in-process).
 
 ### B) Data-contract / Atlas fork — P0 tools
 
@@ -85,9 +89,9 @@ Agent Studio tools
 ## Success criteria
 
 1. `build_claim_graph(claim_id)` needs no free-form multi-join SQL from the LLM.
-2. Every routed run can write an auditable Iceberg branch and optionally promote it.
+2. Every routed run can write auditable Iceberg audit rows (branch WAP on Hive fork; `run_id` table-append on Impala fork) and optionally promote/abandon.
 3. Selected lake tables/columns can carry `ontology.iri` via Atlas BM without labels hacks.
-4. Agent Studio registers exactly three platform MCPs: Iceberg fork, Atlas/data-contract fork, Ranger upstream.
+4. Agent Studio registers the Iceberg claims fork (+ later Atlas/data-contract fork + Ranger upstream).
 5. Router probes/playbook remain Git-reviewed files (no custom steward UI).
 
 ## Phase 2 candidates (not committed)
@@ -117,7 +121,8 @@ Agent Studio tools
 | Decision | Choice |
 |---|---|
 | RDF/SPARQL location | Python Agent Studio tools |
-| Audit destination | Iceberg branch via Iceberg MCP |
+| Audit destination | Iceberg via Iceberg MCP (WAP branch on Hive; table-append on Impala Path A) |
+| Path A Iceberg base | Impala `cloudera/iceberg-mcp-server` fork in this repo |
 | Atlas primary MCP | Data-contract fork (not ecole5 alone; not both) |
 | Probe/playbook source | Repo files |
 | Custom routing UI | Not in Phase 1 |

@@ -1,0 +1,31 @@
+[project]
+name = "iceberg-mcp-server-claims"
+version = "0.1.0"
+description = "Claims fork of Cloudera Iceberg MCP (Impala): upstream tools + claim spine/signals + audit helpers"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "fastmcp>=2.9.2",
+  "impyla>=0.19.0",
+  "mcp[cli]>=1.9.4,<2",
+  "python-dotenv>=1.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/iceberg_mcp_server_claims"]
+
+[project.scripts]
+run-server = "iceberg_mcp_server_claims.server:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

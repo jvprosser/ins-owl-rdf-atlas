@@ -79,7 +79,7 @@ def test_get_claim_spine_sql_fallback():
     facade = IcebergFacade(
         from_tool_map(
             {
-                "iceberg-mcp-server-hive.execute_query": execute_query,
+                "iceberg-mcp-server-claims.execute_query": execute_query,
             }
         )
     )
@@ -155,7 +155,7 @@ def test_get_routing_signals_sql_fallback():
         raise AssertionError(query)
 
     facade = IcebergFacade(
-        from_tool_map({"iceberg-mcp-server-hive.execute_query": execute_query})
+        from_tool_map({"iceberg-mcp-server-claims.execute_query": execute_query})
     )
     signals = facade.get_claim_routing_signals(401)
     assert signals["has_subrogation_case"] is True
@@ -173,7 +173,7 @@ def test_begin_audit_run_branch_fallback():
 
     facade = IcebergFacade(
         from_tool_map(
-            {"iceberg-mcp-server-hive.create_iceberg_branch": create_iceberg_branch}
+            {"iceberg-mcp-server-claims.create_iceberg_branch": create_iceberg_branch}
         )
     )
     result = facade.begin_agent_audit_run("abc-1", database="car_insurance_claims")
@@ -191,7 +191,7 @@ def test_append_audit_event_branch_dml():
     facade = IcebergFacade(
         from_tool_map(
             {
-                "iceberg-mcp-server-hive.execute_iceberg_branch_dml": execute_iceberg_branch_dml,
+                "iceberg-mcp-server-claims.execute_iceberg_branch_dml": execute_iceberg_branch_dml,
             }
         )
     )

@@ -34,15 +34,15 @@ pip install -e ".[dev]"
 pytest
 ```
 
-## Agent Studio single-route demo tools
+## Agent Studio single-route demo tools (Path A)
 
-Ready-to-register custom tools (sample `tool.py` pattern) live in `studio_tools/`:
+Thin tools in `studio_tools/` (`tool.py` + `requirements.txt` only; git-pin `ins-claims-agent`):
 
-1. `build_claim_graph` — Hive spine/signals → `claim_{id}_graph.ttl`
-2. `validate_claim_graph` — SPARQL integrity on that artifact
-3. `route_claim` — probes + playbook → `next_step` / lane / agent
+1. Agent calls MCP `get_claim_spine` / `get_claim_routing_signals`
+2. `build_claim_graph` — spine/signals JSON → `SESSION_DIRECTORY/claim_{id}_graph.ttl`
+3. `validate_claim_graph` / `route_claim` — graph artifact + `WORKFLOW_DATA_DIRECTORY` probes/playbook
 
-See [`studio_tools/README.md`](studio_tools/README.md). Run `./studio_tools/prepare_bundles.sh` before uploading each tool folder to Agent Studio.
+See [`studio_tools/README.md`](studio_tools/README.md).
 
 ## Full Style B wiring (later)
 

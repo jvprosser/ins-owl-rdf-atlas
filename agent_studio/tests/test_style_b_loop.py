@@ -53,10 +53,10 @@ def _recording_iceberg():
     facade = IcebergFacade(
         from_tool_map(
             {
-                "iceberg-mcp-server-hive.create_iceberg_branch": create_iceberg_branch,
-                "iceberg-mcp-server-hive.execute_iceberg_branch_dml": execute_iceberg_branch_dml,
-                "iceberg-mcp-server-hive.fast_forward_iceberg_branch": fast_forward_iceberg_branch,
-                "iceberg-mcp-server-hive.drop_iceberg_branch": drop_iceberg_branch,
+                "iceberg-mcp-server-claims.create_iceberg_branch": create_iceberg_branch,
+                "iceberg-mcp-server-claims.execute_iceberg_branch_dml": execute_iceberg_branch_dml,
+                "iceberg-mcp-server-claims.fast_forward_iceberg_branch": fast_forward_iceberg_branch,
+                "iceberg-mcp-server-claims.drop_iceberg_branch": drop_iceberg_branch,
             }
         )
     )

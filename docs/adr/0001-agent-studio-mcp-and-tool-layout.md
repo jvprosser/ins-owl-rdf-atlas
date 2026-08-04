@@ -24,10 +24,13 @@ Fork and register (additive tools only):
 
 | MCP | Upstream | Phase 1 additions |
 |---|---|---|
-| `iceberg-mcp-server-hive-claims` | [frothkoetter/iceberg-mcp-server-hive](https://github.com/frothkoetter/iceberg-mcp-server-hive) | `get_claim_spine`, `get_claim_routing_signals`, audit begin/append/promote/abandon |
-| `data-contract-mcp-server-claims` | [frothkoetter/data-contract-mcp-server](https://github.com/frothkoetter/data-contract-mcp-server) | BM typedef/get/set + `bind_ontology_iri_to_entity` |
+| `iceberg-mcp-server-claims` (**Path A, in-repo**) | [cloudera/iceberg-mcp-server](https://github.com/cloudera/iceberg-mcp-server) (Impala) | `get_claim_spine`, `get_claim_routing_signals`, audit begin/append/promote/abandon (`table_append` mode) — see `mcp_forks/iceberg-mcp-server-claims/` |
+| `iceberg-mcp-server-hive-claims` (optional later) | [frothkoetter/iceberg-mcp-server-hive](https://github.com/frothkoetter/iceberg-mcp-server-hive) | Same claim helpers + true WAP branches |
+| `data-contract-mcp-server-claims` | [frothkoetter/data-contract-mcp-server](https://github.com/frothkoetter/data-contract-mcp-server) | BM typedef/get/set + `bind_ontology_iri_to_entity` (deferred) |
 
 Do **not** fork Ranger. Do **not** dual-register `ecole5/atlas-mcp` beside the data-contract fork.
+
+**Path A (chosen after S1):** Agent → MCP claim helpers → custom tool with payload. Register the Impala claims fork in Studio in place of stock `iceberg-mcp-server`.
 
 After forks are contract-tested on seeded CDP data, **remove** from this repo:
 
@@ -50,9 +53,15 @@ No ontology/probes/playbook and no copied library trees inside the tool folder.
 
 ### D3 — Shared Python via `requirements.txt`
 
-Publish/pin **`ins-claims-agent`** (git URL or internal index) from this repo’s `agent_studio` package.
+Publish/pin **`ins-claims-agent`** from this repo’s `agent_studio` package via git (S2 confirmed):
 
-Tools depend on it for graph build, validate, route, and (later) audit helpers. Tools call MCP through facades/adapters after Studio binds the MCP invoker (or equivalent host wiring).
+```text
+ins-claims-agent @ git+https://github.com/jvprosser/ins-owl-rdf-atlas.git@main#subdirectory=agent_studio
+```
+
+Tools depend on it for graph build, validate, route, and (later) audit helpers.
+
+**MCP note (from S1):** custom tools cannot call registered MCP in-process today. Facades-in-tool assume a bridge that does not exist; use agent→MCP then tool, or Impala/`impyla` inside the tool (see S1 implications).
 
 ### D4 — Config in `workflow_data` via `WORKFLOW_DATA_DIRECTORY`
 
@@ -133,11 +142,15 @@ Agent calls them in order; LLM does not invent SQL.
 
 **Migration**
 
-1. Run Studio spikes S1–S2 below (blockers for tool cutover)  
-2. Implement and contract-test Iceberg fork P0 (spine + signals first; audit next)  
-3. Point Studio tools at `ins-claims-agent` + `WORKFLOW_DATA_DIRECTORY` / `SESSION_DIRECTORY`  
-4. Delete fallbacks and bundle machinery  
-5. Add Atlas BM fork when governance binding is in scope  
+1. ~~S1~~ done — no MCP-from-tool; **Path A** chosen  
+2. ~~Iceberg Impala claims fork scaffolded~~ — `mcp_forks/iceberg-mcp-server-claims/`  
+3. Register fork in Studio; contract-test against seeded claim `401`/`402`/`403`  
+4. ~~S2~~ done — Studio installs `ins-claims-agent` from `git+https` + `#subdirectory=agent_studio`  
+5. Prefer MCP P0 spine/signals (not free-form `execute_query`) in agent prompts  
+6. ~~Path A demo tools~~ — thin `build`/`validate`/`route` + git pin; config via `WORKFLOW_DATA_DIRECTORY`  
+7. Push `main` + register claims MCP fork; smoke claim `401` in Studio  
+8. Delete fallbacks and legacy `prepare_bundles` trees once Path A is live in CDP  
+9. Add Atlas BM fork when governance binding is in scope
 
 ## Open Studio questions
 
@@ -147,50 +160,55 @@ Agent calls them in order; LLM does not invent SQL.
 2. ~~Artifact / cross-tool RW sharing~~ — `SESSION_DIRECTORY` → `/workspace`, RW, cwd, UI-visible; shared across tools in the run  
 3. ~~Static vs dynamic~~ — config → workflow data; outputs → session/artifact directory  
 
-**Must spike in Studio before cutover**
+**Studio spikes**
 
-### S1 — MCP callable from `tool.py`
+### S1 — MCP callable from `tool.py` — RESOLVED (FAIL)
 
-**Question:** Can a custom tool invoke a registered MCP tool in-process, or only the agent?
+**Question:** Can a custom tool invoke a registered MCP tool in-process?
 
-**Spike MCP (existing Impala Iceberg server)**
+**Result (2026-08-03):** Custom tool ran (`tool_fingerprint: INS_CLAIMS_S1_TOOL_PY_V3`) but **no in-process bridge**:
 
-- Tools: `execute_query`, `get_schema`
-- Workflow env: `IMPALA_HOST`, `IMPALA_PORT`, `IMPALA_USER`, `IMPALA_PASSWORD`, `IMPALA_DATABASE`
+- Failed probes: `globals_bridge`, `env_http_gateway`, `studio_sdk_import`, `mcp_sdk_stdio_opt_in`
+- Artifact: `/workspace/spike_s1_mcp_from_tool.json`
 - Stub: `agent_studio/studio_tools/spikes/s1_mcp_from_tool/`
 
-**Spike workflow**
+**Implication:** Agent Studio exposes Iceberg MCP to the **agent** (e.g. via MCP tools / `call-mcp`), **not** to custom `tool.py`. The preferred path `agent → custom tool → MCP` is **not available** without a platform bridge.
 
-1. Register that MCP on the workflow with `IMPALA_*` vars.  
-2. Run the spike tool; default call is `execute_query` / `SHOW DATABASES` (or `get_schema`).  
-3. Record *how* the call is made (Studio bridge, SDK, env gateway, unavailable, etc.).
+**Revised I/O options for claim tools**
 
-| Result | Implication |
-|---|---|
-| Tool can call MCP | Keep facade-in-package design; `build_claim_graph` uses Iceberg fork from tool |
-| Agent-only | Design break for thin tools — need Studio MCP bridge, or unacceptable agent-written SQL |
+| Option | Pattern | Notes |
+|---|---|---|
+| A (default now) | Agent calls MCP (`get_claim_spine` / `get_claim_routing_signals`), then custom tool with payload | Fork at `mcp_forks/iceberg-mcp-server-claims/`; avoid free-form SQL |
+| B | Custom tool talks to Impala/Hive via `UserParameters` + driver (`impyla`) | Bypasses MCP for reads; duplicates connection config |
+| C | Platform adds MCP-from-tool bridge later | Revisit facade-in-tool design if/when Studio ships it |
 
-**Pass criteria:** Tool returns MCP result JSON without the LLM inventing SQL; failure mode documented if unsupported.
+Do **not** design `build_claim_graph` assuming in-process MCP from `tool.py` until S1 is re-run and passes.
 
-### S2 — Git install via `requirements.txt`
+### S2 — Git install via `requirements.txt` — RESOLVED (PASS)
 
 **Question:** Can a tool install `ins-claims-agent` from git (or only wheel/PyPI/internal index)?
 
-**Spike workflow**
+**Result (2026-08-04):** Studio installed from git and imported successfully.
 
-1. Minimal tool `requirements.txt` with e.g.  
-   `ins-claims-agent @ git+https://<org>/<repo>.git@<ref>#subdirectory=agent_studio`  
-   (adjust to real publish layout), **or** a tiny public git package first if private git is blocked.  
-2. `run_tool` imports a symbol from that package and returns its version/`__file__`.  
-3. If git fails, retry with a built wheel on an allowed index.
-
-| Result | Implication |
+| Field | Value |
 |---|---|
-| `git+https` works | Pin package from this repo; no vendoring |
-| Wheel/index only | Add CI publish of `ins-claims-agent` wheel; tools pin version |
-| Neither | Blocker — escalate to Studio platform |
+| Fingerprint | `INS_CLAIMS_S2_TOOL_PY_V1` |
+| Version | `0.1.0` |
+| Installed from git | `true` |
+| URL | `https://github.com/jvprosser/ins-owl-rdf-atlas.git` |
+| Commit | `8018ae30ed4997b545403add36339e4a33bda49d` |
+| Revision | `main` |
+| Subdirectory | `agent_studio` |
+| Artifact | `/workspace/spike_s2_git_requirements.json` |
+| Stub | `agent_studio/studio_tools/spikes/s2_git_requirements/` |
 
-**Pass criteria:** `import ins_claims_agent` succeeds inside the tool sandbox; document the exact `requirements.txt` line that worked.
+**Working `requirements.txt` line**
+
+```text
+ins-claims-agent @ git+https://github.com/jvprosser/ins-owl-rdf-atlas.git@main#subdirectory=agent_studio
+```
+
+**Implication:** No vendoring / wheel publish required for Phase 1. Real Studio tools should pin `ins-claims-agent` this way (prefer a commit SHA over `@main` for demos that need reproducibility).
 
 ## References
 

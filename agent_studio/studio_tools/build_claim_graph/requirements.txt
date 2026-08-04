@@ -1,4 +1,2 @@
-rdflib>=7.0.0
-pyyaml>=6.0
 pydantic>=2.0
-impyla>=0.19.0
+ins-claims-agent @ git+https://github.com/jvprosser/ins-owl-rdf-atlas.git@main#subdirectory=agent_studio

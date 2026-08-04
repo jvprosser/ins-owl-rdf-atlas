@@ -10,6 +10,7 @@ from rdflib.namespace import RDF, XSD
 from ins_claims_agent.mcp_facade import IcebergFacade
 from ins_claims_agent.paths import default_ontology_path
 from ins_claims_agent.graph.iri import claim_iri, entity_iri, term_iri
+from ins_claims_agent.studio_io import normalize_signals_payload, normalize_spine_payload
 
 EX = Namespace("https://example.org/ins/")
 
@@ -18,15 +19,15 @@ def build_claim_graph(
     claim_id: int | str,
     *,
     iceberg: IcebergFacade | None = None,
-    spine: dict[str, Any] | None = None,
-    signals: dict[str, Any] | None = None,
+    spine: dict[str, Any] | str | None = None,
+    signals: dict[str, Any] | str | None = None,
     ontology_path: str | None = None,
     database: str = "car_insurance_claims",
 ) -> Graph:
     """Load TBox + claim spine/signals into an rdflib Graph.
 
-    Prefer ``iceberg.get_claim_spine`` / ``get_claim_routing_signals`` (fork P0,
-    or SQL fallback). For local unit tests, pass ``spine`` / ``signals`` dicts.
+    Path A: pass MCP ``get_claim_spine`` / ``get_claim_routing_signals`` JSON
+    (fork envelope or flat dicts). Facade path still supported for tests.
     """
     g = Graph()
     g.bind("ex", EX)
@@ -40,7 +41,9 @@ def build_claim_graph(
         spine = iceberg.get_claim_spine(claim_id, database=database)
     if signals is None and iceberg is not None:
         signals = iceberg.get_claim_routing_signals(claim_id, database=database)
-    signals = signals or {}
+
+    spine = normalize_spine_payload(spine)
+    signals = normalize_signals_payload(signals or {})
 
     _assert_spine(spine)
     claim = URIRef(claim_iri(claim_id))

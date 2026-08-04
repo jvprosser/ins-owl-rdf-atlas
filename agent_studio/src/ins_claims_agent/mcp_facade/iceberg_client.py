@@ -1,4 +1,4 @@
-"""Facade for iceberg-mcp-server-hive (+ claims fork P0 tools when available)."""
+"""Facade for iceberg-mcp-server-claims (+ claims fork P0 tools when available)."""
 
 from __future__ import annotations
 
@@ -8,7 +8,8 @@ from typing import Any
 from . import iceberg_sql as sql
 from .base import McpToolCaller
 
-SERVER = "iceberg-mcp-server-hive"
+# Path A Studio registration name for the Impala claims fork.
+SERVER = "iceberg-mcp-server-claims"
 AUDIT_TABLES = ("agent_run_audit", "agent_run_evidence")
 
 
