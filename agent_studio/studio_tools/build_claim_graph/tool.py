@@ -52,6 +52,7 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
     claim_id = args.claim_id
     spine = studio_io.normalize_spine_payload(args.spine_json)
     signals = studio_io.normalize_signals_payload(args.signals_json)
+    studio_io.assert_spine_has_triangle_fields(spine)
 
     graph = build_claim_graph(claim_id, spine=spine, signals=signals)
 
@@ -64,6 +65,9 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
         "claim_id": str(claim_id),
         "database": args.database or spine.get("database") or "car_insurance_claims",
         "triple_count": len(graph),
+        "policy_id": spine.get("policy_id"),
+        "insurable_object_id": spine.get("insurable_object_id"),
+        "coverage_type_code": spine.get("coverage_type_code"),
         "graph_artifact": str(ttl_path.resolve()),
         "session_directory": str(studio_io.session_dir()),
         "workflow_data_directory": str(assets),

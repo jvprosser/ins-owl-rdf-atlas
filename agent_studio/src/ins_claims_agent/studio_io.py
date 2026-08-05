@@ -85,9 +85,17 @@ def parse_json_arg(raw: Any, *, label: str = "json") -> Any:
         raise ValueError(f"{label} is not valid JSON: {exc}") from exc
 
 
+def _lower_keys(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        return {str(k).lower(): _lower_keys(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_lower_keys(v) for v in obj]
+    return obj
+
+
 def normalize_spine_payload(raw: Any) -> dict[str, Any]:
     """Accept fork MCP envelope or flat spine dict (SQL fallback / tests)."""
-    payload = parse_json_arg(raw, label="spine_json")
+    payload = _lower_keys(parse_json_arg(raw, label="spine_json"))
     if not isinstance(payload, dict):
         raise ValueError("spine_json must be a JSON object")
     if payload.get("error") and "spine" not in payload:
@@ -102,9 +110,24 @@ def normalize_spine_payload(raw: Any) -> dict[str, Any]:
     return payload
 
 
+def assert_spine_has_triangle_fields(spine: dict[str, Any]) -> None:
+    """Fail fast when build would produce a graph that validation cannot pass."""
+    missing = [
+        key
+        for key in ("policy_id", "insurable_object_id")
+        if spine.get(key) is None or spine.get(key) == ""
+    ]
+    if missing:
+        raise ValueError(
+            "spine_json missing required field(s) "
+            f"{missing}. Re-call MCP get_claim_spine and pass the full JSON "
+            "unmodified into build_claim_graph (do not summarize or omit keys)."
+        )
+
+
 def normalize_signals_payload(raw: Any) -> dict[str, Any]:
     """Accept fork MCP envelope or flat signals dict."""
-    payload = parse_json_arg(raw, label="signals_json")
+    payload = _lower_keys(parse_json_arg(raw, label="signals_json"))
     if not isinstance(payload, dict):
         raise ValueError("signals_json must be a JSON object")
     if payload.get("error") and "signals" not in payload:

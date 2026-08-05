@@ -129,6 +129,8 @@ def query_rows(query: str) -> list[dict[str, Any]]:
     columns = payload.get("columns") or []
     rows = payload.get("rows") or []
     out: list[dict[str, Any]] = []
+    # Impala may return mixed-case column names; normalize for tool consumers.
+    cols = [str(c).lower() for c in columns]
     for row in rows:
-        out.append({columns[i]: row[i] for i in range(min(len(columns), len(row)))})
+        out.append({cols[i]: row[i] for i in range(min(len(cols), len(row)))})
     return out

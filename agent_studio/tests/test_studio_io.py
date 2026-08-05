@@ -32,6 +32,31 @@ def test_normalize_fork_spine_envelope():
     assert spine["roles"][0]["role_type_code"] == "ADJUSTER"
 
 
+def test_normalize_spine_lowercases_keys():
+    raw = {
+        "Spine": {
+            "Claim_Number": "CLM-402",
+            "POLICY_ID": 1001,
+            "INSURABLE_OBJECT_ID": 201,
+        },
+        "Roles": [],
+    }
+    spine = normalize_spine_payload(raw)
+    assert spine["policy_id"] == 1001
+    assert spine["insurable_object_id"] == 201
+
+
+def test_assert_spine_triangle_fields():
+    from ins_claims_agent.studio_io import assert_spine_has_triangle_fields
+
+    assert_spine_has_triangle_fields({"policy_id": 1, "insurable_object_id": 2})
+    try:
+        assert_spine_has_triangle_fields({"policy_id": 1})
+        assert False, "expected ValueError"
+    except ValueError as exc:
+        assert "insurable_object_id" in str(exc)
+
+
 def test_normalize_fork_signals_envelope():
     raw = {
         "claim_id": 401,

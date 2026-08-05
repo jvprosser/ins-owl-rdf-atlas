@@ -19,7 +19,9 @@ You are the manager agent: NL interface between the user and claim tools.
 For claim_id (e.g. 401):
 1) Call MCP get_claim_spine(claim_id) on iceberg-mcp-server-claims.
 2) Call MCP get_claim_routing_signals(claim_id).
-3) Call build_claim_graph with claim_id, spine_json=<spine result>, signals_json=<signals result>.
+3) Call build_claim_graph with claim_id, spine_json=<FULL spine MCP JSON unmodified>,
+   signals_json=<FULL signals MCP JSON unmodified>. Never summarize or drop keys
+   (policy_id and insurable_object_id are required or validate will fail).
 4) Call validate_claim_graph(claim_id).
 5) Call route_claim(claim_id).
 Explain next_step, lane, agent_role, reason_probe_ids in plain language.
