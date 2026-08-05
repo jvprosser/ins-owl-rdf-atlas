@@ -13,6 +13,7 @@ import sys
 from dotenv import load_dotenv
 from fastmcp import FastMCP
 
+from iceberg_mcp_server_claims import server_info
 from iceberg_mcp_server_claims.tools import audit_tools, claim_tools, impala_tools, view_tools
 
 load_dotenv()
@@ -26,6 +27,18 @@ logging.basicConfig(
 log = logging.getLogger("iceberg-mcp-server-claims")
 
 mcp = FastMCP(name="iceberg-mcp-server-claims")
+
+
+# --- Identity / version -----------------------------------------------------
+
+
+@mcp.tool()
+def get_server_info() -> str:
+    """Return content_id + version so Studio can verify this MCP binary.
+
+    Expect content_id INS_CLAIMS_MCP_V2 after restarting from current main.
+    """
+    return server_info.get_server_info()
 
 
 # --- Upstream-compatible Impala tools ---------------------------------------
