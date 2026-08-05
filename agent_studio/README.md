@@ -2,14 +2,12 @@
 
 Phase 1 scaffold for Style B claim routing:
 
-- **Python tools** build an in-memory RDF graph, run SPARQL probes, validate, and dispatch steps
+- **Manager agent** — NL interface: drives tools, explains results, assigns unstructured LLM subtasks (ADR 0001 D0)
+- **Python tools** — deterministic build / validate / route (SPARQL probes + playbook)
 - **Git files** hold ontology, probes, and playbook (no custom steward UI)
-- **MCP facades** call only:
-  - Iceberg Hive MCP (facts + WAP audit branches)
-  - Data-contract Atlas MCP (catalog/contracts/tags; BM bind when fork lands)
-  - Ranger MCP (access/masking/audit logs)
+- **MCP** — Iceberg claims fork (Path A); later Atlas data-contract + Ranger
 
-RDF/SPARQL is **not** an MCP — it runs in-process via `rdflib`.
+RDF/SPARQL is **not** an MCP — it runs in-process via `rdflib`. The manager agent is **not** the router.
 
 ## Layout
 

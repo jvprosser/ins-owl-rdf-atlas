@@ -51,7 +51,8 @@ Replace the stock `iceberg-mcp-server` registration with this fork (same `IMPALA
     "command": "uvx",
     "args": [
       "--from",
-      "git+https://github.com/<org>/ins-owl-rdf-atlas.git#subdirectory=mcp_forks/iceberg-mcp-server-claims",
+      "git+https://github.com/jvprosser/ins-owl-rdf-atlas.git#subdirectory=mcp_forks/iceberg-mcp-server-claims",
+ 
       "run-server"
     ],
     "env": {
@@ -59,11 +60,7 @@ Replace the stock `iceberg-mcp-server` registration with this fork (same `IMPALA
       "IMPALA_PORT": "443",
       "IMPALA_USER": "<user>",
       "IMPALA_PASSWORD": "<password>",
-      "IMPALA_DATABASE": "car_insurance_claims",
-      "IMPALA_AUTH_MECHANISM": "LDAP",
-      "IMPALA_USE_HTTP_TRANSPORT": "true",
-      "IMPALA_HTTP_PATH": "cliservice",
-      "IMPALA_USE_SSL": "true"
+      "IMPALA_DATABASE": "car_insurance_claims"
     }
   }
 }

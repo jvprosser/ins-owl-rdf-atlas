@@ -1,6 +1,8 @@
 # Agent Studio tools — Path A single-route demo
 
-Thin tools: **`tool.py` + `requirements.txt` only**. Lake I/O is agent → MCP; Python builds/routes the graph.
+Thin tools: **`tool.py` + `requirements.txt` only**. Lake I/O is manager agent → MCP; Python builds/routes the graph.
+
+**Manager agent (locked):** natural-language interface to the user — drives tools, returns friendly explanations, and may assign LLM subtasks for unstructured data. It does **not** invent SQL or routing rules (probes + playbook do).
 
 | Tool | Input | Output (`SESSION_DIRECTORY`) |
 |---|---|---|
@@ -8,19 +10,20 @@ Thin tools: **`tool.py` + `requirements.txt` only**. Lake I/O is agent → MCP; 
 | `validate_claim_graph/` | `claim_id` | `claim_{id}_validation.json` |
 | `route_claim/` | `claim_id` | `claim_{id}_route.json` |
 
-S1: tools cannot call MCP. S2: `ins-claims-agent` installs from git.
+S1: tools cannot call MCP. S2: `ins-claims-agent` installs from git. See ADR 0001 **D0**.
 
-## Agent prompt (suggested)
+## Manager agent prompt (suggested)
 
 ```text
+You are the manager agent: NL interface between the user and claim tools.
 For claim_id (e.g. 401):
 1) Call MCP get_claim_spine(claim_id) on iceberg-mcp-server-claims.
 2) Call MCP get_claim_routing_signals(claim_id).
 3) Call build_claim_graph with claim_id, spine_json=<spine result>, signals_json=<signals result>.
 4) Call validate_claim_graph(claim_id).
 5) Call route_claim(claim_id).
-Return next_step, lane, agent_role, reason_probe_ids.
-Do NOT invent SQL or call execute_query for claim joins.
+Explain next_step, lane, agent_role, reason_probe_ids in plain language.
+If the user (or route needs_llm) requires unstructured notes/docs, assign a bounded LLM subtask — do not invent SQL or call execute_query for claim joins.
 ```
 
 ## Studio project setup

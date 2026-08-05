@@ -6,17 +6,40 @@
 
 ## Context
 
-We are deploying a minimal claim-routing agent in Cloudera AI Agent Studio:
+We are deploying a minimal claim-routing stack in Cloudera AI Agent Studio:
 
-- RDF / SPARQL / playbook logic in Python tools
+- RDF / SPARQL / playbook logic in Python tools (deterministic automation)
 - Platform I/O only via MCP (Iceberg, Atlas/data-contract, Ranger)
 - Ontology, probes, and playbook as Git-reviewed config (not Iceberg UI catalogs)
+- A **manager agent** as the natural-language interface — not as the business-rules engine
 
-Temporary bridge code exists today (Iceberg SQL/branch fallbacks, vendored tool bundles, optional direct Hive/`impyla` in the build tool). That was to unblock offline tests and a demo before MCP forks landed. Studio custom tools effectively ship as **`tool.py` + `requirements.txt` only**; other support files belong in the Studio project’s **`workflow_data`** tree.
+Temporary bridge code exists today (Iceberg SQL/branch fallbacks). Studio custom tools effectively ship as **`tool.py` + `requirements.txt` only**; other support files belong in the Studio project’s **`workflow_data`** tree.
 
 **Confirmed:** Agent Studio installs packages listed in a tool’s `requirements.txt` (including a shared library). Shared Python should not be vendored into tool folders or stuffed into `workflow_data`.
 
 ## Decisions
+
+### D0 — Manager agent is the NL interface (not the router)
+
+The **manager agent** is the conversational control plane between the user and tools:
+
+| Does | Does not |
+|---|---|
+| Interpret user intent and call MCP + custom tools in the Path A / Style B sequence | Invent claim SQL, joins, or routing rules |
+| Return user-friendly summaries of validate/route outcomes (`next_step`, `lane`, `reason_probe_ids`, …) | Replace SPARQL probes or `playbook.yaml` |
+| Assign / invoke LLM-friendly subtasks that touch **unstructured** data (notes, documents, free text) when the playbook or user asks | Free-form lake exploration via `execute_query` for claim spine |
+
+**Split of responsibility**
+
+```text
+User (natural language)
+  └─ Manager agent          → NL I/O, explanations, unstructured task dispatch
+       ├─ MCP (structured)  → get_claim_spine / get_claim_routing_signals / audit…
+       ├─ Custom tools      → build / validate / route (deterministic)
+       └─ LLM subtasks      → only for unstructured extraction / language work
+```
+
+Routing and graph integrity remain **business automation** (tools + Git-reviewed probes/playbook). The agent layer is justified for NL ops and unstructured side-quests on the same Studio surface — not because the router must be agentic.
 
 ### D1 — Build MCP forks; eliminate placeholder I/O
 
@@ -30,7 +53,7 @@ Fork and register (additive tools only):
 
 Do **not** fork Ranger. Do **not** dual-register `ecole5/atlas-mcp` beside the data-contract fork.
 
-**Path A (chosen after S1):** Agent → MCP claim helpers → custom tool with payload. Register the Impala claims fork in Studio in place of stock `iceberg-mcp-server`.
+**Path A (chosen after S1):** Manager agent → MCP claim helpers → custom tool with payload. Register the Impala claims fork in Studio in place of stock `iceberg-mcp-server`.
 
 After forks are contract-tested on seeded CDP data, **remove** from this repo:
 
@@ -122,7 +145,7 @@ Path resolution in shared code / tools:
 2. `validate_claim_graph` — read graph from session dir; ontology from `workflow_data` if needed  
 3. `route_claim` — probes + playbook from `workflow_data`; write decision JSON to session dir  
 
-Agent calls them in order; LLM does not invent SQL.
+Manager agent calls MCP then these tools in order; explains results to the user; may assign unstructured LLM subtasks afterward. It does not invent SQL or routing.
 
 ## Consequences
 

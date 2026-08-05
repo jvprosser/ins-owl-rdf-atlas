@@ -2,7 +2,7 @@
 
 **Status:** Draft for Phase 1  
 **Date:** 2026-08-03  
-**Program:** Car insurance claims agentic semantic layer (Cloudera Agent Studio)
+**Program:** Car insurance claims semantic layer (Cloudera Agent Studio) — manager agent as NL interface; deterministic SPARQL/playbook routing
 
 ## Purpose
 
@@ -78,13 +78,19 @@ Implemented for Impala in `mcp_forks/iceberg-mcp-server-claims/` (also keeps `ex
 ## Runtime topology
 
 ```text
-Agent Studio tools
-  ├─ build_claim_graph      → Iceberg: get_claim_spine (+ signals)
-  ├─ sparql_route/validate  → local rdflib + probes/*.rq + playbook.yaml
-  ├─ write_audit            → Iceberg: begin/append/promote audit run
-  ├─ governance helpers     → Atlas fork: BM bind + upstream contract/tag tools
-  └─ access/masking/audit   → Ranger MCP (unchanged)
+User (natural language)
+  └─ Manager agent                    # NL interface + unstructured task dispatch
+       ├─ MCP Iceberg claims fork     → get_claim_spine / signals / audit helpers
+       ├─ Custom tools (deterministic)
+       │    ├─ build_claim_graph
+       │    ├─ validate_claim_graph
+       │    └─ route_claim            → rdflib + probes/*.rq + playbook.yaml
+       ├─ LLM subtasks (when needed)  → unstructured notes/docs/extraction only
+       ├─ governance helpers (later)  → Atlas fork: BM bind + contracts/tags
+       └─ access/masking/audit        → Ranger MCP (unchanged)
 ```
+
+**Manager agent (locked):** conversational front door and explainer; assigns LLM work for unstructured data. **Not** the business-rules engine — routing stays in Git-reviewed probes/playbook + Python tools.
 
 ## Success criteria
 
@@ -120,6 +126,8 @@ Agent Studio tools
 
 | Decision | Choice |
 |---|---|
+| Manager agent role | NL interface + user-friendly results + unstructured LLM task dispatch |
+| Business rules / routing | Deterministic tools + SPARQL probes + playbook (not the LLM) |
 | RDF/SPARQL location | Python Agent Studio tools |
 | Audit destination | Iceberg via Iceberg MCP (WAP branch on Hive; table-append on Impala Path A) |
 | Path A Iceberg base | Impala `cloudera/iceberg-mcp-server` fork in this repo |
