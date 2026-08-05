@@ -6,3 +6,5 @@
 | S2 | `s2_git_requirements/` | Does `requirements.txt` accept git+https? | **PASS** — pin `ins-claims-agent` from git |
 
 Upload **only** each spike’s `tool.py` + `requirements.txt` to Studio. Artifacts land in `SESSION_DIRECTORY` (`/workspace`).
+
+Confirm paste via header `CONTENT_ID` / `REPO_REF` / `UPDATED` (and runtime `tool_fingerprint`).

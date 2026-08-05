@@ -1,10 +1,15 @@
 """
+CONTENT_ID: INS_CLAIMS_S1_TOOL_PY_V3
+REPO_REF: 319ede0
+UPDATED: 2026-08-05
+FILE: agent_studio/studio_tools/spikes/s1_mcp_from_tool/tool.py
+
 CUSTOM TOOL spike_s1_probe_mcp_bridge — not iceberg-mcp-server.
 
 Invoke this custom tool only. Do not use call-mcp or execute_query yourself.
 Tool params: {"sql": "SHOW DATABASES"}
 
-Returns TOOL_FINGERPRINT so you can confirm this Python file ran.
+Returns TOOL_FINGERPRINT / CONTENT_ID so you can confirm this Python file ran.
 """
 
 from __future__ import annotations

@@ -1,4 +1,9 @@
 """
+CONTENT_ID: INS_CLAIMS_BUILD_PATH_A_V2
+REPO_REF: 319ede0
+UPDATED: 2026-08-05
+FILE: agent_studio/studio_tools/build_claim_graph/tool.py
+
 CUSTOM TOOL build_claim_graph — Path A.
 
 Agent must call MCP get_claim_spine (+ get_claim_routing_signals), then pass
@@ -62,6 +67,7 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
 
     meta = {
         "tool_fingerprint": TOOL_FINGERPRINT,
+        "content_id": TOOL_FINGERPRINT,
         "claim_id": str(claim_id),
         "database": args.database or spine.get("database") or "car_insurance_claims",
         "triple_count": len(graph),

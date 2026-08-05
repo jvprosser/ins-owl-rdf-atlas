@@ -1,4 +1,9 @@
 """
+CONTENT_ID: INS_CLAIMS_ROUTE_PATH_A_V2
+REPO_REF: 319ede0
+UPDATED: 2026-08-05
+FILE: agent_studio/studio_tools/route_claim/tool.py
+
 CUSTOM TOOL route_claim — Path A.
 
 Reads claim_{id}_graph.ttl from SESSION_DIRECTORY; probes + playbook from
@@ -53,6 +58,7 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
 
     summary = {
         "tool_fingerprint": TOOL_FINGERPRINT,
+        "content_id": TOOL_FINGERPRINT,
         "claim_id": decision.get("claim_id"),
         "lane": decision.get("lane"),
         "next_step": decision.get("next_step"),

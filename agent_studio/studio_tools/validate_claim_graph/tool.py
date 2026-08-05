@@ -1,4 +1,9 @@
 """
+CONTENT_ID: INS_CLAIMS_VALIDATE_PATH_A_V2
+REPO_REF: 319ede0
+UPDATED: 2026-08-05
+FILE: agent_studio/studio_tools/validate_claim_graph/tool.py
+
 CUSTOM TOOL validate_claim_graph — Path A.
 
 Reads claim_{id}_graph.ttl from SESSION_DIRECTORY (after build_claim_graph).
@@ -56,6 +61,7 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
 
     return {
         "tool_fingerprint": TOOL_FINGERPRINT,
+        "content_id": TOOL_FINGERPRINT,
         **report,
         "graph_artifact": str(ttl_path.resolve()),
         "triple_count": len(graph),

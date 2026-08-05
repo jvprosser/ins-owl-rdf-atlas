@@ -1,2 +1,7 @@
+# CONTENT_ID: INS_CLAIMS_S2_REQ_V1
+# PACKAGE_PIN: main
+# REPO_REF: 319ede0
+# UPDATED: 2026-08-05
+# FILE: agent_studio/studio_tools/spikes/s2_git_requirements/requirements.txt
 pydantic>=2.0
 ins-claims-agent @ git+https://github.com/jvprosser/ins-owl-rdf-atlas.git@main#subdirectory=agent_studio

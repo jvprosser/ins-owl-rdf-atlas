@@ -2,6 +2,19 @@
 
 Thin tools: **`tool.py` + `requirements.txt` only**. Lake I/O is manager agent → MCP; Python builds/routes the graph.
 
+### Paste / version check (required)
+
+Every Studio `tool.py` and `requirements.txt` starts with version headers:
+
+```text
+CONTENT_ID: …
+REPO_REF: …
+UPDATED: YYYY-MM-DD
+FILE: agent_studio/studio_tools/...
+```
+
+`requirements.txt` also has `# PACKAGE_PIN: …`. After paste, confirm those lines match the repo file. Tool results echo `tool_fingerprint` / `content_id` equal to `CONTENT_ID`. **Bump `CONTENT_ID` (and fingerprint) whenever the file contents change.**
+
 **Manager agent (locked):** natural-language interface to the user — drives tools, returns friendly explanations, and may assign LLM subtasks for unstructured data. It does **not** invent SQL or routing rules (probes + playbook do).
 
 | Tool | Input | Output (`SESSION_DIRECTORY`) |

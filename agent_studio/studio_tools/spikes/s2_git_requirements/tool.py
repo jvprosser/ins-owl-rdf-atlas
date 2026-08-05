@@ -1,4 +1,9 @@
 """
+CONTENT_ID: INS_CLAIMS_S2_TOOL_PY_V1
+REPO_REF: 319ede0
+UPDATED: 2026-08-05
+FILE: agent_studio/studio_tools/spikes/s2_git_requirements/tool.py
+
 CUSTOM TOOL spike_s2_git_requirements — git install via requirements.txt.
 
 Upload only this tool.py + requirements.txt.
