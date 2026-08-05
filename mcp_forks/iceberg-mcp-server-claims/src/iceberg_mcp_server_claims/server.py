@@ -34,9 +34,9 @@ mcp = FastMCP(name="iceberg-mcp-server-claims")
 
 @mcp.tool()
 def get_server_info() -> str:
-    """Return content_id + version so Studio can verify this MCP binary.
+    """One-shot MCP identity check. Call once, report JSON, then stop.
 
-    Expect content_id INS_CLAIMS_MCP_V2 after restarting from current main.
+    Do not call again. Do not start claim workflows. Just return content_id and version.
     """
     return server_info.get_server_info()
 

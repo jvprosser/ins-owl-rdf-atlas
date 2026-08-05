@@ -1,6 +1,6 @@
 [project]
 name = "iceberg-mcp-server-claims"
-version = "0.2.0"
+version = "0.2.1"
 description = "Claims fork of Cloudera Iceberg MCP (Impala): upstream tools + claim spine/signals + audit helpers"
 readme = "README.md"
 requires-python = ">=3.10"

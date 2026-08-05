@@ -10,12 +10,15 @@ from iceberg_mcp_server_claims.server import get_server_info
 
 def test_content_id_and_version():
     payload = json.loads(get_server_info())
-    assert payload["content_id"] == "INS_CLAIMS_MCP_V2"
+    assert payload["ok"] is True
+    assert payload["done"] is True
+    assert payload["content_id"] == "INS_CLAIMS_MCP_V3"
     assert payload["server"] == "iceberg-mcp-server-claims"
-    assert payload["version"] == "0.2.0"
+    assert payload["version"] == "0.2.1"
     assert "get_server_info" in payload["registered_tools"]
     assert "get_litigation_view" in payload["registered_tools"]
     assert "write_audit_event" in payload["registered_tools"]
+    assert "notes" not in payload
 
 
 def test_registered_tools_match_constant():

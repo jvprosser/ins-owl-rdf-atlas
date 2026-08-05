@@ -7,7 +7,7 @@ from importlib import metadata
 from typing import Any
 
 # Bump CONTENT_ID whenever shipped MCP behavior/tools change.
-CONTENT_ID = "INS_CLAIMS_MCP_V2"
+CONTENT_ID = "INS_CLAIMS_MCP_V3"
 UPDATED = "2026-08-05"
 
 # Keep in sync with @mcp.tool registrations in server.py
@@ -53,16 +53,14 @@ def package_version() -> str:
 
 def server_info_payload() -> dict[str, Any]:
     return {
+        "ok": True,
+        "done": True,
         "content_id": CONTENT_ID,
         "server": "iceberg-mcp-server-claims",
         "version": package_version(),
         "updated": UPDATED,
         "features": list(FEATURES),
         "registered_tools": list(REGISTERED_TOOLS),
-        "notes": (
-            "Call get_server_info after restarting the MCP in Agent Studio. "
-            f"Expect content_id={CONTENT_ID} and version={package_version()}."
-        ),
     }
 
 

@@ -17,7 +17,7 @@ Keeps upstream-style tools (`execute_query`, `get_schema`) and adds curated clai
 
 | Tool | Notes |
 |---|---|
-| `get_server_info()` | Returns `content_id`, `version`, `registered_tools`. Expect **`INS_CLAIMS_MCP_V2`** / **`0.2.0`** after restart from current main |
+| `get_server_info()` | One-shot identity: `content_id`, `version`, `registered_tools`. Expect **`INS_CLAIMS_MCP_V3`** / **`0.2.1`**. Prompt: “Call get_server_info once and stop.” |
 
 ### Upstream-compatible
 
