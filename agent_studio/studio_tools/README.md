@@ -25,6 +25,8 @@ FILE: agent_studio/studio_tools/...
 
 S1: tools cannot call MCP. S2: `ins-claims-agent` installs from git. See ADR 0001 **D0**.
 
+**After route:** playbook `allowed_tools` map to MCP (views + audit aliases) — see [`POST_ROUTE_AGENTS.md`](POST_ROUTE_AGENTS.md).
+
 ## Manager agent prompt (suggested)
 
 ```text

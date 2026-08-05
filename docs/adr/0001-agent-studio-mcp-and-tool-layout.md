@@ -167,13 +167,14 @@ Manager agent calls MCP then these tools in order; explains results to the user;
 
 1. ~~S1~~ done — no MCP-from-tool; **Path A** chosen  
 2. ~~Iceberg Impala claims fork scaffolded~~ — `mcp_forks/iceberg-mcp-server-claims/`  
-3. Register fork in Studio; contract-test against seeded claim `401`/`402`/`403`  
+3. ~~Studio Path A smoke~~ — claims `401`/`402`/`403` build → validate → route OK  
 4. ~~S2~~ done — Studio installs `ins-claims-agent` from `git+https` + `#subdirectory=agent_studio`  
-5. Prefer MCP P0 spine/signals (not free-form `execute_query`) in agent prompts  
+5. Prefer MCP P0 spine/signals/views (not free-form `execute_query`) in agent prompts  
 6. ~~Path A demo tools~~ — thin `build`/`validate`/`route` + git pin; config via `WORKFLOW_DATA_DIRECTORY`  
-7. Push `main` + register claims MCP fork; smoke claim `401` in Studio  
-8. Delete fallbacks and legacy `prepare_bundles` trees once Path A is live in CDP  
-9. Add Atlas BM fork when governance binding is in scope
+7. ~~Post-route MCP~~ — playbook views + audit aliases on claims fork; see `studio_tools/POST_ROUTE_AGENTS.md`  
+8. Wire Style B loop + unstructured worker when ready  
+9. Delete fallbacks and legacy `prepare_bundles` trees once Path A is live in CDP  
+10. Add Atlas BM fork when governance binding is in scope
 
 ## Open Studio questions
 

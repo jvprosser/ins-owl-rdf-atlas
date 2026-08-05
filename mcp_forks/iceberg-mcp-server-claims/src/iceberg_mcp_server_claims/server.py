@@ -13,7 +13,7 @@ import sys
 from dotenv import load_dotenv
 from fastmcp import FastMCP
 
-from iceberg_mcp_server_claims.tools import audit_tools, claim_tools, impala_tools
+from iceberg_mcp_server_claims.tools import audit_tools, claim_tools, impala_tools, view_tools
 
 load_dotenv()
 
@@ -61,6 +61,27 @@ def get_claim_routing_signals(claim_id: str, database: str | None = None) -> str
     return claim_tools.get_claim_routing_signals(claim_id, database)
 
 
+# --- Specialist views (playbook allowed_tools names) ------------------------
+
+
+@mcp.tool()
+def get_litigation_view(claim_id: str, database: str | None = None) -> str:
+    """Litigation case facts for LitigationAgent."""
+    return view_tools.get_litigation_view(claim_id, database)
+
+
+@mcp.tool()
+def get_bi_view(claim_id: str, database: str | None = None) -> str:
+    """Injury facts for BiClaimsAgent."""
+    return view_tools.get_bi_view(claim_id, database)
+
+
+@mcp.tool()
+def get_subrogation_view(claim_id: str, database: str | None = None) -> str:
+    """Subrogation case facts for SubrogationAgent."""
+    return view_tools.get_subrogation_view(claim_id, database)
+
+
 # --- Audit helpers (Impala table-append mode) -------------------------------
 
 
@@ -104,6 +125,25 @@ def promote_agent_audit_run(run_id: str, database: str | None = None) -> str:
 def abandon_agent_audit_run(run_id: str, database: str | None = None) -> str:
     """Abandon audit run by deleting rows for run_id (best effort)."""
     return audit_tools.abandon_agent_audit_run(run_id, database)
+
+
+# Playbook-aligned aliases (same impl; names match route allowed_tools)
+
+
+@mcp.tool()
+def write_audit_event(
+    run_id: str,
+    event_json: str,
+    database: str | None = None,
+) -> str:
+    """Alias for append_agent_audit_event (playbook: write_audit_event)."""
+    return audit_tools.append_agent_audit_event(run_id, event_json, database)
+
+
+@mcp.tool()
+def promote_audit_run(run_id: str, database: str | None = None) -> str:
+    """Alias for promote_agent_audit_run (playbook: promote_audit_run)."""
+    return audit_tools.promote_agent_audit_run(run_id, database)
 
 
 def main() -> None:

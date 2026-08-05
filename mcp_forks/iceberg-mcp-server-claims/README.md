@@ -27,6 +27,14 @@ Keeps upstream-style tools (`execute_query`, `get_schema`) and adds curated clai
 | `get_claim_spine(claim_id, database?)` | Claim + loss + policy + vehicle + current roles + lifecycle |
 | `get_claim_routing_signals(claim_id, database?)` | Existence / routing flags + related ids |
 
+### Specialist views (playbook `allowed_tools`)
+
+| Tool | Responsibility |
+|---|---|
+| `get_litigation_view(claim_id, database?)` | Litigation case rows |
+| `get_bi_view(claim_id, database?)` | Injury rows |
+| `get_subrogation_view(claim_id, database?)` | Subrogation case rows |
+
 ### Audit (Impala table-append)
 
 Impala via this server does **not** expose Hive-style Iceberg WAP branches. Audit tools write to main tables keyed by `run_id`:
@@ -35,8 +43,10 @@ Impala via this server does **not** expose Hive-style Iceberg WAP branches. Audi
 |---|---|
 | `begin_agent_audit_run` | Validate + return `mode=table_append` |
 | `append_agent_audit_event` | `INSERT` into `agent_run_audit` |
+| `write_audit_event` | Playbook alias → `append_agent_audit_event` |
 | `append_agent_audit_evidence` | `INSERT` into `agent_run_evidence` |
 | `promote_agent_audit_run` | No-op success (already on main) |
+| `promote_audit_run` | Playbook alias → `promote_agent_audit_run` |
 | `abandon_agent_audit_run` | `DELETE` rows for `run_id` |
 
 Prerequisite: audit DDL from `ddl/hive_iceberg/` applied in the target database.
@@ -47,20 +57,22 @@ Replace the stock `iceberg-mcp-server` registration with this fork (same `IMPALA
 
 ```json
 {
-  "iceberg-mcp-server-claims": {
-    "command": "uvx",
-    "args": [
-      "--from",
-      "git+https://github.com/jvprosser/ins-owl-rdf-atlas.git#subdirectory=mcp_forks/iceberg-mcp-server-claims",
- 
-      "run-server"
-    ],
-    "env": {
-      "IMPALA_HOST": "<coordinator-host>",
-      "IMPALA_PORT": "443",
-      "IMPALA_USER": "<user>",
-      "IMPALA_PASSWORD": "<password>",
-      "IMPALA_DATABASE": "car_insurance_claims"
+  "mcpServers": {
+      "iceberg-mcp-server-claims": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/jvprosser/ins-owl-rdf-atlas.git#subdirectory=mcp_forks/iceberg-mcp-server-claims",
+  
+        "run-server"
+      ],
+      "env": {
+        "IMPALA_HOST": "<coordinator-host>",
+        "IMPALA_PORT": "443",
+        "IMPALA_USER": "<user>",
+        "IMPALA_PASSWORD": "<password>",
+        "IMPALA_DATABASE": "car_insurance_claims"
+      }
     }
   }
 }

@@ -44,6 +44,8 @@ Implemented for Impala in `mcp_forks/iceberg-mcp-server-claims/` (also keeps `ex
 |---|---|---|
 | `get_claim_spine(claim_id, database?)` | Claim + loss + policy + vehicle + current roles + lifecycle | Curated SQL |
 | `get_claim_routing_signals(claim_id, database?)` | Flags + existence signals | Curated SQL |
+| `get_litigation_view` / `get_bi_view` / `get_subrogation_view` | Playbook specialist views | Curated SQL |
+| `write_audit_event` / `promote_audit_run` | Playbook name aliases | → append / promote helpers |
 | `begin_agent_audit_run(run_id, database, source_branch?)` | Start audit run | Validate; `mode=table_append` (no branch) |
 | `append_agent_audit_event(run_id, event_json)` | Router/tool/decision events | `INSERT` main `agent_run_audit` |
 | `append_agent_audit_evidence(run_id, evidence_json)` | SPARQL/validation/graph excerpts | `INSERT` main `agent_run_evidence` |
