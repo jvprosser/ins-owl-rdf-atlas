@@ -14,6 +14,14 @@ def test_claim_spine_sql_contains_claim_id_and_db():
     assert "policy_covers_vehicle" in sql
 
 
+def test_claim_routing_signals_sql_uses_cte_not_scalar_count_gt():
+    sql = claim_sql.claim_routing_signals_sql(402, "car_insurance_claims")
+    assert sql.lstrip().upper().startswith("WITH")
+    assert "COUNT(*) > 0" not in sql
+    assert "CROSS JOIN" in sql
+    assert "claim_id = 402" in sql
+
+
 def test_get_claim_spine_shapes_payload():
     def fake_query(sql: str):
         if "claim_party_role" in sql:
