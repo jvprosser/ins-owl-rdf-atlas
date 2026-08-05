@@ -20,7 +20,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-TOOL_FINGERPRINT = "INS_CLAIMS_BUILD_PATH_A_V1"
+TOOL_FINGERPRINT = "INS_CLAIMS_BUILD_PATH_A_V2"
 
 
 class UserParameters(BaseModel):
