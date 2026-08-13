@@ -1,5 +1,5 @@
 """
-CONTENT_ID: INS_CLAIMS_PRE_ROUTE_V1
+CONTENT_ID: INS_CLAIMS_PRE_ROUTE_V2
 REPO_REF: main
 UPDATED: 2026-08-13
 FILE: agent_studio/studio_tools/pre_route_text/tool.py
@@ -8,7 +8,8 @@ CUSTOM TOOL pre_route_text — unstructured NL pre-router.
 
 TF-IDF + numpy cosine against a small exemplar catalog. Returns label + score.
 If score is below threshold (or a close call), needs_llm=true — the Routing
-Agent must run a bounded LLM classify. Path A still wins when claim_id is set.
+Agent must run a bounded LLM classify. Structured claim intake still wins
+when claim_id is set.
 
 Tool params example:
   {"text": "We were served a complaint and the case is in discovery", "claim_id": ""}
@@ -22,7 +23,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-TOOL_FINGERPRINT = "INS_CLAIMS_PRE_ROUTE_V1"
+TOOL_FINGERPRINT = "INS_CLAIMS_PRE_ROUTE_V2"
 
 
 class UserParameters(BaseModel):
@@ -33,7 +34,7 @@ class ToolParameters(BaseModel):
     text: str = Field(description="Unstructured notes / FNOL / email to triage")
     claim_id: Optional[str] = Field(
         default=None,
-        description="Optional claim id. If set, cosine is advisory; Path A is authoritative.",
+        description="Optional claim id. If set, cosine is advisory; structured claim intake is authoritative.",
     )
     threshold: Optional[float] = Field(
         default=None,

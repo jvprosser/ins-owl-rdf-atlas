@@ -1,6 +1,6 @@
-# Agent Studio tools — Path A single-route demo
+# Agent Studio tools — structured claim intake
 
-Thin tools: **`tool.py` + `requirements.txt` only**. Lake I/O is manager agent → MCP; Python builds/routes the graph.
+Thin tools: **`tool.py` + `requirements.txt` only**. Lake I/O is manager agent → MCP; Python builds/routes the graph. Custom tools do not call MCP in-process. `ins-claims-agent` installs from git. See ADR 0001 **D0**.
 
 ### Paste / version check (required)
 
@@ -24,11 +24,9 @@ FILE: agent_studio/studio_tools/...
 | `route_claim/` | `claim_id` | `claim_{id}_route.json` |
 | `pre_route_text/` | unstructured `text` (+ optional `claim_id`) | `pre_route_{id}.json` — cosine label/score; `needs_llm` if below threshold |
 
-S1: tools cannot call MCP. S2: `ins-claims-agent` installs from git. See ADR 0001 **D0**.
-
 **After route:** playbook `allowed_tools` map to MCP (views + audit aliases) — see [`POST_ROUTE_AGENTS.md`](POST_ROUTE_AGENTS.md).
 
-**Unstructured NL (not Path A):** Studio `pre_route_text` + [`agents/routing_agent.md`](agents/routing_agent.md). Cosine is advisory when `claim_id` is set; Path A still wins.
+**Unstructured NL (not structured claim intake):** Studio `pre_route_text` + [`agents/routing_agent.md`](agents/routing_agent.md). Cosine is advisory when `claim_id` is set; structured claim intake still wins.
 
 ## Manager agent prompt (suggested)
 
@@ -45,8 +43,8 @@ Delegate/coworker actions — you call tools yourself.
 Goal:
 1) If the user (or coworker) names a single MCP tool (e.g. get_litigation_view,
    get_server_info, write_audit_event): call that tool once with the given args,
-   put the full tool JSON in Final Answer, and STOP. Do not run Path A.
-2) Only when asked to intake/route a claim_id, run Path A in order:
+   put the full tool JSON in Final Answer, and STOP. Do not run structured claim intake.
+2) Only when asked to intake/route a claim_id, run structured claim intake in order:
    get_claim_spine → get_claim_routing_signals → build_claim_graph
    (pass FULL spine_json + signals_json unmodified) → validate_claim_graph
    → route_claim. Then explain next_step, lane, agent_role, reason_probe_ids.
@@ -69,7 +67,7 @@ workflow_data/
 Copy from this repo’s `ontology/`, `probes/`, `playbook/` (or `studio_tools/runtime_assets/`).
 
 3. Register each tool by uploading **only** that folder’s `tool.py` + `requirements.txt` (no vendored trees).
-4. **Push this repo to `main` before Studio runs** so the git pin resolves Path A package code (`studio_io`, etc.). Prefer pinning a commit SHA once stable.
+4. **Push this repo to `main` before Studio runs** so the git pin resolves package code (`studio_io`, etc.). Prefer pinning a commit SHA once stable.
 
 ## requirements.txt (each tool)
 
@@ -116,4 +114,4 @@ python /path/to/.../route_claim/tool.py --user-params '{}' --tool-params '{"clai
 
 ## Legacy
 
-`prepare_bundles.sh` and vendored `ins_claims_agent/` / `runtime_assets/` under tool folders are **obsolete** for Path A (kept only as local reference). Do not upload them to Studio.
+`prepare_bundles.sh` and vendored `ins_claims_agent/` / `runtime_assets/` under tool folders are **obsolete** (kept only as local reference). Do not upload them to Studio.

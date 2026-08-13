@@ -98,7 +98,7 @@ def tool_pre_route_text(
     threshold: float | None = None,
     margin: float | None = None,
 ) -> dict[str, Any]:
-    """NL triage only. Path A remains authoritative when claim_id is set."""
+    """NL triage only. Structured claim intake is authoritative when claim_id is set."""
     kwargs: dict[str, Any] = {}
     if threshold is not None:
         kwargs["threshold"] = threshold

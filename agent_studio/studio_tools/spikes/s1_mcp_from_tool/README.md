@@ -1,4 +1,6 @@
-# Spike S1 — custom tool calls MCP (not the other way around)
+# Closed spike — custom tool calls MCP (not the other way around)
+
+Historical record. Intake is **agent → MCP → Python tool payload**; do not re-run this spike.
 
 ## What went wrong in the failed run
 
@@ -14,9 +16,7 @@ MCP only knows `execute_query` / `get_schema`, so it correctly rejected that.
 3. Prompt:
 
 ```text
-Run spike S1.
-
-You MUST call the CUSTOM tool named spike_s1_probe_mcp_bridge
+Call the CUSTOM tool named spike_s1_probe_mcp_bridge
 (or the exact catalog name of this tool.py).
 
 Tool parameters:

@@ -4,7 +4,7 @@ REPO_REF: 319ede0
 UPDATED: 2026-08-05
 FILE: agent_studio/studio_tools/route_claim/tool.py
 
-CUSTOM TOOL route_claim — Path A.
+CUSTOM TOOL route_claim — structured claim intake.
 
 Reads claim_{id}_graph.ttl from SESSION_DIRECTORY; probes + playbook from
 WORKFLOW_DATA_DIRECTORY. Returns next_step / lane / agent_role / reason_probe_ids.
@@ -49,7 +49,7 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
     if not ttl_path.is_file():
         raise FileNotFoundError(
             f"Graph artifact not found: {ttl_path}. "
-            "Run build_claim_graph first (Path A: MCP spine → build)."
+            "Run build_claim_graph first (MCP spine → build)."
         )
 
     graph = Graph()

@@ -43,6 +43,6 @@ Implemented by `ins_claims_agent.workflow.run_style_b_loop` (promotes audit on t
 
 ## MCP servers registered
 
-1. Iceberg claims MCP (`iceberg-mcp-server-claims` — Path A Impala fork)
+1. Iceberg claims MCP (`iceberg-mcp-server-claims` — Impala fork)
 2. Data-contract Atlas MCP (fork with BM bind when ready)
 3. Ranger MCP (upstream)

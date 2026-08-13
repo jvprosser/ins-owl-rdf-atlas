@@ -8,7 +8,7 @@ from typing import Any
 from . import iceberg_sql as sql
 from .base import McpToolCaller
 
-# Path A Studio registration name for the Impala claims fork.
+# Studio registration name for the Impala claims fork.
 SERVER = "iceberg-mcp-server-claims"
 AUDIT_TABLES = ("agent_run_audit", "agent_run_evidence")
 

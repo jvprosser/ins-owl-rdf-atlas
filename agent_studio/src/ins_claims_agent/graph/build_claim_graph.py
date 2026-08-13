@@ -26,7 +26,7 @@ def build_claim_graph(
 ) -> Graph:
     """Load TBox + claim spine/signals into an rdflib Graph.
 
-    Path A: pass MCP ``get_claim_spine`` / ``get_claim_routing_signals`` JSON
+    Structured claim intake: pass MCP ``get_claim_spine`` / ``get_claim_routing_signals`` JSON
     (fork envelope or flat dicts). Facade path still supported for tests.
     """
     g = Graph()

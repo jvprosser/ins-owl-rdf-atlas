@@ -25,7 +25,7 @@ The **manager agent** is the conversational control plane between the user and t
 
 | Does | Does not |
 |---|---|
-| Interpret user intent and call MCP + custom tools in the Path A / Style B sequence | Invent claim SQL, joins, or routing rules |
+| Interpret user intent and call MCP + custom tools in the structured claim intake / Style B sequence | Invent claim SQL, joins, or routing rules |
 | Return user-friendly summaries of validate/route outcomes (`next_step`, `lane`, `reason_probe_ids`, …) | Replace SPARQL probes or `playbook.yaml` |
 | Assign / invoke LLM-friendly subtasks that touch **unstructured** data (notes, documents, free text) when the playbook or user asks | Free-form lake exploration via `execute_query` for claim spine |
 
@@ -47,13 +47,13 @@ Fork and register (additive tools only):
 
 | MCP | Upstream | Phase 1 additions |
 |---|---|---|
-| `iceberg-mcp-server-claims` (**Path A, in-repo**) | [cloudera/iceberg-mcp-server](https://github.com/cloudera/iceberg-mcp-server) (Impala) | `get_claim_spine`, `get_claim_routing_signals`, audit begin/append/promote/abandon (`table_append` mode) — see `mcp_forks/iceberg-mcp-server-claims/` |
+| `iceberg-mcp-server-claims` (**in-repo**) | [cloudera/iceberg-mcp-server](https://github.com/cloudera/iceberg-mcp-server) (Impala) | `get_claim_spine`, `get_claim_routing_signals`, audit begin/append/promote/abandon (`table_append` mode) — see `mcp_forks/iceberg-mcp-server-claims/` |
 | `iceberg-mcp-server-hive-claims` (optional later) | [frothkoetter/iceberg-mcp-server-hive](https://github.com/frothkoetter/iceberg-mcp-server-hive) | Same claim helpers + true WAP branches |
 | `data-contract-mcp-server-claims` | [frothkoetter/data-contract-mcp-server](https://github.com/frothkoetter/data-contract-mcp-server) | BM typedef/get/set + `bind_ontology_iri_to_entity` (deferred) |
 
 Do **not** fork Ranger. Do **not** dual-register `ecole5/atlas-mcp` beside the data-contract fork.
 
-**Path A (chosen after S1):** Manager agent → MCP claim helpers → custom tool with payload. Register the Impala claims fork in Studio in place of stock `iceberg-mcp-server`.
+**Structured claim intake:** Manager agent → MCP claim helpers → custom tool with payload. Register the Impala claims fork in Studio in place of stock `iceberg-mcp-server`. Custom tools do not call MCP in-process.
 
 After forks are contract-tested on seeded CDP data, **remove** from this repo:
 
@@ -76,7 +76,7 @@ No ontology/probes/playbook and no copied library trees inside the tool folder.
 
 ### D3 — Shared Python via `requirements.txt`
 
-Publish/pin **`ins-claims-agent`** from this repo’s `agent_studio` package via git (S2 confirmed):
+Publish/pin **`ins-claims-agent`** from this repo’s `agent_studio` package via git:
 
 ```text
 ins-claims-agent @ git+https://github.com/jvprosser/ins-owl-rdf-atlas.git@main#subdirectory=agent_studio
@@ -84,7 +84,7 @@ ins-claims-agent @ git+https://github.com/jvprosser/ins-owl-rdf-atlas.git@main#s
 
 Tools depend on it for graph build, validate, route, and (later) audit helpers.
 
-**MCP note (from S1):** custom tools cannot call registered MCP in-process today. Facades-in-tool assume a bridge that does not exist; use agent→MCP then tool, or Impala/`impyla` inside the tool (see S1 implications).
+**MCP note:** custom tools cannot call registered MCP in-process. Facades-in-tool assume a bridge that does not exist; use agent→MCP then tool, or Impala/`impyla` inside the tool.
 
 ### D4 — Config in `workflow_data` via `WORKFLOW_DATA_DIRECTORY`
 
@@ -165,15 +165,15 @@ Manager agent calls MCP then these tools in order; explains results to the user;
 
 **Migration**
 
-1. ~~S1~~ done — no MCP-from-tool; **Path A** chosen  
+1. ~~MCP-from-tool spike~~ done — no in-process MCP; **structured claim intake** (agent → MCP → tool payload)  
 2. ~~Iceberg Impala claims fork scaffolded~~ — `mcp_forks/iceberg-mcp-server-claims/`  
-3. ~~Studio Path A smoke~~ — claims `401`/`402`/`403` build → validate → route OK  
-4. ~~S2~~ done — Studio installs `ins-claims-agent` from `git+https` + `#subdirectory=agent_studio`  
+3. ~~Studio structured-intake smoke~~ — claims `401`/`402`/`403` build → validate → route OK  
+4. ~~Git install via requirements.txt~~ done — Studio installs `ins-claims-agent` from `git+https` + `#subdirectory=agent_studio`  
 5. Prefer MCP P0 spine/signals/views (not free-form `execute_query`) in agent prompts  
-6. ~~Path A demo tools~~ — thin `build`/`validate`/`route` + git pin; config via `WORKFLOW_DATA_DIRECTORY`  
+6. ~~Intake demo tools~~ — thin `build`/`validate`/`route` + git pin; config via `WORKFLOW_DATA_DIRECTORY`  
 7. ~~Post-route MCP~~ — playbook views + audit aliases on claims fork; see `studio_tools/POST_ROUTE_AGENTS.md`  
 8. Wire Style B loop + unstructured worker when ready  
-9. Delete fallbacks and legacy `prepare_bundles` trees once Path A is live in CDP  
+9. Delete fallbacks and legacy `prepare_bundles` trees once structured intake is live in CDP  
 10. Add Atlas BM fork when governance binding is in scope
 
 ## Open Studio questions
@@ -186,7 +186,7 @@ Manager agent calls MCP then these tools in order; explains results to the user;
 
 **Studio spikes**
 
-### S1 — MCP callable from `tool.py` — RESOLVED (FAIL)
+### Closed spike — MCP callable from `tool.py` (FAIL)
 
 **Question:** Can a custom tool invoke a registered MCP tool in-process?
 
@@ -198,17 +198,17 @@ Manager agent calls MCP then these tools in order; explains results to the user;
 
 **Implication:** Agent Studio exposes Iceberg MCP to the **agent** (e.g. via MCP tools / `call-mcp`), **not** to custom `tool.py`. The preferred path `agent → custom tool → MCP` is **not available** without a platform bridge.
 
-**Revised I/O options for claim tools**
+**I/O for claim tools (locked)**
 
 | Option | Pattern | Notes |
 |---|---|---|
-| A (default now) | Agent calls MCP (`get_claim_spine` / `get_claim_routing_signals`), then custom tool with payload | Fork at `mcp_forks/iceberg-mcp-server-claims/`; avoid free-form SQL |
-| B | Custom tool talks to Impala/Hive via `UserParameters` + driver (`impyla`) | Bypasses MCP for reads; duplicates connection config |
-| C | Platform adds MCP-from-tool bridge later | Revisit facade-in-tool design if/when Studio ships it |
+| Structured claim intake (default) | Agent calls MCP (`get_claim_spine` / `get_claim_routing_signals`), then custom tool with payload | Fork at `mcp_forks/iceberg-mcp-server-claims/`; avoid free-form SQL |
+| Direct Impala | Custom tool talks to Impala/Hive via `UserParameters` + driver (`impyla`) | Bypasses MCP for reads; duplicates connection config |
+| Future bridge | Platform adds MCP-from-tool later | Revisit facade-in-tool design if/when Studio ships it |
 
-Do **not** design `build_claim_graph` assuming in-process MCP from `tool.py` until S1 is re-run and passes.
+Do **not** design `build_claim_graph` assuming in-process MCP from `tool.py`.
 
-### S2 — Git install via `requirements.txt` — RESOLVED (PASS)
+### Git install via `requirements.txt` — RESOLVED (PASS)
 
 **Question:** Can a tool install `ins-claims-agent` from git (or only wheel/PyPI/internal index)?
 

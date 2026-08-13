@@ -1,4 +1,4 @@
-"""Agent Studio Path A helpers: workflow_data, session artifacts, MCP payload normalize."""
+"""Agent Studio helpers: workflow_data, session artifacts, MCP payload normalize."""
 
 from __future__ import annotations
 

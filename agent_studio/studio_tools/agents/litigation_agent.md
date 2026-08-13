@@ -36,7 +36,7 @@ Given claim_id and run_id:
    docket_number, demand_amount when present).
 3) Final Answer: short markdown summary (status, docket, venue, demand) plus
    the audit ok JSON. Then STOP.
-Do not run Path A (no spine/signals/build/validate/route).
+Do not run structured claim intake (no spine/signals/build/validate/route).
 ```
 
 ## Tools (attach only these)
@@ -70,6 +70,6 @@ Final Answer: brief summary + exact audit JSON. Do not invent data.
 {
   "coworker": "Litigation Agent",
   "task": "For claim_id 402 and run_id demo-402-lit: get_litigation_view then write_audit_event; return summary and audit JSON",
-  "context": "Path A routed claim 402 to LitigationSupport / LitigationAgent. Specialist must call MCP tools itself; no Path A."
+  "context": "Structured claim intake routed claim 402 to LitigationSupport / LitigationAgent. Specialist must call MCP tools itself; do not re-run intake."
 }
 ```

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# DEPRECATED for Path A: Studio tools are thin tool.py + requirements.txt (git pin).
+# DEPRECATED: Studio tools are thin tool.py + requirements.txt (git pin).
 # Kept only for local reference / emergency offline bundles.
 # Uses only POSIX cp/rm (no rsync).
 set -euo pipefail

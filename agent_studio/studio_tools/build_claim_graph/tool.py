@@ -4,7 +4,7 @@ REPO_REF: 319ede0
 UPDATED: 2026-08-05
 FILE: agent_studio/studio_tools/build_claim_graph/tool.py
 
-CUSTOM TOOL build_claim_graph — Path A.
+CUSTOM TOOL build_claim_graph — structured claim intake.
 
 Agent must call MCP get_claim_spine (+ get_claim_routing_signals), then pass
 those JSON payloads here. Writes claim_{id}_graph.ttl to SESSION_DIRECTORY.
@@ -29,7 +29,7 @@ TOOL_FINGERPRINT = "INS_CLAIMS_BUILD_PATH_A_V2"
 
 
 class UserParameters(BaseModel):
-    """No Hive secrets — lake I/O is via agent MCP (Path A)."""
+    """No Hive secrets — lake I/O is via agent MCP."""
 
     pass
 

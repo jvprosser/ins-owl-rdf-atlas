@@ -1,4 +1,4 @@
-"""Path A payload normalize + session paths."""
+"""Payload normalize + session paths."""
 
 from __future__ import annotations
 

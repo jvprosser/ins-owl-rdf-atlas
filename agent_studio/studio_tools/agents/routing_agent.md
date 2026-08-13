@@ -1,8 +1,8 @@
 # Routing Agent (Agent Studio paste)
 
 Fast unstructured pre-router. Uses Studio tool `pre_route_text` (TF-IDF + numpy
-cosine). Does **not** replace Path A. If `claim_id` is present, Manager Path A
-is authoritative.
+cosine). Does **not** replace structured claim intake. If `claim_id` is present,
+Manager structured claim intake is authoritative.
 
 CrewAI `coworker` must match **Role** exactly: `Routing Agent`.
 
@@ -36,8 +36,8 @@ Given unstructured text (and optional claim_id):
    Tell Orchestrator to hand off to that coworker.
 3) If needs_llm is true: do a bounded classify of the SAME text as exactly
    LITIGATION or GENERAL_CLAIMS in one sentence of reasoning, then STOP.
-   Do not call pre_route_text again. Do not run Path A.
-4) If claim_id is set, remind Orchestrator that Path A supersedes this triage.
+   Do not call pre_route_text again. Do not run structured claim intake.
+4) If claim_id is set, remind Orchestrator that structured claim intake supersedes this triage.
 ```
 
 ## Tools (attach only this)

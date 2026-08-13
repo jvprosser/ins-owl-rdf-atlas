@@ -1,4 +1,4 @@
-"""Unstructured NL pre-router: cosine match, LLM fallback flag, Path A authority."""
+"""Unstructured NL pre-router: cosine match, LLM fallback flag, structured-intake authority."""
 
 from __future__ import annotations
 
@@ -11,11 +11,12 @@ import yaml
 
 from ins_claims_agent.pre_router.cosine import TfidfIndex, build_index, cosine_search
 
-# Coarse triage only. Path A SPARQL/playbook remains authoritative for claim_id.
+# Coarse triage only. Structured claim intake (SPARQL/playbook) remains
+# authoritative for claim_id.
 LABELS = ("LITIGATION", "GENERAL_CLAIMS")
 DEFAULT_THRESHOLD = 0.28
 DEFAULT_MARGIN = 0.04
-CONTENT_ID = "INS_CLAIMS_PRE_ROUTE_V1"
+CONTENT_ID = "INS_CLAIMS_PRE_ROUTE_V2"
 
 DISPATCH = {
     "LITIGATION": {
@@ -27,7 +28,7 @@ DISPATCH = {
     "GENERAL_CLAIMS": {
         "coworker": "Manager agent",
         "agent_role": "ManagerAgent",
-        "next_step": "PathAIntake",
+        "next_step": "StructuredIntake",
         "lane": "CLAIMS",
     },
 }
@@ -100,7 +101,8 @@ def route_unstructured(
 
     ``needs_llm`` is true when the top score is below ``threshold`` or the
     top-two labels are too close (margin). Orchestrator/Routing Agent then
-    runs a bounded LLM classify. If ``claim_id`` is set, Path A still wins.
+    runs a bounded LLM classify. If ``claim_id`` is set, structured claim
+    intake still wins.
     """
     query = (text or "").strip()
     index, catalog = get_index(exemplars_path)
@@ -146,15 +148,16 @@ def route_unstructured(
         "next_step": None if below else dispatch.get("next_step"),
         "lane": None if below else dispatch.get("lane"),
         "claim_id": cid,
-        "path_a_supersedes": bool(cid),
+        "structured_intake_supersedes": bool(cid),
         "authority": "advisory" if cid else "nl_triage",
         "catalog_version": index.catalog_version,
         "catalog_path": catalog["path"],
         "notes": (
-            "If claim_id is present, Path A (spine → signals → build → "
-            "validate → route) is authoritative; cosine is NL triage only."
+            "If claim_id is present, structured claim intake (spine → signals → "
+            "build → validate → route) is authoritative; cosine is NL triage only."
             if cid
             else "No claim_id: cosine/LLM triage may dispatch a specialist. "
-            "Do not invent SQL or skip Path A when a claim_id is later supplied."
+            "Do not invent SQL or skip structured claim intake when a claim_id "
+            "is later supplied."
         ),
     }

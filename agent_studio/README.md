@@ -5,7 +5,7 @@ Phase 1 scaffold for Style B claim routing:
 - **Manager agent** — NL interface: drives tools, explains results, assigns unstructured LLM subtasks (ADR 0001 D0)
 - **Python tools** — deterministic build / validate / route (SPARQL probes + playbook)
 - **Git files** hold ontology, probes, and playbook (no custom steward UI)
-- **MCP** — Iceberg claims fork (Path A); later Atlas data-contract + Ranger
+- **MCP** — Iceberg claims fork; later Atlas data-contract + Ranger
 
 RDF/SPARQL is **not** an MCP — it runs in-process via `rdflib`. The manager agent is **not** the router.
 
@@ -32,7 +32,7 @@ pip install -e ".[dev]"
 pytest
 ```
 
-## Agent Studio single-route demo tools (Path A)
+## Agent Studio structured claim intake tools
 
 Thin tools in `studio_tools/` (`tool.py` + `requirements.txt` only; git-pin `ins-claims-agent`):
 

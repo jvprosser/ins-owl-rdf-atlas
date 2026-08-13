@@ -1,6 +1,6 @@
 # iceberg-mcp-server-claims
 
-**Path A fork** of Cloudera’s Impala Iceberg MCP for the car-insurance claims agent.
+Claims fork of Cloudera’s Impala Iceberg MCP for the car-insurance claims agent.
 
 Keeps upstream-style tools (`execute_query`, `get_schema`) and adds curated claim + audit helpers so the LLM does not free-form multi-join SQL.
 
@@ -95,7 +95,7 @@ uv run run-server
 
 **stdio:** do not print to stdout; this server logs to stderr only.
 
-## Path A agent flow
+## Structured claim intake flow
 
 ```text
 Agent
@@ -104,7 +104,7 @@ Agent
   → MCP append_agent_audit_* (optional)
 ```
 
-Custom tools still cannot call MCP in-process (S1). The agent must invoke MCP tools, then pass results into Python tools.
+Custom tools do not call MCP in-process. The agent must invoke MCP tools, then pass results into Python tools.
 
 ## Tests
 

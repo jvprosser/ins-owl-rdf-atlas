@@ -17,7 +17,7 @@ def test_litigation_phrase_matches_without_llm():
     assert result["label"] == "LITIGATION"
     assert result["coworker"] == "Litigation Agent"
     assert result["score"] >= DEFAULT_THRESHOLD
-    assert result["path_a_supersedes"] is False
+    assert result["structured_intake_supersedes"] is False
 
 
 def test_general_claims_phrase_matches_without_llm():
@@ -27,7 +27,7 @@ def test_general_claims_phrase_matches_without_llm():
     assert result["needs_llm"] is False
     assert result["label"] == "GENERAL_CLAIMS"
     assert result["coworker"] == "Manager agent"
-    assert result["next_step"] == "PathAIntake"
+    assert result["next_step"] == "StructuredIntake"
 
 
 def test_unrelated_text_requests_llm():
@@ -50,10 +50,10 @@ def test_claim_id_is_advisory_only():
         claim_id="402",
     )
     assert result["claim_id"] == "402"
-    assert result["path_a_supersedes"] is True
+    assert result["structured_intake_supersedes"] is True
     assert result["authority"] == "advisory"
     assert result["label"] == "LITIGATION"
-    assert "Path A" in result["notes"]
+    assert "structured claim intake" in result["notes"]
 
 
 def test_self_exemplar_roundtrip_litigation():

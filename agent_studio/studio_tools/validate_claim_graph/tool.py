@@ -4,7 +4,7 @@ REPO_REF: 319ede0
 UPDATED: 2026-08-05
 FILE: agent_studio/studio_tools/validate_claim_graph/tool.py
 
-CUSTOM TOOL validate_claim_graph — Path A.
+CUSTOM TOOL validate_claim_graph — structured claim intake.
 
 Reads claim_{id}_graph.ttl from SESSION_DIRECTORY (after build_claim_graph).
 Ontology/probes live under WORKFLOW_DATA_DIRECTORY (not required for this tool).
@@ -49,7 +49,7 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
     if not ttl_path.is_file():
         raise FileNotFoundError(
             f"Graph artifact not found: {ttl_path}. "
-            "Run build_claim_graph first (Path A: MCP spine → build)."
+            "Run build_claim_graph first (MCP spine → build)."
         )
 
     graph = Graph()
