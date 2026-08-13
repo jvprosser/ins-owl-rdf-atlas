@@ -25,14 +25,19 @@ NL front door; delegates structured claim intake, unstructured pre-route, and po
 
 **CrewAI coworker names:** `Delegate work to coworker` requires the coworker string to match the agent’s **Role** exactly (see Studio’s “must be one of” error). Prefer short Roles:
 
-| Agent | Role (exact coworker string) |
-|---|---|
-| Manager | `Manager agent` |
-| Routing | `Routing Agent` |
-| Litigation | `Litigation Agent` |
-| Subrogation | `Subrogation Agent` |
-| BI | `BI Claims Agent` |
-| Closeout | `Closeout Agent` |
+| Agent | Role (exact coworker string) | Playbook `agent_role` |
+|---|---|---|
+| Manager | `Manager agent` | (intake; not a route worker) |
+| Routing | `Routing Agent` | (unstructured cosine only) |
+| Litigation | `Litigation Agent` | `LitigationAgent` |
+| Subrogation | `Subrogation Agent` | `SubrogationAgent` |
+| BI | `BI Claims Agent` | `BiClaimsAgent` |
+| Closeout | `Closeout Agent` | `CloseoutAgent` |
+| SIU | `SIU Agent` | `SiuAgent` |
+| PD | `PD Claims Agent` | `PdClaimsAgent` |
+| Settlement | `Settlement Agent` | `SettlementAgent` |
+| Data quality | `Data Quality Agent` | `DataQualityAgent` |
+| Human review | `Human Review Agent` | `HumanReviewAgent` |
 
 If Manager Role is still the long sentence Studio generated, Orchestrator must paste that **entire** Role as `coworker` — or rename Manager Role to `Manager agent` and retry.
 
@@ -62,16 +67,26 @@ Use when route returns `LitigationAgent` / `LitigationSupport`.
 | Backstory / Goal | Copy from `agents/litigation_agent.md` |
 
 ### Subrogation Agent (MCP only)
-**Name:** `Subrogation Agent`  
-**Role:** Post-route subrogation specialist.  
-**Backstory:** You act when the router assigns SubrogationAgent. You use `get_subrogation_view` and `write_audit_event` only.  
-**Goal:** Load subrogation case facts for `claim_id`, explain demand/recovered/status, write an audit event. No free-form SQL.
+**Paste-ready definition:** [`agents/subrogation_agent.md`](agents/subrogation_agent.md)
+
+Use when route returns `SubrogationAgent` / `OpenSubrogationCase` / `PursueSubrogationRecovery`.
+
+| Field | Value |
+|---|---|
+| Name / Role (exact coworker) | `Subrogation Agent` |
+| Tools | `run_named_query` label `get_subrogation_view`; `run_named_write` `write_audit_event` |
+| Lake smoke | claim **401**, case **8801** (direct specialist; e2e 401 may route PD instead) |
 
 ### BI Claims Agent (MCP only)
-**Name:** `BI Claims Agent`  
-**Role:** Post-route bodily-injury specialist.  
-**Backstory:** You act when the router assigns BiClaimsAgent. You use `get_bi_view` and `write_audit_event` only.  
-**Goal:** Load injury rows for `claim_id`, summarize severity/regions, write an audit event. No free-form SQL.
+**Paste-ready definition:** [`agents/bi_claims_agent.md`](agents/bi_claims_agent.md)
+
+Use when route returns `BiClaimsAgent` / `BiClaimsReview` / `CaptureInjuryDetails`.
+
+| Field | Value |
+|---|---|
+| Name / Role (exact coworker) | `BI Claims Agent` |
+| Tools | `run_named_query` label `get_bi_view`; `run_named_write` `write_audit_event` |
+| Lake smoke | claim **402**, injuries **5501** / **5502** (direct specialist; e2e 402 is litigation-first) |
 
 ### Closeout Agent (MCP only)
 **Name:** `Closeout Agent`  
@@ -84,12 +99,16 @@ For roles whose playbook tools are only `write_audit_event`: attach MCP audit to
 
 ## End-to-end demo (claim 402)
 
-Paste Orchestrator Goal + user prompt from [`agents/orchestrator_agent.md`](agents/orchestrator_agent.md). Manager Goal must STOP after `route_claim`.
+Paste Orchestrator Goal + user prompt from [`agents/orchestrator_agent.md`](agents/orchestrator_agent.md). Manager Goal must STOP after `route_claim`. Orchestrator maps `agent_role` → coworker Role (not litigation-only).
 
 1. Orchestrator → Manager: structured claim intake (spine → signals → build → validate → route).
-2. Route returns `LitigationSupport` / `LitigationAgent`.
-3. Orchestrator → Litigation Agent: `run_named_query` (`get_litigation_view`) then `run_named_write` (`write_audit_event`) with `run_id` `demo-402-e2e`.
-4. Orchestrator Final Answer: route decision + litigation summary + write JSON.
+2. Route returns `agent_role` (402: `LitigationAgent` / `LitigationSupport`).
+3. Orchestrator → mapped specialist: catalog read (if the map has a view) then `run_named_write` (`write_audit_event`). `run_id` `demo-<claim_id>-e2e`.
+4. Orchestrator Final Answer: route decision + specialist summary + write JSON.
+
+Specialists other than Litigation still need Studio pastes in the same Crew, or step 3 ends with coworker-not-found.
+
+Direct specialist smokes (skip intake): Subrogation **401** (`subrogation_agent.md`), BI **402** (`bi_claims_agent.md`). Seed **403** is CLOSED → Closeout, not BI.
 
 ## Restart note
 
