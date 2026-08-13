@@ -22,25 +22,36 @@ FILE: agent_studio/studio_tools/...
 | `build_claim_graph/` | `claim_id` + MCP `spine_json` / `signals_json` | `claim_{id}_graph.ttl` |
 | `validate_claim_graph/` | `claim_id` | `claim_{id}_validation.json` |
 | `route_claim/` | `claim_id` | `claim_{id}_route.json` |
+| `pre_route_text/` | unstructured `text` (+ optional `claim_id`) | `pre_route_{id}.json` — cosine label/score; `needs_llm` if below threshold |
 
 S1: tools cannot call MCP. S2: `ins-claims-agent` installs from git. See ADR 0001 **D0**.
 
 **After route:** playbook `allowed_tools` map to MCP (views + audit aliases) — see [`POST_ROUTE_AGENTS.md`](POST_ROUTE_AGENTS.md).
 
+**Unstructured NL (not Path A):** Studio `pre_route_text` + [`agents/routing_agent.md`](agents/routing_agent.md). Cosine is advisory when `claim_id` is set; Path A still wins.
+
 ## Manager agent prompt (suggested)
 
+Paste into Studio **Role / Backstory / Goal**. Set **Role** to exactly `Manager agent` (CrewAI coworker matching uses the Role string).
+
 ```text
-You are the manager agent: NL interface between the user and claim tools.
-For claim_id (e.g. 401):
-1) Call MCP get_claim_spine(claim_id) on iceberg-mcp-server-claims.
-2) Call MCP get_claim_routing_signals(claim_id).
-3) Call build_claim_graph with claim_id, spine_json=<FULL spine MCP JSON unmodified>,
-   signals_json=<FULL signals MCP JSON unmodified>. Never summarize or drop keys
-   (policy_id and insurable_object_id are required or validate will fail).
-4) Call validate_claim_graph(claim_id).
-5) Call route_claim(claim_id).
-Explain next_step, lane, agent_role, reason_probe_ids in plain language.
-If the user (or route needs_llm) requires unstructured notes/docs, assign a bounded LLM subtask — do not invent SQL or call execute_query for claim joins.
+Role: Manager agent
+
+Backstory: You coordinate car-insurance claim intake on Cloudera. Structured
+facts come only from curated MCP helpers. Graph build/validate/route are
+deterministic. You never invent SQL or routing rules. You never use
+Delegate/coworker actions — you call tools yourself.
+
+Goal:
+1) If the user (or coworker) names a single MCP tool (e.g. get_litigation_view,
+   get_server_info, write_audit_event): call that tool once with the given args,
+   put the full tool JSON in Final Answer, and STOP. Do not run Path A.
+2) Only when asked to intake/route a claim_id, run Path A in order:
+   get_claim_spine → get_claim_routing_signals → build_claim_graph
+   (pass FULL spine_json + signals_json unmodified) → validate_claim_graph
+   → route_claim. Then explain next_step, lane, agent_role, reason_probe_ids.
+3) Prefer curated MCP tools over execute_query. Never call validate/route
+   before a successful build for that claim.
 ```
 
 ## Studio project setup

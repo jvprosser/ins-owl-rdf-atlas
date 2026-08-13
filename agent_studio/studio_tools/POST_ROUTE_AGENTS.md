@@ -19,19 +19,43 @@ Optional lifecycle (not in playbook, useful for Style B): `begin_agent_audit_run
 ## Recommended Studio agents
 
 ### Claims Orchestrator (no tools)
-NL front door; delegates Path A + post-route work. (Already defined.)
+NL front door; delegates Path A, unstructured pre-route, and post-route work.
+
+**CrewAI coworker names:** `Delegate work to coworker` requires the coworker string to match the agent’s **Role** exactly (see Studio’s “must be one of” error). Prefer short Roles:
+
+| Agent | Role (exact coworker string) |
+|---|---|
+| Manager | `Manager agent` |
+| Routing | `Routing Agent` |
+| Litigation | `Litigation Agent` |
+| Subrogation | `Subrogation Agent` |
+| BI | `BI Claims Agent` |
+| Closeout | `Closeout Agent` |
+
+If Manager Role is still the long sentence Studio generated, Orchestrator must paste that **entire** Role as `coworker` — or rename Manager Role to `Manager agent` and retry.
+
+On unstructured text: delegate to `Routing Agent`. If cosine `needs_llm` is false, hand off to the returned `coworker`. If `claim_id` is also present, still run Manager Path A — cosine does not override SPARQL.
+
+### Routing Agent (Studio `pre_route_text` only)
+**Paste-ready definition:** [`agents/routing_agent.md`](agents/routing_agent.md)
+
+NL first-touch triage. Cosine vs a small `LITIGATION` / `GENERAL_CLAIMS` catalog; `needs_llm` when the score is low. **Does not replace Path A.** If `claim_id` is present, Manager Path A is authoritative.
 
 ### Claims Manager (MCP + graph Studio tools)
-**Tools:** MCP spine/signals (+ views/audit if you keep one worker); Studio `build` / `validate` / `route`.  
-**Job:** Path A sequence; after route, either execute `allowed_tools` itself or hand off to a specialist agent below.
+**Role (exact for CrewAI coworker):** `Manager agent`  
+**Tools:** MCP spine/signals/views/audit; Studio `build` / `validate` / `route`.  
+**Job:** Path A when asked to intake/route; **if asked for one MCP tool by name, call it once and stop** (do not force Path A). After route, run `allowed_tools` or hand off to a specialist below.
 
 ### Litigation Agent (MCP only)
-Use when route returns `LitigationAgent`.
+**Finished paste-ready definition:** [`agents/litigation_agent.md`](agents/litigation_agent.md)
 
-**Name:** `Litigation Agent`  
-**Role:** Post-route litigation specialist. Uses only curated litigation MCP tools and audit writes.  
-**Backstory:** You support claims already routed into litigation. You read structured litigation facts via `get_litigation_view` and record decisions with `write_audit_event`. You do not invent SQL, rebuild the claim graph, or change routing rules.  
-**Goal:** For the given `claim_id` and `run_id`, call `get_litigation_view`, summarize status/docket/demand for the orchestrator, and append an audit event describing the support step. Do not call `execute_query` or graph build/route tools.
+Use when route returns `LitigationAgent` / `LitigationSupport`.
+
+| Field | Value |
+|---|---|
+| Name / Role (exact coworker) | `Litigation Agent` |
+| Tools | MCP `get_litigation_view`, `write_audit_event` only |
+| Backstory / Goal | Copy from `agents/litigation_agent.md` |
 
 ### Subrogation Agent (MCP only)
 **Name:** `Subrogation Agent`  

@@ -24,6 +24,7 @@ from ins_claims_agent.mcp_facade import (
     from_agent_studio_mcp,
 )
 from ins_claims_agent.specialists import get_bi_view, get_litigation_view, get_subrogation_view
+from ins_claims_agent.pre_router.route_text import route_unstructured
 from ins_claims_agent.workflow.style_b_loop import run_style_b_loop
 
 # Module-level facades; Agent Studio should inject MCP callers at startup.
@@ -89,6 +90,21 @@ def tool_get_bi_view(claim_id: str) -> dict[str, Any]:
 
 def tool_get_litigation_view(claim_id: str) -> dict[str, Any]:
     return get_litigation_view(claim_id, iceberg=iceberg)
+
+
+def tool_pre_route_text(
+    text: str,
+    claim_id: str | None = None,
+    threshold: float | None = None,
+    margin: float | None = None,
+) -> dict[str, Any]:
+    """NL triage only. Path A remains authoritative when claim_id is set."""
+    kwargs: dict[str, Any] = {}
+    if threshold is not None:
+        kwargs["threshold"] = threshold
+    if margin is not None:
+        kwargs["margin"] = margin
+    return route_unstructured(text, claim_id=claim_id, **kwargs)
 
 
 def tool_run_style_b_loop(

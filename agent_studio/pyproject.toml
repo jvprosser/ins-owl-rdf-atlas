@@ -7,6 +7,7 @@ requires-python = ">=3.9"
 dependencies = [
   "rdflib>=7.0.0",
   "pyyaml>=6.0",
+  "numpy>=1.24",
 ]
 
 [project.optional-dependencies]
@@ -23,6 +24,9 @@ packages = ["src/ins_claims_agent"]
 
 [tool.hatch.build.targets.wheel.sources]
 "src/ins_claims_agent" = "ins_claims_agent"
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/ins_claims_agent/pre_router/exemplars.yaml" = "ins_claims_agent/pre_router/exemplars.yaml"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

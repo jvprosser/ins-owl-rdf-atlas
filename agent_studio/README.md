@@ -39,6 +39,7 @@ Thin tools in `studio_tools/` (`tool.py` + `requirements.txt` only; git-pin `ins
 1. Agent calls MCP `get_claim_spine` / `get_claim_routing_signals`
 2. `build_claim_graph` — spine/signals JSON → `SESSION_DIRECTORY/claim_{id}_graph.ttl`
 3. `validate_claim_graph` / `route_claim` — graph artifact + `WORKFLOW_DATA_DIRECTORY` probes/playbook
+4. `pre_route_text` — unstructured NL cosine triage (litigation vs claims); LLM only if `needs_llm`
 
 See [`studio_tools/README.md`](studio_tools/README.md).
 
