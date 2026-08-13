@@ -12,12 +12,12 @@ def test_content_id_and_version():
     payload = json.loads(get_server_info())
     assert payload["ok"] is True
     assert payload["done"] is True
-    assert payload["content_id"] == "INS_CLAIMS_MCP_V3"
+    assert payload["content_id"] == "INS_CLAIMS_MCP_V4"
     assert payload["server"] == "iceberg-mcp-server-claims"
-    assert payload["version"] == "0.2.1"
-    assert "get_server_info" in payload["registered_tools"]
-    assert "get_litigation_view" in payload["registered_tools"]
-    assert "write_audit_event" in payload["registered_tools"]
+    assert payload["version"] == "0.3.0"
+    assert "run_named_query" in payload["registered_tools"]
+    assert "list_named_queries" in payload["registered_tools"]
+    assert "named_query_catalog" in payload["features"]
     assert "notes" not in payload
 
 

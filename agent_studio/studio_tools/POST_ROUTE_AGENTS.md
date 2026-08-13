@@ -5,13 +5,13 @@ After `route_claim`, the decision’s `agent_role` + `allowed_tools` name the ne
 
 ## Playbook tool → MCP tool
 
-| Playbook `allowed_tools` | MCP tool (`iceberg-mcp-server-claims`) |
+| Playbook `allowed_tools` | MCP |
 |---|---|
-| `get_litigation_view` | `get_litigation_view` |
-| `get_bi_view` | `get_bi_view` |
-| `get_subrogation_view` | `get_subrogation_view` |
-| `write_audit_event` | `write_audit_event` (alias of `append_agent_audit_event`) |
-| `promote_audit_run` | `promote_audit_run` (alias of `promote_agent_audit_run`) |
+| `get_litigation_view` | `run_named_query` label `get_litigation_view` (legacy tool still registered) |
+| `get_bi_view` | `run_named_query` label `get_bi_view` |
+| `get_subrogation_view` | `run_named_query` label `get_subrogation_view` |
+| `write_audit_event` | `run_named_write` label `write_audit_event` |
+| `promote_audit_run` | `run_named_write` label `promote_audit_run` |
 | `build_claim_graph` / `validate_claim_graph` | Existing Studio custom tools |
 
 Optional lifecycle (not in playbook, useful for Style B): `begin_agent_audit_run`, `append_agent_audit_evidence`, `abandon_agent_audit_run`.

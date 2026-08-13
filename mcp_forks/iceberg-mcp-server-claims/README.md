@@ -17,7 +17,21 @@ Keeps upstream-style tools (`execute_query`, `get_schema`) and adds curated clai
 
 | Tool | Notes |
 |---|---|
-| `get_server_info()` | One-shot identity: `content_id`, `version`, `registered_tools`. Expect **`INS_CLAIMS_MCP_V3`** / **`0.2.1`**. Prompt: “Call get_server_info once and stop.” |
+| `get_server_info()` | One-shot identity. Expect **`INS_CLAIMS_MCP_V4`** / **`0.3.0`**. Prompt: “Call get_server_info once and stop.” |
+
+### Named catalog (preferred)
+
+Studio Action Input is flat: `label` + `params_json` (JSON object as a **string**). No free-form SQL.
+
+| Tool | Notes |
+|---|---|
+| `list_named_queries()` | Catalog of read/write labels + required params |
+| `run_named_query(label, params_json)` | Curated **reads**: `get_claim_spine`, `get_claim_routing_signals`, `get_litigation_view`, `get_bi_view`, `get_subrogation_view`, `get_schema` |
+| `run_named_write(label, params_json)` | Curated **writes**: `write_audit_event`, `append_agent_audit_event`, `append_agent_audit_evidence`, `begin_agent_audit_run`, `promote_audit_run`, `promote_agent_audit_run`, `abandon_agent_audit_run` |
+
+Example: `run_named_query` with `label=get_litigation_view` and `params_json={"claim_id":"402"}`.
+
+Legacy per-label tools below still work (same implementations).
 
 ### Upstream-compatible
 

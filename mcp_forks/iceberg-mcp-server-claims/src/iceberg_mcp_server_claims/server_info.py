@@ -7,12 +7,15 @@ from importlib import metadata
 from typing import Any
 
 # Bump CONTENT_ID whenever shipped MCP behavior/tools change.
-CONTENT_ID = "INS_CLAIMS_MCP_V3"
-UPDATED = "2026-08-05"
+CONTENT_ID = "INS_CLAIMS_MCP_V4"
+UPDATED = "2026-08-13"
 
 # Keep in sync with @mcp.tool registrations in server.py
 REGISTERED_TOOLS = (
     "get_server_info",
+    "list_named_queries",
+    "run_named_query",
+    "run_named_write",
     "execute_query",
     "get_schema",
     "get_claim_spine",
@@ -30,6 +33,9 @@ REGISTERED_TOOLS = (
 )
 
 FEATURES = (
+    "named_query_catalog",
+    "run_named_query",
+    "run_named_write",
     "get_claim_spine",
     "get_claim_routing_signals",
     "get_litigation_view",

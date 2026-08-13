@@ -13,7 +13,7 @@ import sys
 from dotenv import load_dotenv
 from fastmcp import FastMCP
 
-from iceberg_mcp_server_claims import server_info
+from iceberg_mcp_server_claims import catalog, server_info
 from iceberg_mcp_server_claims.tools import audit_tools, claim_tools, impala_tools, view_tools
 
 load_dotenv()
@@ -39,6 +39,39 @@ def get_server_info() -> str:
     Do not call again. Do not start claim workflows. Just return content_id and version.
     """
     return server_info.get_server_info()
+
+
+# --- Named catalog (preferred) ----------------------------------------------
+
+
+@mcp.tool()
+def list_named_queries() -> str:
+    """List allow-listed query/write labels. Call once if you need the catalog."""
+    return catalog.list_named_queries()
+
+
+@mcp.tool()
+def run_named_query(label: str, params_json: str = "{}") -> str:
+    """Run a curated READ by catalog label. Do not invent SQL.
+
+    params_json is a JSON object string, e.g. {\"claim_id\":\"402\"}.
+    Read labels: get_claim_spine, get_claim_routing_signals, get_litigation_view,
+    get_bi_view, get_subrogation_view, get_schema.
+    """
+    return catalog.run_named_query(label, params_json)
+
+
+@mcp.tool()
+def run_named_write(label: str, params_json: str = "{}") -> str:
+    """Run a curated WRITE by catalog label. Do not invent SQL.
+
+    params_json is a JSON object string, e.g.
+    {\"run_id\":\"demo-402\",\"event_json\":{...}}.
+    Write labels: write_audit_event, append_agent_audit_event,
+    append_agent_audit_evidence, begin_agent_audit_run, promote_audit_run,
+    promote_agent_audit_run, abandon_agent_audit_run.
+    """
+    return catalog.run_named_write(label, params_json)
 
 
 # --- Upstream-compatible Impala tools ---------------------------------------
