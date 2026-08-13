@@ -51,27 +51,47 @@ def list_named_queries() -> str:
 
 
 @mcp.tool()
-def run_named_query(label: str, params_json: str = "{}") -> str:
-    """Run a curated READ by catalog label. Do not invent SQL.
+def run_named_query(
+    label: str,
+    claim_id: str | None = None,
+    database: str | None = None,
+    params_json: str = "{}",
+) -> str:
+    """Preferred curated READ. Use this instead of get_litigation_view / get_claim_spine.
 
-    params_json is a JSON object string, e.g. {\"claim_id\":\"402\"}.
-    Read labels: get_claim_spine, get_claim_routing_signals, get_litigation_view,
-    get_bi_view, get_subrogation_view, get_schema.
+    Flat Action Input example:
+      {"label":"get_litigation_view","claim_id":"402"}
+    Do not call get_litigation_view when this tool is available.
     """
-    return catalog.run_named_query(label, params_json)
+    return catalog.run_named_query(
+        label, params_json, claim_id=claim_id, database=database
+    )
 
 
 @mcp.tool()
-def run_named_write(label: str, params_json: str = "{}") -> str:
-    """Run a curated WRITE by catalog label. Do not invent SQL.
+def run_named_write(
+    label: str,
+    run_id: str | None = None,
+    event_json: str | None = None,
+    evidence_json: str | None = None,
+    database: str | None = None,
+    source_branch: str | None = None,
+    params_json: str = "{}",
+) -> str:
+    """Preferred curated WRITE. Use this instead of write_audit_event.
 
-    params_json is a JSON object string, e.g.
-    {\"run_id\":\"demo-402\",\"event_json\":{...}}.
-    Write labels: write_audit_event, append_agent_audit_event,
-    append_agent_audit_evidence, begin_agent_audit_run, promote_audit_run,
-    promote_agent_audit_run, abandon_agent_audit_run.
+    Flat Action Input example:
+      {"label":"write_audit_event","run_id":"demo-402","event_json":"{\\"claim_id\\":\\"402\\"}"}
     """
-    return catalog.run_named_write(label, params_json)
+    return catalog.run_named_write(
+        label,
+        params_json,
+        run_id=run_id,
+        event_json=event_json,
+        evidence_json=evidence_json,
+        database=database,
+        source_branch=source_branch,
+    )
 
 
 # --- Upstream-compatible Impala tools ---------------------------------------

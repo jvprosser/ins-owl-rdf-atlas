@@ -57,6 +57,19 @@ def test_read_dispatches_to_view(monkeypatch):
     assert payload["litigation_cases"][0]["litigation_case_id"] == 9101
 
 
+def test_flat_claim_id_without_params_json(monkeypatch):
+    monkeypatch.setattr(
+        catalog.view_tools,
+        "get_litigation_view",
+        lambda claim_id, database=None: json.dumps(
+            {"claim_id": int(claim_id), "litigation_cases": [{"litigation_case_id": 9101}]}
+        ),
+    )
+    payload = json.loads(catalog.run_named_query("get_litigation_view", claim_id="402"))
+    assert payload["named_op"] == "get_litigation_view"
+    assert payload["claim_id"] == 402
+
+
 def test_write_dispatches(monkeypatch):
     monkeypatch.setattr(
         catalog.audit_tools,

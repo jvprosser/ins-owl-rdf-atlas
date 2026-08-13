@@ -194,6 +194,18 @@ def list_named_queries() -> str:
     return json.dumps(list_catalog(), indent=2)
 
 
+def _merge_params(
+    params_json: str | dict[str, Any] | None,
+    flat: dict[str, Any],
+) -> dict[str, Any]:
+    params = _parse_params(params_json)
+    for key, value in flat.items():
+        if value is None or value == "":
+            continue
+        params.setdefault(key, value)
+    return params
+
+
 def _dispatch(
     label: str,
     params_json: str | dict[str, Any] | None,
@@ -202,6 +214,7 @@ def _dispatch(
     kind: str,
     other_ops: dict[str, dict[str, Any]],
     other_kind: str,
+    extra_params: dict[str, Any] | None = None,
 ) -> str:
     name = (label or "").strip()
     if name in other_ops:
@@ -218,7 +231,7 @@ def _dispatch(
             known_labels=known,
         )
     try:
-        params = _parse_params(params_json)
+        params = _merge_params(params_json, extra_params or {})
     except ValueError as exc:
         return _error(label=name, message=str(exc))
     missing = [k for k in spec["required"] if params.get(k) in (None, "")]
@@ -248,8 +261,11 @@ def _dispatch(
 def run_named_query(
     label: str,
     params_json: str | dict[str, Any] | None = None,
+    *,
+    claim_id: str | None = None,
+    database: str | None = None,
 ) -> str:
-    """Run a catalog read by label. params_json is a JSON object string."""
+    """Run a catalog read by label. Flat claim_id is Studio-safe."""
     return _dispatch(
         label,
         params_json,
@@ -257,14 +273,21 @@ def run_named_query(
         kind="read",
         other_ops=WRITE_OPS,
         other_kind="write",
+        extra_params={"claim_id": claim_id, "database": database},
     )
 
 
 def run_named_write(
     label: str,
     params_json: str | dict[str, Any] | None = None,
+    *,
+    run_id: str | None = None,
+    event_json: str | None = None,
+    evidence_json: str | None = None,
+    database: str | None = None,
+    source_branch: str | None = None,
 ) -> str:
-    """Run a catalog write by label. params_json is a JSON object string."""
+    """Run a catalog write by label. Flat run_id/event_json is Studio-safe."""
     return _dispatch(
         label,
         params_json,
@@ -272,4 +295,11 @@ def run_named_write(
         kind="write",
         other_ops=READ_OPS,
         other_kind="query",
+        extra_params={
+            "run_id": run_id,
+            "event_json": event_json,
+            "evidence_json": evidence_json,
+            "database": database,
+            "source_branch": source_branch,
+        },
     )
