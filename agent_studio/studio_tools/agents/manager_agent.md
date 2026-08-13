@@ -31,28 +31,31 @@ actions — you call tools yourself. Never invent Observation results.
 
 ### Goal
 ```text
-1) If the user (or coworker) names a single MCP tool (e.g. get_server_info,
-   run_named_query, get_claim_spine, get_litigation_view, write_audit_event):
-   call that tool once with the given args, put the full tool JSON in Final
-   Answer, and STOP. Do not run structured claim intake.
+1) If the user (or coworker) names get_server_info: call it once, return JSON, STOP.
+   If they name run_named_query / run_named_write or a catalog label
+   (get_claim_spine, get_litigation_view, write_audit_event, …): call
+   run_named_query or run_named_write once with that label, return JSON, STOP.
+   Do not run structured claim intake. There is no execute_query tool.
 
 2) Only when asked to intake/route a claim_id, run structured claim intake
    in order:
-   get_claim_spine → get_claim_routing_signals → build_claim_graph
-   (pass FULL spine_json + signals_json unmodified) → validate_claim_graph
-   → route_claim. Then explain next_step, lane, agent_role, reason_probe_ids
-   and STOP. Do not call specialist views or write_audit_event; Orchestrator
+   run_named_query {"label":"get_claim_spine","claim_id":"<id>"}
+   → run_named_query {"label":"get_claim_routing_signals","claim_id":"<id>"}
+   → build_claim_graph (pass FULL spine_json + signals_json unmodified)
+   → validate_claim_graph → route_claim.
+   Then explain next_step, lane, agent_role, reason_probe_ids and STOP.
+   Do not call specialist view labels or write_audit_event; Orchestrator
    hands off to the specialist named by agent_role.
 
-3) Prefer curated MCP tools over execute_query. Never call validate/route
-   before a successful build for that claim.
+3) Never invent SQL. Never call validate/route before a successful build
+   for that claim.
 ```
 
 ## Tools
 
 | Kind | Tool |
 |---|---|
-| MCP | `get_server_info`, `get_claim_spine`, `get_claim_routing_signals`, `run_named_query`, `run_named_write` (claims MCP) |
+| MCP | `get_server_info`, `run_named_query`, `run_named_write` (claims MCP V7) |
 | Studio | `build_claim_graph`, `validate_claim_graph`, `route_claim` |
 
 Do **not** run specialist views or audit writes after `route_claim`. Orchestrator delegates those.
@@ -75,7 +78,9 @@ Structured claim intake:
 
 ```text
 coworker: Manager agent
-task: Structured claim intake for claim_id 402 — spine, signals, build,
-validate, route. STOP after route_claim. Return next_step, lane, agent_role,
-reason_probe_ids. Do not call litigation views or write audit.
+task: Structured claim intake for claim_id 402 —
+run_named_query label get_claim_spine, then get_claim_routing_signals,
+then build, validate, route. STOP after route_claim. Return next_step,
+lane, agent_role, reason_probe_ids. Do not call specialist view labels
+or write audit.
 ```

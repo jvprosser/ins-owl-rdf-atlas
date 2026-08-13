@@ -2,7 +2,7 @@
 
 Claims fork of Cloudera’s Impala Iceberg MCP for the car-insurance claims agent.
 
-Keeps upstream-style tools (`execute_query`, `get_schema`) and adds curated claim + audit helpers so the LLM does not free-form multi-join SQL.
+**V7 MCP surface is catalog-only.** Agents call `run_named_query` / `run_named_write` with an allow-listed label. Per-label tools and free-form `execute_query` are not registered. SQL still lives in Python handlers behind the catalog.
 
 | Aspect | Detail |
 |---|---|
@@ -17,9 +17,9 @@ Keeps upstream-style tools (`execute_query`, `get_schema`) and adds curated clai
 
 | Tool | Notes |
 |---|---|
-| `get_server_info()` | One-shot identity. Expect **`INS_CLAIMS_MCP_V6`** / **`0.3.2`**. Prompt: “Call get_server_info once and stop.” |
+| `get_server_info()` | One-shot identity. Expect **`INS_CLAIMS_MCP_V7`** / **`0.3.3`**. Prompt: “Call get_server_info once and stop.” |
 
-### Named catalog (preferred)
+### Named catalog (only lake I/O)
 
 Studio Action Input is **flat**. Prefer top-level `claim_id` / `run_id` over nested `params_json`. No free-form SQL.
 
@@ -29,45 +29,11 @@ Studio Action Input is **flat**. Prefer top-level `claim_id` / `run_id` over nes
 | `run_named_query(label, claim_id?, database?, params_json?)` | Curated **reads**. Example: `{"label":"get_litigation_view","claim_id":"402"}` |
 | `run_named_write(label, run_id?, event_json?, …)` | Curated **writes**. Example: `{"label":"write_audit_event","run_id":"demo-402","event_json":"{...}"}` |
 
-Legacy per-label tools still work and now route through the catalog, so they also stamp `named_op`. Prefer `run_named_query` anyway so the Action name matches the catalog.
+Read labels: `get_claim_spine`, `get_claim_routing_signals`, `get_litigation_view`, `get_bi_view`, `get_subrogation_view`, `get_schema`.
 
-### Upstream-compatible
+Write labels: `write_audit_event`, `append_agent_audit_event`, `append_agent_audit_evidence`, `begin_agent_audit_run`, `promote_audit_run`, `promote_agent_audit_run`, `abandon_agent_audit_run`.
 
-| Tool | Notes |
-|---|---|
-| `execute_query(query)` | Read-only. Returns JSON `{columns, rows}` (normalized vs upstream row-list) |
-| `get_schema(database?)` | List tables; optional database override |
-
-### Claims P0
-
-| Tool | Responsibility |
-|---|---|
-| `get_claim_spine(claim_id, database?)` | Claim + loss + policy + vehicle + current roles + lifecycle |
-| `get_claim_routing_signals(claim_id, database?)` | Existence / routing flags + related ids |
-
-### Specialist views (playbook `allowed_tools`)
-
-| Tool | Responsibility |
-|---|---|
-| `get_litigation_view(claim_id, database?)` | Litigation case rows |
-| `get_bi_view(claim_id, database?)` | Injury rows |
-| `get_subrogation_view(claim_id, database?)` | Subrogation case rows |
-
-### Audit (Impala table-append)
-
-Impala via this server does **not** expose Hive-style Iceberg WAP branches. Audit tools write to main tables keyed by `run_id`:
-
-| Tool | Behavior |
-|---|---|
-| `begin_agent_audit_run` | Validate + return `mode=table_append` |
-| `append_agent_audit_event` | `INSERT` into `agent_run_audit` |
-| `write_audit_event` | Playbook alias → `append_agent_audit_event` |
-| `append_agent_audit_evidence` | `INSERT` into `agent_run_evidence` |
-| `promote_agent_audit_run` | No-op success (already on main) |
-| `promote_audit_run` | Playbook alias → `promote_agent_audit_run` |
-| `abandon_agent_audit_run` | `DELETE` rows for `run_id` |
-
-Prerequisite: audit DDL from `ddl/hive_iceberg/` applied in the target database.
+Impala audit writes are table-append (no Iceberg WAP branch). `promote_audit_run` returns `mode=table_append`. Prerequisite: audit DDL from `ddl/hive_iceberg/` in the target database.
 
 ## Agent Studio registration
 
@@ -111,9 +77,10 @@ uv run run-server
 
 ```text
 Agent
-  → MCP get_claim_spine / get_claim_routing_signals
+  → MCP run_named_query label get_claim_spine
+  → MCP run_named_query label get_claim_routing_signals
   → custom tool (build graph / SPARQL route from payload + workflow_data)
-  → MCP append_agent_audit_* (optional)
+  → MCP run_named_write label write_audit_event (optional)
 ```
 
 Custom tools do not call MCP in-process. The agent must invoke MCP tools, then pass results into Python tools.
@@ -130,6 +97,6 @@ uv run pytest
 
 When rebasing from upstream Impala MCP:
 
-1. Diff `execute_query` / connection env vars.
-2. Keep `{columns, rows}` JSON shape and claim/audit tools.
+1. Diff connection env vars. Do not re-register `execute_query` as an MCP tool.
+2. Keep catalog handlers and `{columns, rows}` JSON shape internally.
 3. Never add `print()` on the stdio path.

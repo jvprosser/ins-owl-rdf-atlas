@@ -39,10 +39,11 @@ STRUCTURED CLAIM INTAKE (user gives a claim_id to intake/route):
 1) Delegate ONCE to Manager. coworker = the Manager Role string from your
    tool list (the long sentence if listed, otherwise "Manager agent").
    Task: Run structured claim intake for this claim_id:
-   get_claim_spine → get_claim_routing_signals → build_claim_graph
-   (pass FULL spine_json + signals_json unmodified) → validate_claim_graph
-   → route_claim. Return next_step, lane, agent_role, reason_probe_ids.
-   Then STOP. Do not call specialist views. Do not write audit.
+   run_named_query {"label":"get_claim_spine","claim_id":"<id>"}
+   → run_named_query {"label":"get_claim_routing_signals","claim_id":"<id>"}
+   → build_claim_graph (pass FULL spine_json + signals_json unmodified)
+   → validate_claim_graph → route_claim. Return next_step, lane, agent_role,
+   reason_probe_ids. Then STOP. Do not call specialist view labels. Do not write audit.
 
 2) Map Observation agent_role to coworker Role (exact string, do not invent):
    LitigationAgent → Litigation Agent (view get_litigation_view)
@@ -100,9 +101,10 @@ Intake and route claim_id 402, then complete the post-route specialist work.
 You have no MCP tools. Do not skip the Orchestrator.
 
 1) Delegate ONCE to Manager (exact Role string from your tool list).
-   Task: structured claim intake for 402 — spine, signals, build, validate,
-   route. STOP after route_claim. Return next_step, lane, agent_role,
-   reason_probe_ids. Do not call specialist views or write audit.
+   Task: structured claim intake for 402 —
+   run_named_query label get_claim_spine, then get_claim_routing_signals,
+   then build, validate, route. STOP after route_claim. Return next_step,
+   lane, agent_role, reason_probe_ids. Do not call specialist views or write audit.
 
 2) Map agent_role to coworker Role from your Goal handoff map.
    Delegate ONCE to that coworker (for 402 this should be Litigation Agent).
@@ -125,9 +127,10 @@ Intake and route claim_id 403, then complete the post-route specialist work.
 You have no MCP tools. Do not skip the Orchestrator.
 
 1) Delegate ONCE to Manager (exact Role string from your tool list).
-   Task: structured claim intake for 403 — spine, signals, build, validate,
-   route. STOP after route_claim. Return next_step, lane, agent_role,
-   reason_probe_ids. Do not write audit.
+   Task: structured claim intake for 403 —
+   run_named_query label get_claim_spine, then get_claim_routing_signals,
+   then build, validate, route. STOP after route_claim. Return next_step,
+   lane, agent_role, reason_probe_ids. Do not write audit.
 
 2) Map agent_role to coworker Role. For 403 this should be Closeout Agent.
    Delegate ONCE to Closeout Agent.
@@ -188,5 +191,5 @@ Task: Call get_server_info once. Return the exact JSON. Do not run structured
 claim intake. Do not call any other tool.
 
 When you have the Observation JSON, Final Answer immediately with that JSON.
-Do not Delegate a second time. content_id should be INS_CLAIMS_MCP_V6.
+Do not Delegate a second time. content_id should be INS_CLAIMS_MCP_V7.
 ```

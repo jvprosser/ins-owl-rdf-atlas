@@ -7,12 +7,14 @@ After `route_claim`, the decision’s `agent_role` + `allowed_tools` name the ne
 
 | Playbook `allowed_tools` | MCP |
 |---|---|
-| `get_litigation_view` | `run_named_query` label `get_litigation_view` (legacy tool still registered) |
+| `get_litigation_view` | `run_named_query` label `get_litigation_view` |
 | `get_bi_view` | `run_named_query` label `get_bi_view` |
 | `get_subrogation_view` | `run_named_query` label `get_subrogation_view` |
 | `write_audit_event` | `run_named_write` label `write_audit_event` |
 | `promote_audit_run` | `run_named_write` label `promote_audit_run` |
 | `build_claim_graph` / `validate_claim_graph` | Existing Studio custom tools |
+
+V7 MCP registers only `get_server_info`, `list_named_queries`, `run_named_query`, `run_named_write`. Playbook names are catalog **labels**, not MCP tool names.
 
 Optional lifecycle (not in playbook, useful for Style B): `begin_agent_audit_run`, `append_agent_audit_evidence`, `abandon_agent_audit_run`.
 
@@ -52,7 +54,7 @@ NL first-touch triage. Cosine vs a small `LITIGATION` / `GENERAL_CLAIMS` catalog
 **Paste-ready definition:** [`agents/manager_agent.md`](agents/manager_agent.md)
 
 **Role (exact for CrewAI coworker):** `Manager agent`  
-**Tools:** MCP spine/signals (and one-shot catalog tools); Studio `build` / `validate` / `route`.  
+**Tools:** MCP `get_server_info` / `run_named_query` / `run_named_write`; Studio `build` / `validate` / `route`.  
 **Job:** Structured claim intake when asked to intake/route; **if asked for one MCP tool by name, call it once and stop**. After `route_claim`, STOP — Orchestrator hands off to the specialist named by `agent_role`.
 
 ### Litigation Agent (MCP only)
@@ -106,7 +108,7 @@ For roles whose playbook tools are only `write_audit_event`: attach MCP audit to
 
 Paste Orchestrator Goal + user prompt from [`agents/orchestrator_agent.md`](agents/orchestrator_agent.md). Manager Goal must STOP after `route_claim`. Orchestrator maps `agent_role` → coworker Role (not litigation-only).
 
-1. Orchestrator → Manager: structured claim intake (spine → signals → build → validate → route).
+1. Orchestrator → Manager: structured claim intake (`run_named_query` spine then signals → build → validate → route).
 2. Route returns `agent_role` (402: `LitigationAgent` / `LitigationSupport`).
 3. Orchestrator → mapped specialist: catalog read (if the map has a view) then `run_named_write` (`write_audit_event`). `run_id` `demo-<claim_id>-e2e`.
 4. Orchestrator Final Answer: route decision + specialist summary + write JSON.
@@ -126,4 +128,4 @@ Paste Orchestrator Goal from [`agents/orchestrator_agent.md`](agents/orchestrato
 
 ## Restart note
 
-Restart `iceberg-mcp-server-claims` after pulling main so new MCP tool names appear (`get_*_view`, `write_audit_event`, `promote_audit_run`).
+Restart `iceberg-mcp-server-claims` after pulling main so identity is **`INS_CLAIMS_MCP_V7`** (catalog-only tools).

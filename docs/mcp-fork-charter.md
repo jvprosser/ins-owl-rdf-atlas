@@ -38,7 +38,7 @@ Fork two MCP servers to close platform gaps for claim-graph agents, while keepin
 
 ### A) Iceberg fork — P0 tools
 
-Implemented for Impala in `mcp_forks/iceberg-mcp-server-claims/` (also keeps `execute_query` / `get_schema`).
+Implemented for Impala in `mcp_forks/iceberg-mcp-server-claims/`. **V7 MCP tools:** `get_server_info`, `list_named_queries`, `run_named_query`, `run_named_write`. Playbook names (`get_claim_spine`, `get_litigation_view`, `write_audit_event`, …) are catalog **labels**, not registered MCP tools. `execute_query` is not registered.
 
 | Tool | Responsibility | Impala claims fork |
 |---|---|---|

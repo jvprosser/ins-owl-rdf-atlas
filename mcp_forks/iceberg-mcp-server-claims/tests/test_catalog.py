@@ -100,19 +100,3 @@ def test_list_named_queries_has_playbook_labels():
     writes = {row["label"] for row in listing["writes"]}
     assert {"get_claim_spine", "get_litigation_view", "get_schema"} <= reads
     assert {"write_audit_event", "promote_audit_run"} <= writes
-
-
-def test_legacy_mcp_alias_stamps_named_op(monkeypatch):
-    from iceberg_mcp_server_claims.server import get_litigation_view
-
-    monkeypatch.setattr(
-        catalog.view_tools,
-        "get_litigation_view",
-        lambda claim_id, database=None: json.dumps(
-            {"claim_id": int(claim_id), "litigation_cases": [{"litigation_case_id": 9101}]}
-        ),
-    )
-    payload = json.loads(get_litigation_view("402"))
-    assert payload["named_op"] == "get_litigation_view"
-    assert payload["named_op_kind"] == "read"
-    assert payload["catalog_version"] == 1

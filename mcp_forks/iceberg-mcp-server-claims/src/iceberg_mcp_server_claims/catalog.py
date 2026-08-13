@@ -185,7 +185,7 @@ def list_catalog() -> dict[str, Any]:
         "writes": _entries(WRITE_OPS, "write"),
         "notes": (
             "Call run_named_query or run_named_write with a catalog label. "
-            "Do not invent SQL. Legacy per-label tools also go through this catalog."
+            "Do not invent SQL. Per-label MCP tools and execute_query are not registered."
         ),
     }
 
