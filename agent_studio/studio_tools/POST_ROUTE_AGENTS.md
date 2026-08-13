@@ -89,10 +89,15 @@ Use when route returns `BiClaimsAgent` / `BiClaimsReview` / `CaptureInjuryDetail
 | Lake smoke | claim **402**, injuries **5501** / **5502** (direct specialist; e2e 402 is litigation-first) |
 
 ### Closeout Agent (MCP only)
-**Name:** `Closeout Agent`  
-**Role:** Terminal closeout specialist for CLOSED claims.  
-**Backstory:** You finalize routed closeout steps using audit MCP helpers only.  
-**Goal:** Given `run_id` and route decision `CloseoutAudit`, call `write_audit_event` then `promote_audit_run`. Explain completion to the orchestrator. Impala promote may be a no-op (table-append mode).
+**Paste-ready definition:** [`agents/closeout_agent.md`](agents/closeout_agent.md)
+
+Use when route returns `CloseoutAgent` / `CloseoutAudit` (seed **403** is CLOSED).
+
+| Field | Value |
+|---|---|
+| Name / Role (exact coworker) | `Closeout Agent` |
+| Tools | `run_named_write` `write_audit_event` then `run_named_write` `promote_audit_run` |
+| Lake smoke | claim **403**, `run_id` `demo-403-close` (Impala promote is `mode=table_append`) |
 
 ### PD / Settlement / SIU / Human Review (MCP audit only)
 For roles whose playbook tools are only `write_audit_event`: attach MCP audit tools; prompt to append an event and return a short summary. Defer richer views until needed.
@@ -108,7 +113,16 @@ Paste Orchestrator Goal + user prompt from [`agents/orchestrator_agent.md`](agen
 
 Specialists other than Litigation still need Studio pastes in the same Crew, or step 3 ends with coworker-not-found.
 
-Direct specialist smokes (skip intake): Subrogation **401** (`subrogation_agent.md`), BI **402** (`bi_claims_agent.md`). Seed **403** is CLOSED → Closeout, not BI.
+Direct specialist smokes (skip intake): Subrogation **401** (`subrogation_agent.md`), BI **402** (`bi_claims_agent.md`), Closeout **403** (`closeout_agent.md`).
+
+## Unstructured front door
+
+Paste Orchestrator Goal from [`agents/orchestrator_agent.md`](agents/orchestrator_agent.md). Routing paste: [`agents/routing_agent.md`](agents/routing_agent.md).
+
+1. Orchestrator → Routing Agent: `pre_route_text` once (no MCP).
+2. If `needs_llm` is true: Final Answer the Routing classify. STOP.
+3. If `claim_id` is set: structured claim intake is authoritative (cosine is advisory).
+4. If no `claim_id` and `needs_llm` is false: Final Answer `label` / `score` / `coworker`. Do not run lake tools unless the user also gave a claim_id.
 
 ## Restart note
 

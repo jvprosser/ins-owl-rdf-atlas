@@ -50,7 +50,7 @@ Given unstructured text (and optional claim_id):
 
 ## Same-crew requirement
 
-Routing Agent must be in the **same Crew** as Orchestrator (and Manager / Litigation).
+Routing Agent must be in the **same Crew** as Orchestrator (and Manager / Litigation / Closeout).
 
 ## Smoke prompt (chat Routing Agent directly)
 

@@ -77,10 +77,15 @@ Delegate ONCE to Manager: call THAT ONE tool once, return exact JSON, stop.
 Do not run structured claim intake. Final Answer with the Observation. STOP.
 
 UNSTRUCTURED NOTES:
-Delegate ONCE to Routing Agent. Then follow its coworker field once
-using the same Role strings as the map above. Then Final Answer.
-If claim_id is also present, structured claim intake (steps 1–4) is
-authoritative over cosine.
+Delegate ONCE to Routing Agent (Role exactly "Routing Agent").
+Task: call pre_route_text once with the user text (and claim_id if given).
+When Observation returns:
+- If claim_id is set: structured claim intake (steps 1–4) is authoritative.
+  Do not follow cosine coworker.
+- If needs_llm is true: Final Answer the Routing result (label/classify). STOP.
+- If needs_llm is false and no claim_id: Final Answer label, score, coworker,
+  next_step. STOP. Do not Delegate to Litigation/Manager for lake work
+  unless the user also gave a claim_id.
 
 If coworker not found: Final Answer with the "must be one of" list. STOP.
 If you already Delegated twice on structured intake: Final Answer now.
@@ -111,7 +116,65 @@ You have no MCP tools. Do not skip the Orchestrator.
 
 Same prompt with another `claim_id` once that specialist exists in the Crew.
 Seed **401** may route PD (subro case already exists). Seed **403** is CLOSED → Closeout.
-Direct specialist smokes: Subrogation `401`, BI `402` (injury rows live on 402).
+
+## User prompt (closeout e2e, claim 403)
+
+```text
+Intake and route claim_id 403, then complete the post-route specialist work.
+
+You have no MCP tools. Do not skip the Orchestrator.
+
+1) Delegate ONCE to Manager (exact Role string from your tool list).
+   Task: structured claim intake for 403 — spine, signals, build, validate,
+   route. STOP after route_claim. Return next_step, lane, agent_role,
+   reason_probe_ids. Do not write audit.
+
+2) Map agent_role to coworker Role. For 403 this should be Closeout Agent.
+   Delegate ONCE to Closeout Agent.
+   Task: claim_id=403 run_id=demo-403-close.
+   run_named_write write_audit_event then run_named_write promote_audit_run.
+   Do not call those tools by their legacy names.
+
+3) Final Answer: route decision + exact write JSON + exact promote JSON.
+   Then STOP. Do not Delegate a third time.
+```
+
+Direct specialist (skip intake):
+
+```text
+Delegate ONCE to coworker "Closeout Agent".
+task: claim_id=403 run_id=demo-403-close.
+Call run_named_write once with label write_audit_event.
+Then run_named_write once with label promote_audit_run.
+Do not call write_audit_event or promote_audit_run by those names.
+Return summary + exact JSON.
+```
+
+## User prompt (unstructured, chat Orchestrator)
+
+Litigation cosine (expect label LITIGATION, coworker "Litigation Agent", needs_llm false):
+
+```text
+Do not run structured claim intake. There is no claim_id.
+
+Delegate ONCE to Routing Agent.
+Task: Call pre_route_text once with text:
+"We were served a civil complaint and the case is in discovery."
+Return the exact tool JSON.
+
+When you have the Observation, Final Answer label, score, coworker, needs_llm.
+Do not Delegate a second time. Do not call MCP.
+```
+
+Low-score (expect needs_llm true):
+
+```text
+Do not run structured claim intake. There is no claim_id.
+
+Delegate ONCE to Routing Agent.
+Task: Call pre_route_text once with text: "what time is lunch"
+Return the exact tool JSON. Then Final Answer. Do not Delegate again.
+```
 
 ## User prompt (identity, chat Orchestrator)
 
