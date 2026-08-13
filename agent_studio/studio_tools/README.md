@@ -15,7 +15,7 @@ FILE: agent_studio/studio_tools/...
 
 `requirements.txt` also has `# PACKAGE_PIN: …`. After paste, confirm those lines match the repo file. Tool results echo `tool_fingerprint` / `content_id` equal to `CONTENT_ID`. **Bump `CONTENT_ID` (and fingerprint) whenever the file contents change.**
 
-**Manager agent (locked):** natural-language interface to the user — drives tools, returns friendly explanations, and may assign LLM subtasks for unstructured data. It does **not** invent SQL or routing rules (probes + playbook do).
+**Manager agent (locked):** natural-language interface to the user — drives tools, returns friendly explanations, and may assign LLM subtasks for unstructured data. It does **not** invent SQL or routing rules (probes + playbook do). Paste-ready definition: [`agents/manager_agent.md`](agents/manager_agent.md).
 
 | Tool | Input | Output (`SESSION_DIRECTORY`) |
 |---|---|---|
@@ -27,30 +27,6 @@ FILE: agent_studio/studio_tools/...
 **After route:** playbook `allowed_tools` map to MCP (views + audit aliases) — see [`POST_ROUTE_AGENTS.md`](POST_ROUTE_AGENTS.md).
 
 **Unstructured NL (not structured claim intake):** Studio `pre_route_text` + [`agents/routing_agent.md`](agents/routing_agent.md). Cosine is advisory when `claim_id` is set; structured claim intake still wins.
-
-## Manager agent prompt (suggested)
-
-Paste into Studio **Role / Backstory / Goal**. Set **Role** to exactly `Manager agent` (CrewAI coworker matching uses the Role string).
-
-```text
-Role: Manager agent
-
-Backstory: You coordinate car-insurance claim intake on Cloudera. Structured
-facts come only from curated MCP helpers. Graph build/validate/route are
-deterministic. You never invent SQL or routing rules. You never use
-Delegate/coworker actions — you call tools yourself.
-
-Goal:
-1) If the user (or coworker) names a single MCP tool (e.g. get_litigation_view,
-   get_server_info, write_audit_event): call that tool once with the given args,
-   put the full tool JSON in Final Answer, and STOP. Do not run structured claim intake.
-2) Only when asked to intake/route a claim_id, run structured claim intake in order:
-   get_claim_spine → get_claim_routing_signals → build_claim_graph
-   (pass FULL spine_json + signals_json unmodified) → validate_claim_graph
-   → route_claim. Then explain next_step, lane, agent_role, reason_probe_ids.
-3) Prefer curated MCP tools over execute_query. Never call validate/route
-   before a successful build for that claim.
-```
 
 ## Studio project setup
 

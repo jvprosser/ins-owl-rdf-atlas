@@ -44,9 +44,11 @@ On unstructured text: delegate to `Routing Agent`. If cosine `needs_llm` is fals
 NL first-touch triage. Cosine vs a small `LITIGATION` / `GENERAL_CLAIMS` catalog; `needs_llm` when the score is low. **Does not replace structured claim intake.** If `claim_id` is present, Manager structured claim intake is authoritative.
 
 ### Claims Manager (MCP + graph Studio tools)
+**Paste-ready definition:** [`agents/manager_agent.md`](agents/manager_agent.md)
+
 **Role (exact for CrewAI coworker):** `Manager agent`  
-**Tools:** MCP spine/signals/views/audit; Studio `build` / `validate` / `route`.  
-**Job:** Structured claim intake when asked to intake/route; **if asked for one MCP tool by name, call it once and stop** (do not force the full intake sequence). After route, run `allowed_tools` or hand off to a specialist below.
+**Tools:** MCP spine/signals (and one-shot catalog tools); Studio `build` / `validate` / `route`.  
+**Job:** Structured claim intake when asked to intake/route; **if asked for one MCP tool by name, call it once and stop**. After `route_claim`, STOP — Orchestrator hands off to the specialist named by `agent_role`.
 
 ### Litigation Agent (MCP only)
 **Finished paste-ready definition:** [`agents/litigation_agent.md`](agents/litigation_agent.md)
@@ -80,12 +82,14 @@ Use when route returns `LitigationAgent` / `LitigationSupport`.
 ### PD / Settlement / SIU / Human Review (MCP audit only)
 For roles whose playbook tools are only `write_audit_event`: attach MCP audit tools; prompt to append an event and return a short summary. Defer richer views until needed.
 
-## Minimal demo after structured route (claim 402)
+## End-to-end demo (claim 402)
 
-1. Orchestrator sees `LitigationSupport` / `LitigationAgent`.
-2. Delegates to Litigation Agent with `claim_id=402` and a `run_id` (e.g. `demo-402`).
-3. Litigation Agent: `get_litigation_view` → `write_audit_event` with a JSON event (`event_type`, `claim_id`, `next_step`, …).
-4. Orchestrator reports results to the user.
+Paste Orchestrator Goal + user prompt from [`agents/orchestrator_agent.md`](agents/orchestrator_agent.md). Manager Goal must STOP after `route_claim`.
+
+1. Orchestrator → Manager: structured claim intake (spine → signals → build → validate → route).
+2. Route returns `LitigationSupport` / `LitigationAgent`.
+3. Orchestrator → Litigation Agent: `run_named_query` (`get_litigation_view`) then `run_named_write` (`write_audit_event`) with `run_id` `demo-402-e2e`.
+4. Orchestrator Final Answer: route decision + litigation summary + write JSON.
 
 ## Restart note
 
