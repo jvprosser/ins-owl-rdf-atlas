@@ -17,7 +17,7 @@ Keeps upstream-style tools (`execute_query`, `get_schema`) and adds curated clai
 
 | Tool | Notes |
 |---|---|
-| `get_server_info()` | One-shot identity. Expect **`INS_CLAIMS_MCP_V5`** / **`0.3.1`**. Prompt: “Call get_server_info once and stop.” |
+| `get_server_info()` | One-shot identity. Expect **`INS_CLAIMS_MCP_V6`** / **`0.3.2`**. Prompt: “Call get_server_info once and stop.” |
 
 ### Named catalog (preferred)
 
@@ -29,7 +29,7 @@ Studio Action Input is **flat**. Prefer top-level `claim_id` / `run_id` over nes
 | `run_named_query(label, claim_id?, database?, params_json?)` | Curated **reads**. Example: `{"label":"get_litigation_view","claim_id":"402"}` |
 | `run_named_write(label, run_id?, event_json?, …)` | Curated **writes**. Example: `{"label":"write_audit_event","run_id":"demo-402","event_json":"{...}"}` |
 
-Legacy per-label tools below still work (same implementations). Prefer `run_named_query` so the result includes `named_op`.
+Legacy per-label tools still work and now route through the catalog, so they also stamp `named_op`. Prefer `run_named_query` anyway so the Action name matches the catalog.
 
 ### Upstream-compatible
 

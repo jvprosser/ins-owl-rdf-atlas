@@ -56,7 +56,7 @@ Use when route returns `LitigationAgent` / `LitigationSupport`.
 | Field | Value |
 |---|---|
 | Name / Role (exact coworker) | `Litigation Agent` |
-| Tools | MCP `get_litigation_view`, `write_audit_event` only |
+| Tools | Prefer `run_named_query` / `run_named_write` (legacy view/audit names forbidden in Goal) |
 | Backstory / Goal | Copy from `agents/litigation_agent.md` |
 
 ### Subrogation Agent (MCP only)

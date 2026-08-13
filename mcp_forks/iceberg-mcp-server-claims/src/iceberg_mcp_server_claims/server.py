@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from fastmcp import FastMCP
 
 from iceberg_mcp_server_claims import catalog, server_info
-from iceberg_mcp_server_claims.tools import audit_tools, claim_tools, impala_tools, view_tools
+from iceberg_mcp_server_claims.tools import impala_tools
 
 load_dotenv()
 
@@ -106,25 +106,29 @@ def execute_query(query: str) -> str:
 @mcp.tool()
 def get_schema(database: str | None = None) -> str:
     """List tables. Optional database overrides IMPALA_DATABASE."""
-    return impala_tools.get_schema(database)
+    return catalog.run_named_query("get_schema", database=database)
 
 
-# --- Claims P0 helpers ------------------------------------------------------
+# --- Claims P0 helpers (catalog aliases; same SQL, stamps named_op) ---------
 
 
 @mcp.tool()
 def get_claim_spine(claim_id: str, database: str | None = None) -> str:
     """Curated claim spine for graph build (claim/loss/policy/vehicle/roles).
 
-    Prefer this over free-form execute_query joins.
+    Prefer run_named_query. This alias still stamps named_op.
     """
-    return claim_tools.get_claim_spine(claim_id, database)
+    return catalog.run_named_query(
+        "get_claim_spine", claim_id=claim_id, database=database
+    )
 
 
 @mcp.tool()
 def get_claim_routing_signals(claim_id: str, database: str | None = None) -> str:
     """Routing/existence signals (subrogation, litigation, injury, offers, …)."""
-    return claim_tools.get_claim_routing_signals(claim_id, database)
+    return catalog.run_named_query(
+        "get_claim_routing_signals", claim_id=claim_id, database=database
+    )
 
 
 # --- Specialist views (playbook allowed_tools names) ------------------------
@@ -132,20 +136,24 @@ def get_claim_routing_signals(claim_id: str, database: str | None = None) -> str
 
 @mcp.tool()
 def get_litigation_view(claim_id: str, database: str | None = None) -> str:
-    """Litigation case facts for LitigationAgent."""
-    return view_tools.get_litigation_view(claim_id, database)
+    """Litigation case facts. Catalog alias of run_named_query."""
+    return catalog.run_named_query(
+        "get_litigation_view", claim_id=claim_id, database=database
+    )
 
 
 @mcp.tool()
 def get_bi_view(claim_id: str, database: str | None = None) -> str:
-    """Injury facts for BiClaimsAgent."""
-    return view_tools.get_bi_view(claim_id, database)
+    """Injury facts. Catalog alias of run_named_query."""
+    return catalog.run_named_query("get_bi_view", claim_id=claim_id, database=database)
 
 
 @mcp.tool()
 def get_subrogation_view(claim_id: str, database: str | None = None) -> str:
-    """Subrogation case facts for SubrogationAgent."""
-    return view_tools.get_subrogation_view(claim_id, database)
+    """Subrogation case facts. Catalog alias of run_named_query."""
+    return catalog.run_named_query(
+        "get_subrogation_view", claim_id=claim_id, database=database
+    )
 
 
 # --- Audit helpers (Impala table-append mode) -------------------------------
@@ -158,7 +166,12 @@ def begin_agent_audit_run(
     source_branch: str | None = None,
 ) -> str:
     """Begin an audit run. Impala: table-append mode (no Iceberg WAP branch)."""
-    return audit_tools.begin_agent_audit_run(run_id, database, source_branch)
+    return catalog.run_named_write(
+        "begin_agent_audit_run",
+        run_id=run_id,
+        database=database,
+        source_branch=source_branch,
+    )
 
 
 @mcp.tool()
@@ -168,7 +181,12 @@ def append_agent_audit_event(
     database: str | None = None,
 ) -> str:
     """Insert one audit event row (JSON object string) for run_id."""
-    return audit_tools.append_agent_audit_event(run_id, event_json, database)
+    return catalog.run_named_write(
+        "append_agent_audit_event",
+        run_id=run_id,
+        event_json=event_json,
+        database=database,
+    )
 
 
 @mcp.tool()
@@ -178,22 +196,28 @@ def append_agent_audit_evidence(
     database: str | None = None,
 ) -> str:
     """Insert one audit evidence row (JSON object string) for run_id."""
-    return audit_tools.append_agent_audit_evidence(run_id, evidence_json, database)
+    return catalog.run_named_write(
+        "append_agent_audit_evidence",
+        run_id=run_id,
+        evidence_json=evidence_json,
+        database=database,
+    )
 
 
 @mcp.tool()
 def promote_agent_audit_run(run_id: str, database: str | None = None) -> str:
     """Promote audit run. Impala: no-op (rows already on main)."""
-    return audit_tools.promote_agent_audit_run(run_id, database)
+    return catalog.run_named_write(
+        "promote_agent_audit_run", run_id=run_id, database=database
+    )
 
 
 @mcp.tool()
 def abandon_agent_audit_run(run_id: str, database: str | None = None) -> str:
     """Abandon audit run by deleting rows for run_id (best effort)."""
-    return audit_tools.abandon_agent_audit_run(run_id, database)
-
-
-# Playbook-aligned aliases (same impl; names match route allowed_tools)
+    return catalog.run_named_write(
+        "abandon_agent_audit_run", run_id=run_id, database=database
+    )
 
 
 @mcp.tool()
@@ -202,14 +226,21 @@ def write_audit_event(
     event_json: str,
     database: str | None = None,
 ) -> str:
-    """Alias for append_agent_audit_event (playbook: write_audit_event)."""
-    return audit_tools.append_agent_audit_event(run_id, event_json, database)
+    """Playbook write_audit_event. Catalog alias of run_named_write."""
+    return catalog.run_named_write(
+        "write_audit_event",
+        run_id=run_id,
+        event_json=event_json,
+        database=database,
+    )
 
 
 @mcp.tool()
 def promote_audit_run(run_id: str, database: str | None = None) -> str:
-    """Alias for promote_agent_audit_run (playbook: promote_audit_run)."""
-    return audit_tools.promote_agent_audit_run(run_id, database)
+    """Playbook promote_audit_run. Catalog alias of run_named_write."""
+    return catalog.run_named_write(
+        "promote_audit_run", run_id=run_id, database=database
+    )
 
 
 def main() -> None:
