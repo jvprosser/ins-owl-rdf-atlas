@@ -174,7 +174,7 @@ Manager agent calls MCP then these tools in order; explains results to the user;
 7. ~~Post-route MCP~~ — playbook views + audit aliases on claims fork; see `studio_tools/POST_ROUTE_AGENTS.md`  
 8. Wire Style B loop + unstructured worker when ready  
 9. Delete fallbacks and legacy `prepare_bundles` trees once structured intake is live in CDP  
-10. Add Atlas BM fork when governance binding is in scope
+10. Add Atlas BM fork when governance binding is in scope — plan: [`docs/atlas-ranger-integration-plan.md`](../atlas-ranger-integration-plan.md)
 
 ## Open Studio questions
 

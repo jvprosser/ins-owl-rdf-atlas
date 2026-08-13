@@ -107,6 +107,8 @@ User (natural language)
 **Iceberg fork:** `diff_iceberg_branch`, `list_agent_audit_runs`, allow-listed DDL applicator, snapshot tags.  
 **Atlas fork:** glossary create/assign, `ensure_classification_typedef`, `export_entity_semantic_projection`, contract↔classification sync helpers.
 
+Parked integration plan (phases A–C, crew, risks): [`atlas-ranger-integration-plan.md`](atlas-ranger-integration-plan.md).
+
 ## Ownership & process
 
 | Item | Owner |
