@@ -1,0 +1,70 @@
+# Deterministic rollover / ERISA routing. Do not use YAML key `on:`.
+version: 1
+ontology_relpath: ontology/rollovers.ttl
+probes_relpath: probes
+iri_base: https://example.org/ins/
+case_iri_template: https://example.org/ins/id/RolloverRequest/{case_id}
+
+loop:
+  max_route_passes: 4
+  no_progress_limit: 2
+
+priorities:
+  - R0.1
+  - R1.1
+  - R2.1
+  - R2.2
+
+probes:
+  R0.1:
+    file: R0_1_request_exists.rq
+    form: ASK
+  R1.1:
+    file: R1_1_request_status.rq
+    form: SELECT
+  R2.1:
+    file: R2_1_missing_spousal_consent.rq
+    form: ASK
+  R2.2:
+    file: R2_2_missing_required_docs.rq
+    form: ASK
+
+actions:
+  R0.1:
+    - when: ASK_FALSE
+      step: FixDataQuality
+      agent: DataQualityAgent
+      lane: DATA_QUALITY
+      needs_llm: false
+      tools: [build_claim_graph, validate_claim_graph, write_audit_event]
+  R1.1:
+    - when: SELECT_EQUALS
+      match_value: CLOSED
+      step: CloseoutAudit
+      agent: CloseoutAgent
+      lane: CLOSEOUT
+      needs_llm: false
+      tools: [write_audit_event, promote_audit_run]
+      terminal: true
+  R2.1:
+    - when: ASK_TRUE
+      step: ErisaReview
+      agent: ErisaReviewAgent
+      lane: ERISA
+      needs_llm: false
+      tools: [get_erisa_review_view, write_audit_event]
+  R2.2:
+    - when: ASK_TRUE
+      step: RequestDocuments
+      agent: ExceptionQueueAgent
+      lane: EXCEPTION
+      needs_llm: false
+      tools: [write_audit_event]
+
+default_action:
+  step: ProcessRollover
+  agent: RolloverOpsAgent
+  lane: ROLLOVER
+  needs_llm: false
+  tools: [write_audit_event]
+  terminal: true

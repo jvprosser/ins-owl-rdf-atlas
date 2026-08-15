@@ -1,0 +1,8 @@
+{
+  "claim_id": "8002",
+  "case_id": "8002",
+  "signals": {
+    "missing_spousal_consent": false,
+    "missing_required_docs": false
+  }
+}

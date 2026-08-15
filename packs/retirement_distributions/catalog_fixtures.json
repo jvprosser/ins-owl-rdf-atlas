@@ -1,0 +1,30 @@
+{
+  "id": "retirement_distributions",
+  "fixture_writes": true,
+  "reads": {
+    "get_distribution_spine": {
+      "required": ["claim_id"],
+      "optional": ["database", "case_id"],
+      "fixture_dir": "fixtures/get_distribution_spine",
+      "summary": "Distribution request spine"
+    },
+    "get_distribution_routing_signals": {
+      "required": ["claim_id"],
+      "optional": ["database", "case_id"],
+      "fixture_dir": "fixtures/get_distribution_routing_signals",
+      "summary": "Distribution routing signals"
+    },
+    "get_distribution_exception_view": {
+      "required": ["claim_id"],
+      "optional": ["database", "case_id"],
+      "fixture_dir": "fixtures/get_distribution_exception_view",
+      "summary": "Exception-queue view"
+    },
+    "get_rmd_view": {
+      "required": ["claim_id"],
+      "optional": ["database", "case_id"],
+      "fixture_dir": "fixtures/get_rmd_view",
+      "summary": "RMD underpayment view"
+    }
+  }
+}

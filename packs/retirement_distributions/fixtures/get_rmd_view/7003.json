@@ -1,0 +1,11 @@
+{
+  "claim_id": "7003",
+  "case_id": "7003",
+  "rmd": {
+    "tax_year": 2026,
+    "required_amount": 12500.0,
+    "paid_amount": 8000.0,
+    "shortfall_amount": 4500.0,
+    "deadline": "2026-12-31"
+  }
+}

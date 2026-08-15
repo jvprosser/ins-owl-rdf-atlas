@@ -1,0 +1,33 @@
+id: retirement_rollovers
+case_id_param: claim_id
+iri_template: https://example.org/ins/id/RolloverRequest/{case_id}
+ontology: ontology/rollovers.ttl
+playbook: playbook/playbook.yaml
+probes: probes
+exemplars: exemplars.yaml
+cosine_labels:
+  - ERISA
+  - ROLLOVER
+graph:
+  builder: generic
+  case_class: RolloverRequest
+  literals:
+    request_status_code: requestStatusCode
+    rollover_type_code: rolloverTypeCode
+    plan_id: planId
+    participant_id: participantId
+  booleans:
+    missing_spousal_consent: missingSpousalConsent
+    missing_required_docs: missingRequiredDocs
+catalog:
+  fixture_writes: true
+  reads:
+    get_rollover_spine:
+      required: [claim_id]
+      fixture_dir: fixtures/get_rollover_spine
+    get_rollover_routing_signals:
+      required: [claim_id]
+      fixture_dir: fixtures/get_rollover_routing_signals
+    get_erisa_review_view:
+      required: [claim_id]
+      fixture_dir: fixtures/get_erisa_review_view

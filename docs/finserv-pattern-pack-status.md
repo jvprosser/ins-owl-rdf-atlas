@@ -1,0 +1,112 @@
+# Finserv pattern-pack — parked status
+
+**Parked:** 2026-08-14  
+**Resume from:** this file, then [`finserv-pattern-pack.md`](finserv-pattern-pack.md), [`packs/README.md`](../packs/README.md).  
+**Do not** move repo-root `ontology/` / `playbook/` / `probes/`. Claim **402** stays on that tree.
+
+## Why this exists
+
+Reuse the car-insurance **control plane** for a finserv customer demo, without cloning MCP per product:
+
+1. **Retirement distributions** — request classification and exception handling (lead case **7002**).
+2. **Retirement rollovers** — document / ERISA completeness (lead case **8001**).
+
+Same locked flow as claims: Orchestrator (no tools) → Manager catalog reads → Studio `build_claim_graph` → `validate_claim_graph` → `route_claim` → one specialist Delegate. SPARQL + playbook decide the lane. The LLM does not decide hardship, RMD, or ERISA.
+
+Language: say **structured claim intake sequence**, not “Path A” / “S1”. Studio tools still take `claim_id`.
+
+## What is done in the repo
+
+Offline tests were green when parked (`agent_studio` 35 passed; MCP catalog/fixture tests 13 passed via `uv run pytest`).
+
+### Runtime (pack-aware, claims default unchanged)
+
+| Piece | Location | Behavior |
+|---|---|---|
+| Pack loader | `agent_studio/src/ins_claims_agent/pack.py` | `pack.yaml` → ontology, playbook, IRI, graph mappings |
+| Path discovery | `agent_studio/src/ins_claims_agent/paths.py` | `PACK_ROOT` / `INS_CLAIMS_REPO_ROOT` / `WORKFLOW_DATA_DIRECTORY`, else walk-up to **legacy** `ontology/claims_mvt.ttl` + `playbook/` |
+| Generic graph | `agent_studio/src/ins_claims_agent/graph/build_case_graph.py` | Used when `pack.graph.builder == "generic"` |
+| Claims graph | `build_claim_graph.py` | Still used when no pack / builder ≠ generic (triangle / 402) |
+| Validate | `validate_graph.py` | Generic packs: case IRI + `case_class` only; claims: triangle |
+| Route | `route_claim.py` | `{{case_iri}}` / `{{case_id}}`; playbook `case_iri_template` |
+| Cosine | `pre_router/route_text.py` | Pack `exemplars.yaml` `labels` + `dispatch`; claims exemplars unchanged if no pack env |
+| Studio I/O | `studio_io.configure_workflow_assets` | Accepts pack.yaml **or** legacy claims tree |
+| Build tool | `studio_tools/build_claim_graph/tool.py` | Generic vs claims builder |
+
+Claims is **not** a pack. It becomes one only when you need two live products in one Studio/MCP install and 402 has been proven from a pointer pack. Sequence if/when: `packs/auto_pc_claims/pack.yaml` pointing at current trees → e2e 402 → then move files.
+
+### Demo packs
+
+`packs/retirement_distributions/` and `packs/retirement_rollovers/`.
+
+Each has: `pack.yaml`, ontology TTL, probes, playbook, `exemplars.yaml`, `catalog_fixtures.json`, `fixtures/**/*.json`, agent pastes (Name / Role / Backstory / Goal / Tools table), README (Workflow Data upload + where `PACK_ROOT` was supposed to go).
+
+| Case | Expected route |
+|---|---|
+| **7001** | `ProcessDistribution` / `DistributionOpsAgent` |
+| **7002** | `RequestSubstantiation` / `ExceptionQueueAgent` (R2.2) |
+| **7003** | `RmdReview` / `RmdOpsAgent` |
+| **8001** | `ErisaReview` / `ErisaReviewAgent` (R2.1) |
+| **8002** | `ProcessRollover` / `RolloverOpsAgent` |
+
+Agent Roles: Orchestrator is `Distributions Orchestrator` / `Rollovers Orchestrator`. Manager Role stays exactly `Manager agent`. Specialists: `Exception Queue Agent`, `Distribution Ops Agent`, `RMD Ops Agent`, `ERISA Review Agent`, `Rollover Ops Agent`. Orchestrator tools: MCP NONE, Studio NONE. Manager: V7 MCP + build/validate/route. Specialists: V7 MCP, Studio NONE.
+
+Studio Workflow Data (tools only): upload pack **contents** so `/workflow_data/pack.yaml` exists. Do not nest `retirement_*` as an extra folder. Do not upload `agents/` (paste into Studio fields). `fixtures/` + `catalog_fixtures.json` were intended for MCP, not tools.
+
+### MCP fixture merge (written, not usable in Studio as designed)
+
+`mcp_forks/iceberg-mcp-server-claims/src/iceberg_mcp_server_claims/pack_fixtures.py` merges labels from `catalog_fixtures.json` when `PACK_ROOT` or `INS_CLAIMS_REPO_ROOT` points at a pack directory. `fixture_writes: true` stubs `write_audit_event` / `promote_audit_run` (no Impala). Merge runs at catalog import. `case_id` ↔ `claim_id` aliases are allowed so claims tests still pass.
+
+Claims catalog itself is **compiled into the MCP package** (`catalog.py` `READ_OPS` / `WRITE_OPS`). V7 tools: `get_server_info`, `list_named_queries`, `run_named_query`, `run_named_write`. Agents learn labels from **Goal text** and/or `list_named_queries`. There is no per-label MCP tool.
+
+Do **not** bump to V8 unless the surface changes. Do **not** register per-label MCP tools.
+
+## What blocked the Studio demo
+
+MCP runs as `uvx` stdio from the **workflow engine**, not inside the tool sandbox.
+
+1. **No host checkout for `PACK_ROOT`.** The MCP machine cannot be given a git clone path. `uvx` `#subdirectory=mcp_forks/iceberg-mcp-server-claims` does not ship `packs/`.
+2. **Workflow Data is for tools only.** Cloudera [tool execution](https://docs.cloudera.com/machine-learning/cloud/use-ai-studios/topics/ml-tool-execution.html) mounts `/workflow_data` + `WORKFLOW_DATA_DIRECTORY` in the **tool** sandbox. Agent Studio source (`CAI_STUDIO_AGENT` `studio/workflow_engine/src/engine/crewai/mcp.py`) starts MCP with `os.environ.copy()` plus the MCP registration `env` block. That source has **no** `WORKFLOW_DATA_DIRECTORY`.
+3. **Live probe (2026-08-14):** `list_named_queries` returned **only claims labels** (`get_claim_spine` … `get_schema`). No `get_distribution_spine`. Pack merge did not run. Treat Workflow Data as **not** a delivery path for MCP fixtures. Do not add an “install pack” Studio tool that writes to `/workflow_data` for MCP — MCP cannot read that mount.
+
+`PACK_ROOT` belongs only on **MCP → iceberg-mcp-server-claims → Environment variables** (same list as `IMPALA_HOST`). It is not Workflow Data, not an agent Goal, not a tool parameter. That assignment is useless here without a path the MCP process can read.
+
+## Agreed next implementation (when resumed)
+
+**Ship fixtures inside the MCP package. Select the pack with a string, not a filesystem path.**
+
+- Env: `PACK_ID=retirement_distributions` or `retirement_rollovers` (MCP Environment variables in Studio).
+- Unset `PACK_ID` → current Impala claims catalog (402 unchanged).
+- Copy or generate `catalog_fixtures.json` + fixture JSON into the MCP wheel (e.g. package data under `iceberg_mcp_server_claims/pack_data/<id>/`).
+- Load on `list_named_queries` / `run_named_query` (lazy), not only at import, so a restart after changing `PACK_ID` is enough.
+- Still no per-label MCP tools. Still no LLM as the ERISA/hardship decision.
+- Studio tools still need pack-aware `ins-claims-agent` on the **git pin** in each tool `requirements.txt`. The claims pin `87de0c5` does **not** include `pack.py` / `build_case_graph`. Push (or pin a SHA) that has that code before a Studio pack run.
+- Workflow Data remains the delivery path for ontology / playbook / probes / `pack.yaml` / `exemplars.yaml` (tools). MCP fixtures do not go there.
+
+Fallback if you refuse to bake fixtures into MCP: Manager reads spine/signals via a Studio tool from Workflow Data and skips `run_named_query` for those labels. That breaks “same control plane as 402” and should be last resort.
+
+## Studio / MCP notes for resume
+
+- One pack = one Agent Studio project. Do not mix with 402.
+- Manager Role exactly `Manager agent`. CrewAI Delegate matches **Role**.
+- Custom tools: `build_claim_graph`, `validate_claim_graph`, `route_claim`, optional `pre_route_text`.
+- Identity: `get_server_info` → `INS_CLAIMS_MCP_V7` / `0.3.3`.
+- Lead customer prompt: intake **7002** (see `packs/retirement_distributions/README.md` and pack orchestrator paste).
+- MCP README pack sections and pack READMEs still describe `PACK_ROOT` as a host path. Update those when `PACK_ID` lands.
+
+## Tests to re-run on resume
+
+```bash
+cd agent_studio && python -m pytest -q
+cd ../mcp_forks/iceberg-mcp-server-claims && uv run pytest -q
+```
+
+Pack route tests: `agent_studio/tests/test_packs.py`. Fixture merge: `mcp_forks/iceberg-mcp-server-claims/tests/test_pack_fixtures.py` (today requires `PACK_ROOT` on a real pack dir).
+
+## Related docs
+
+- [`docs/finserv-pattern-pack.md`](finserv-pattern-pack.md) — pattern (short)
+- [`docs/adr/0001-agent-studio-mcp-and-tool-layout.md`](adr/0001-agent-studio-mcp-and-tool-layout.md) — D0/D4; tools vs MCP
+- [`mcp_forks/iceberg-mcp-server-claims/README.md`](../mcp_forks/iceberg-mcp-server-claims/README.md) — V7 + pack Studio steps (partially stale on `PACK_ROOT`)
+- Claims agents: `agent_studio/studio_tools/agents/`
+- Atlas/Ranger: parked separately in [`docs/atlas-ranger-integration-plan.md`](atlas-ranger-integration-plan.md) (`f5a5a2f`); not required for this demo

@@ -1,0 +1,24 @@
+{
+  "id": "retirement_rollovers",
+  "fixture_writes": true,
+  "reads": {
+    "get_rollover_spine": {
+      "required": ["claim_id"],
+      "optional": ["database", "case_id"],
+      "fixture_dir": "fixtures/get_rollover_spine",
+      "summary": "Rollover request spine"
+    },
+    "get_rollover_routing_signals": {
+      "required": ["claim_id"],
+      "optional": ["database", "case_id"],
+      "fixture_dir": "fixtures/get_rollover_routing_signals",
+      "summary": "Rollover routing signals"
+    },
+    "get_erisa_review_view": {
+      "required": ["claim_id"],
+      "optional": ["database", "case_id"],
+      "fixture_dir": "fixtures/get_erisa_review_view",
+      "summary": "ERISA / spousal-consent review view"
+    }
+  }
+}

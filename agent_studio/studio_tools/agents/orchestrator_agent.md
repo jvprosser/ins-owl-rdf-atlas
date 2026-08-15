@@ -22,13 +22,10 @@ Use the **coworker** column as the exact `Delegate` string. Specialists must be 
 | `SubrogationAgent` | `Subrogation Agent` | `run_named_query` label `get_subrogation_view`, then `run_named_write` `write_audit_event` |
 | `BiClaimsAgent` | `BI Claims Agent` | `run_named_query` label `get_bi_view`, then `run_named_write` `write_audit_event` |
 | `CloseoutAgent` | `Closeout Agent` | `run_named_write` `write_audit_event`, then `run_named_write` `promote_audit_run` |
-| `SiuAgent` | `SIU Agent` | `run_named_write` `write_audit_event` only |
-| `PdClaimsAgent` | `PD Claims Agent` | `run_named_write` `write_audit_event` only |
-| `SettlementAgent` | `Settlement Agent` | `run_named_write` `write_audit_event` only |
-| `DataQualityAgent` | `Data Quality Agent` | `run_named_write` `write_audit_event` only |
-| `HumanReviewAgent` | `Human Review Agent` | `run_named_write` `write_audit_event` only |
 
-If `agent_role` is missing from this map, or the coworker is not in the Crew: Final Answer with the route JSON (and Studio’s “must be one of” list). Do not invent a Role.
+Only these specialists have Studio pastes. Playbook may still emit `SiuAgent`, `PdClaimsAgent`, `SettlementAgent`, `DataQualityAgent`, or `HumanReviewAgent` — there is no coworker for those yet. Final Answer with the route JSON. Do not invent a Role.
+
+If the coworker is not in the Crew: Final Answer with the route JSON (and Studio’s “must be one of” list).
 
 ## Goal (paste this)
 
@@ -50,12 +47,9 @@ STRUCTURED CLAIM INTAKE (user gives a claim_id to intake/route):
    SubrogationAgent → Subrogation Agent (view get_subrogation_view)
    BiClaimsAgent → BI Claims Agent (view get_bi_view)
    CloseoutAgent → Closeout Agent (no view; write then promote_audit_run)
-   SiuAgent → SIU Agent (write only)
-   PdClaimsAgent → PD Claims Agent (write only)
-   SettlementAgent → Settlement Agent (write only)
-   DataQualityAgent → Data Quality Agent (write only)
-   HumanReviewAgent → Human Review Agent (write only)
-   If agent_role is not in this map: Final Answer with the route JSON. STOP.
+   If agent_role is not in this map (including SiuAgent, PdClaimsAgent,
+   SettlementAgent, DataQualityAgent, HumanReviewAgent): Final Answer
+   with the route JSON. STOP. Do not invent a Role.
 
 3) Delegate ONCE to that coworker.
    Task: claim_id=<id> run_id=demo-<id>-e2e next_step=<next_step>
@@ -66,7 +60,6 @@ STRUCTURED CLAIM INTAKE (user gives a claim_id to intake/route):
    write_audit_event by those names.
    If CloseoutAgent: run_named_write write_audit_event then
    run_named_write promote_audit_run.
-   If write-only: run_named_write once label write_audit_event.
    If coworker not found: Final Answer with the "must be one of" list. STOP.
 
 4) Final Answer: route next_step / agent_role / probes, plus specialist
@@ -116,8 +109,10 @@ You have no MCP tools. Do not skip the Orchestrator.
    Then STOP. Do not Delegate a third time.
 ```
 
-Same prompt with another `claim_id` once that specialist exists in the Crew.
-Seed **401** may route PD (subro case already exists). Seed **403** is CLOSED → Closeout.
+Same prompt with another `claim_id` once that specialist exists in the Crew
+(Litigation, Subrogation, BI, or Closeout). Seed **401** may route
+`PdClaimsAgent` (no paste yet) → Final Answer with the route JSON.
+Seed **403** is CLOSED → Closeout.
 
 ## User prompt (closeout e2e, claim 403)
 

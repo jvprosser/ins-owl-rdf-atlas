@@ -46,6 +46,7 @@ def list_named_queries() -> str:
 def run_named_query(
     label: str,
     claim_id: str | None = None,
+    case_id: str | None = None,
     database: str | None = None,
     params_json: str = "{}",
 ) -> str:
@@ -54,10 +55,10 @@ def run_named_query(
     Flat Action Input example:
       {"label":"get_litigation_view","claim_id":"402"}
     Read labels: get_claim_spine, get_claim_routing_signals, get_litigation_view,
-    get_bi_view, get_subrogation_view, get_schema.
+    get_bi_view, get_subrogation_view, get_schema. Pack fixtures may add labels.
     """
     return catalog.run_named_query(
-        label, params_json, claim_id=claim_id, database=database
+        label, params_json, claim_id=claim_id or case_id, case_id=case_id, database=database
     )
 
 

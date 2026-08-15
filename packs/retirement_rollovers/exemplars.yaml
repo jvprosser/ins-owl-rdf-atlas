@@ -1,0 +1,31 @@
+catalog_version: 1
+labels:
+  - ERISA
+  - ROLLOVER
+dispatch:
+  ERISA:
+    coworker: ERISA Review Agent
+    agent_role: ErisaReviewAgent
+    next_step: ErisaReview
+    lane: ERISA
+  ROLLOVER:
+    coworker: Rollover Ops Agent
+    agent_role: RolloverOpsAgent
+    next_step: ProcessRollover
+    lane: ROLLOVER
+exemplars:
+  - id: E01
+    label: ERISA
+    text: Direct rollover is missing spousal consent; QDRO not on file for the married participant.
+  - id: E02
+    label: ERISA
+    text: ERISA review required; spouse must consent before the account can leave the plan.
+  - id: E03
+    label: ERISA
+    text: Qualified domestic relations order or witnessed spousal consent is still outstanding.
+  - id: R01
+    label: ROLLOVER
+    text: Complete direct rollover to the successor IRA; all required forms are on file.
+  - id: R02
+    label: ROLLOVER
+    text: Trustee-to-trustee transfer; participant elected a rollover and documents are complete.

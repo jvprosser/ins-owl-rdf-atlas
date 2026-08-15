@@ -1,0 +1,46 @@
+catalog_version: 1
+labels:
+  - DISTRIBUTION
+  - EXCEPTION
+  - RMD
+dispatch:
+  DISTRIBUTION:
+    coworker: Distribution Ops Agent
+    agent_role: DistributionOpsAgent
+    next_step: ProcessDistribution
+    lane: DISTRIBUTION
+  EXCEPTION:
+    coworker: Exception Queue Agent
+    agent_role: ExceptionQueueAgent
+    next_step: RequestSubstantiation
+    lane: EXCEPTION
+  RMD:
+    coworker: RMD Ops Agent
+    agent_role: RmdOpsAgent
+    next_step: RmdReview
+    lane: RMD
+exemplars:
+  - id: D01
+    label: DISTRIBUTION
+    text: Termination distribution after the participant left the employer; cash-out the 401k balance.
+  - id: D02
+    label: DISTRIBUTION
+    text: Separation from service; process the vested account as a lump-sum distribution.
+  - id: D03
+    label: DISTRIBUTION
+    text: Participant terminated employment and requested a plan distribution to a checking account.
+  - id: E01
+    label: EXCEPTION
+    text: Hardship withdrawal is missing medical bills and the hardship attestation.
+  - id: E02
+    label: EXCEPTION
+    text: Exception queue; substantiation documents were not uploaded for the hardship request.
+  - id: E03
+    label: EXCEPTION
+    text: Hold or AML flag on the distribution; do not process until compliance clears the case.
+  - id: R01
+    label: RMD
+    text: Required minimum distribution is underpaid for this tax year; shortfall remains.
+  - id: R02
+    label: RMD
+    text: RMD deadline approaching and the paid amount is below the required minimum.

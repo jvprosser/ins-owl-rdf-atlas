@@ -1,0 +1,10 @@
+{
+  "claim_id": "7001",
+  "case_id": "7001",
+  "spine": {
+    "request_status_code": "OPEN",
+    "distribution_type_code": "TERMINATION",
+    "plan_id": "401k-alpha",
+    "participant_id": "P-7001"
+  }
+}

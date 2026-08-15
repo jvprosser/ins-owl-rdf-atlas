@@ -17,35 +17,25 @@ def session_dir() -> Path:
 
 
 def configure_workflow_assets(assets_root: str | None = None) -> Path:
-    """Point ``INS_CLAIMS_REPO_ROOT`` at ontology/probes/playbook.
+    """Point ``INS_CLAIMS_REPO_ROOT`` / ``PACK_ROOT`` at a pack or claims tree."""
+    from ins_claims_agent.pack import is_legacy_claims_root, is_pack_root
+    from ins_claims_agent.paths import repo_root
 
-    Prefer explicit ``assets_root``, else ``WORKFLOW_DATA_DIRECTORY``, else leave
-    path discovery to ``ins_claims_agent.paths`` (repo walk-up / existing env).
-    """
     if assets_root:
         root = Path(assets_root).expanduser().resolve()
     else:
         wf = workflow_data_dir()
-        if (wf / "ontology" / "claims_mvt.ttl").is_file() and (
-            wf / "playbook" / "playbook.yaml"
-        ).is_file():
+        if is_pack_root(wf) or is_legacy_claims_root(wf):
             root = wf.resolve()
         else:
-            # Local/dev: paths.py walk-up / INS_CLAIMS_REPO_ROOT already set
-            from ins_claims_agent.paths import repo_root
-
             return repo_root()
 
-    if not (root / "ontology" / "claims_mvt.ttl").is_file():
+    if not (is_pack_root(root) or is_legacy_claims_root(root)):
         raise FileNotFoundError(
-            f"Assets root missing ontology/claims_mvt.ttl: {root}. "
-            "Copy ontology/, probes/, playbook/ into WORKFLOW_DATA_DIRECTORY."
-        )
-    if not (root / "playbook" / "playbook.yaml").is_file():
-        raise FileNotFoundError(
-            f"Assets root missing playbook/playbook.yaml: {root}."
+            f"Assets root missing pack.yaml or ontology/ + playbook/: {root}."
         )
     os.environ["INS_CLAIMS_REPO_ROOT"] = str(root)
+    os.environ["PACK_ROOT"] = str(root)
     return root
 
 

@@ -23,10 +23,17 @@ def route_claim(
     if not probes_dir.exists():
         probes_dir = default_probes_dir()
 
+    iri_template = playbook.get("case_iri_template") or playbook.get(
+        "claim_iri_template"
+    )
     matched: list[dict[str, Any]] = []
     for probe_id in playbook.get("priorities", []):
         probe_cfg = playbook["probes"][probe_id]
-        query = _load_probe_query(probes_dir / probe_cfg["file"], claim_id)
+        query = _load_probe_query(
+            probes_dir / probe_cfg["file"],
+            claim_id,
+            iri_template=iri_template,
+        )
         form = probe_cfg.get("form", "ASK").upper()
         result = _exec_probe(graph, query, form)
         matched.append({"probe_id": probe_id, "form": form, "result": result})
@@ -49,13 +56,22 @@ def _load_playbook(playbook_path: str | Path | None) -> dict[str, Any]:
         return yaml.safe_load(f)
 
 
-def _load_probe_query(path: Path, claim_id: int | str) -> str:
+def _load_probe_query(
+    path: Path,
+    claim_id: int | str,
+    *,
+    iri_template: str | None = None,
+) -> str:
     text = path.read_text(encoding="utf-8")
     lines = [ln for ln in text.splitlines() if not ln.strip().startswith("#")]
     query = "\n".join(lines)
+    template = iri_template or "https://example.org/ins/id/Claim/{case_id}"
+    iri = template.format(case_id=claim_id, claim_id=claim_id)
     return (
         query.replace("{{claim_id}}", str(claim_id))
-        .replace("{{claim_iri}}", f"https://example.org/ins/id/Claim/{claim_id}")
+        .replace("{{case_id}}", str(claim_id))
+        .replace("{{claim_iri}}", iri)
+        .replace("{{case_iri}}", iri)
     )
 
 

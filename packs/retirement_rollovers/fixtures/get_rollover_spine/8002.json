@@ -1,0 +1,10 @@
+{
+  "claim_id": "8002",
+  "case_id": "8002",
+  "spine": {
+    "request_status_code": "OPEN",
+    "rollover_type_code": "DIRECT_ROLLOVER",
+    "plan_id": "401k-alpha",
+    "participant_id": "P-8002"
+  }
+}

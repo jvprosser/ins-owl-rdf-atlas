@@ -7,10 +7,16 @@ from typing import Any
 from rdflib import Graph
 
 from ins_claims_agent.graph.iri import claim_iri
+from ins_claims_agent.pack import Pack
+from ins_claims_agent.paths import current_pack
 
 
 def validate_claim_graph(graph: Graph, claim_id: int | str) -> dict[str, Any]:
     """Return a simple validation report for spine integrity."""
+    pack = current_pack()
+    if pack is not None and pack.graph.get("builder") == "generic":
+        return _validate_generic_case(graph, claim_id, pack)
+
     claim = claim_iri(claim_id)
     checks: list[dict[str, Any]] = []
 
@@ -43,3 +49,16 @@ def validate_claim_graph(graph: Graph, claim_id: int | str) -> dict[str, Any]:
 
     passed = all(c["passed"] for c in checks)
     return {"claim_id": str(claim_id), "passed": passed, "checks": checks}
+
+
+def _validate_generic_case(
+    graph: Graph, case_id: int | str, pack: Pack
+) -> dict[str, Any]:
+    iri = pack.case_iri(case_id)
+    case_class = str(pack.graph.get("case_class") or "Case")
+    checks: list[dict[str, Any]] = []
+    ok = bool(
+        graph.query(f"ASK {{ <{iri}> a <https://example.org/ins/{case_class}> }}")
+    )
+    checks.append({"check": "case_exists", "passed": ok})
+    return {"claim_id": str(case_id), "passed": ok, "checks": checks}

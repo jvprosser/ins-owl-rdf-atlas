@@ -42,11 +42,19 @@ def _exemplars_path(explicit: str | Path | None = None) -> Path:
     env = os.environ.get("INS_CLAIMS_PRE_ROUTER_EXEMPLARS")
     if env:
         return Path(env).expanduser().resolve()
+    for key in ("PACK_ROOT", "INS_CLAIMS_REPO_ROOT"):
+        pack_env = os.environ.get(key)
+        if pack_env:
+            for rel in ("exemplars.yaml", "pre_router/exemplars.yaml"):
+                candidate = Path(pack_env).expanduser() / rel
+                if candidate.is_file():
+                    return candidate.resolve()
     wf = os.environ.get("WORKFLOW_DATA_DIRECTORY")
     if wf:
-        candidate = Path(wf).expanduser() / "pre_router" / "exemplars.yaml"
-        if candidate.is_file():
-            return candidate.resolve()
+        for rel in ("exemplars.yaml", "pre_router/exemplars.yaml"):
+            candidate = Path(wf).expanduser() / rel
+            if candidate.is_file():
+                return candidate.resolve()
     return _PKG_EXEMPLARS
 
 
@@ -59,9 +67,10 @@ def load_catalog(path: str | Path | None = None) -> dict[str, Any]:
     exemplars = list(data.get("exemplars") or [])
     if not exemplars:
         raise ValueError(f"no exemplars in {catalog_path}")
+    allowed = tuple(data.get("labels") or LABELS)
     for row in exemplars:
         label = str(row.get("label") or "")
-        if label not in LABELS:
+        if label not in allowed:
             raise ValueError(f"unknown exemplar label {label!r} in {catalog_path}")
         if not str(row.get("text") or "").strip():
             raise ValueError(f"empty exemplar text id={row.get('id')!r}")
@@ -69,6 +78,7 @@ def load_catalog(path: str | Path | None = None) -> dict[str, Any]:
         "path": str(catalog_path),
         "catalog_version": int(data.get("catalog_version") or 1),
         "labels": list(data.get("labels") or LABELS),
+        "dispatch": data.get("dispatch") or DISPATCH,
         "exemplars": exemplars,
     }
 
@@ -125,7 +135,8 @@ def route_unstructured(
     )
     below = (not query) or score < threshold or close_call
     method = "below_threshold" if below else "cosine"
-    dispatch = DISPATCH.get(label or "", {})
+    dispatch_map = catalog.get("dispatch") or DISPATCH
+    dispatch = dispatch_map.get(label or "", {})
     cid = (claim_id or "").strip() or None
     return {
         "content_id": CONTENT_ID,

@@ -1,0 +1,38 @@
+id: retirement_distributions
+case_id_param: claim_id
+iri_template: https://example.org/ins/id/DistributionRequest/{case_id}
+ontology: ontology/distributions.ttl
+playbook: playbook/playbook.yaml
+probes: probes
+exemplars: exemplars.yaml
+cosine_labels:
+  - DISTRIBUTION
+  - EXCEPTION
+  - RMD
+graph:
+  builder: generic
+  case_class: DistributionRequest
+  literals:
+    request_status_code: requestStatusCode
+    distribution_type_code: distributionTypeCode
+    plan_id: planId
+    participant_id: participantId
+  booleans:
+    hardship_substantiation_missing: hardshipSubstantiationMissing
+    hold_or_aml_flag: holdOrAmlFlag
+    rmd_underpaid: rmdUnderpaid
+catalog:
+  fixture_writes: true
+  reads:
+    get_distribution_spine:
+      required: [claim_id]
+      fixture_dir: fixtures/get_distribution_spine
+    get_distribution_routing_signals:
+      required: [claim_id]
+      fixture_dir: fixtures/get_distribution_routing_signals
+    get_distribution_exception_view:
+      required: [claim_id]
+      fixture_dir: fixtures/get_distribution_exception_view
+    get_rmd_view:
+      required: [claim_id]
+      fixture_dir: fixtures/get_rmd_view

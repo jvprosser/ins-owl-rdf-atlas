@@ -1,0 +1,13 @@
+{
+  "claim_id": "8001",
+  "case_id": "8001",
+  "erisa_flags": [
+    {
+      "flag_id": "ERISA-8001",
+      "reason_code": "MISSING_SPOUSAL_CONSENT",
+      "qdro_on_file": false,
+      "married_indicator": true,
+      "required_form": "spousal_consent_witnessed"
+    }
+  ]
+}

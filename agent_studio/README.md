@@ -16,7 +16,6 @@ agent_studio/
   src/ins_claims_agent/
     mcp_facade/       # thin wrappers over the three MCPs
     graph/            # build / sparql / validate / route
-    specialists/      # domain worker tools
     audit/            # WAP audit orchestration
   ../ontology/        # TBox turtle
   ../probes/          # SPARQL probe files

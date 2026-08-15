@@ -1,0 +1,12 @@
+{
+  "claim_id": "7002",
+  "case_id": "7002",
+  "exceptions": [
+    {
+      "exception_id": "EX-7002",
+      "reason_code": "HARDSHIP_SUBSTANTIATION_MISSING",
+      "queue": "ExceptionQueue",
+      "required_docs": ["medical_bills", "hardship_attestation"]
+    }
+  ]
+}

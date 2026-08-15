@@ -40,7 +40,7 @@ workflow_data/
   playbook/playbook.yaml
 ```
 
-Copy from this repo’s `ontology/`, `probes/`, `playbook/` (or `studio_tools/runtime_assets/`).
+Copy from this repo’s `ontology/`, `probes/`, `playbook/`.
 
 3. Register each tool by uploading **only** that folder’s `tool.py` + `requirements.txt` (no vendored trees).
 4. **Push this repo to `main` before Studio runs** so the git pin resolves package code (`studio_io`, etc.). Prefer pinning a commit SHA once stable.
@@ -87,7 +87,3 @@ PY
 python /path/to/.../validate_claim_graph/tool.py --user-params '{}' --tool-params '{"claim_id":"401"}'
 python /path/to/.../route_claim/tool.py --user-params '{}' --tool-params '{"claim_id":"401"}'
 ```
-
-## Legacy
-
-`prepare_bundles.sh` and vendored `ins_claims_agent/` / `runtime_assets/` under tool folders are **obsolete** (kept only as local reference). Do not upload them to Studio.

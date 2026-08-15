@@ -5,32 +5,32 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from ins_claims_agent.pack import is_legacy_claims_root, is_pack_root, load_pack
+
 PACKAGE_DIR = Path(__file__).resolve().parent
 
 
 def _has_assets(candidate: Path) -> bool:
-    return (candidate / "ontology" / "claims_mvt.ttl").is_file() and (
-        candidate / "playbook" / "playbook.yaml"
-    ).is_file()
+    return is_pack_root(candidate) or is_legacy_claims_root(candidate)
 
 
 def _find_repo_root() -> Path:
-    """Locate ontology/ + playbook/ markers.
+    """Locate a pack.yaml or legacy ontology/ + playbook/ tree.
 
     Order:
-    1. ``INS_CLAIMS_REPO_ROOT`` env (explicit / tool override)
-    2. ``WORKFLOW_DATA_DIRECTORY`` (Agent Studio RO config mount)
+    1. ``PACK_ROOT`` / ``INS_CLAIMS_REPO_ROOT``
+    2. ``WORKFLOW_DATA_DIRECTORY``
     3. Walk upward from this package
     """
-    env = os.environ.get("INS_CLAIMS_REPO_ROOT")
-    if env:
-        candidate = Path(env).expanduser().resolve()
-        if _has_assets(candidate):
-            return candidate
-        raise FileNotFoundError(
-            f"INS_CLAIMS_REPO_ROOT={candidate} missing ontology/claims_mvt.ttl "
-            "and/or playbook/playbook.yaml"
-        )
+    for key in ("PACK_ROOT", "INS_CLAIMS_REPO_ROOT"):
+        env = os.environ.get(key)
+        if env:
+            candidate = Path(env).expanduser().resolve()
+            if _has_assets(candidate):
+                return candidate
+            raise FileNotFoundError(
+                f"{key}={candidate} missing pack.yaml or ontology/ + playbook/"
+            )
 
     wf = os.environ.get("WORKFLOW_DATA_DIRECTORY")
     if wf:
@@ -42,8 +42,8 @@ def _find_repo_root() -> Path:
         if _has_assets(candidate):
             return candidate
     raise FileNotFoundError(
-        "Could not locate ontology/claims_mvt.ttl and playbook/playbook.yaml "
-        "(set WORKFLOW_DATA_DIRECTORY or INS_CLAIMS_REPO_ROOT)"
+        "Could not locate pack.yaml or ontology/claims_mvt.ttl + playbook/ "
+        "(set WORKFLOW_DATA_DIRECTORY, PACK_ROOT, or INS_CLAIMS_REPO_ROOT)"
     )
 
 
@@ -51,8 +51,6 @@ def repo_root() -> Path:
     return _find_repo_root()
 
 
-# Eager default for local package use; Agent Studio tools should set
-# INS_CLAIMS_REPO_ROOT before importing graph modules when assets are bundled.
 try:
     REPO_ROOT = _find_repo_root()
 except FileNotFoundError:
@@ -63,13 +61,29 @@ def repo_path(*parts: str) -> Path:
     return repo_root().joinpath(*parts)
 
 
+def current_pack():
+    root = repo_root()
+    if is_pack_root(root):
+        return load_pack(root)
+    return None
+
+
 def default_playbook_path() -> Path:
+    pack = current_pack()
+    if pack is not None:
+        return pack.playbook_path
     return repo_path("playbook", "playbook.yaml")
 
 
 def default_ontology_path() -> Path:
+    pack = current_pack()
+    if pack is not None:
+        return pack.ontology_path
     return repo_path("ontology", "claims_mvt.ttl")
 
 
 def default_probes_dir() -> Path:
+    pack = current_pack()
+    if pack is not None:
+        return pack.probes_dir
     return repo_path("probes")

@@ -51,15 +51,20 @@ class ToolParameters(BaseModel):
 
 def run_tool(config: UserParameters, args: ToolParameters) -> Any:
     from ins_claims_agent import studio_io
+    from ins_claims_agent.graph.build_case_graph import build_case_graph
     from ins_claims_agent.graph.build_claim_graph import build_claim_graph
+    from ins_claims_agent.paths import current_pack
 
     assets = studio_io.configure_workflow_assets()
     claim_id = args.claim_id
     spine = studio_io.normalize_spine_payload(args.spine_json)
     signals = studio_io.normalize_signals_payload(args.signals_json)
-    studio_io.assert_spine_has_triangle_fields(spine)
-
-    graph = build_claim_graph(claim_id, spine=spine, signals=signals)
+    pack = current_pack()
+    if pack is not None and pack.graph.get("builder") == "generic":
+        graph = build_case_graph(claim_id, pack=pack, spine=spine, signals=signals)
+    else:
+        studio_io.assert_spine_has_triangle_fields(spine)
+        graph = build_claim_graph(claim_id, spine=spine, signals=signals)
 
     ttl_path = studio_io.graph_artifact_path(claim_id)
     ttl_path.parent.mkdir(parents=True, exist_ok=True)

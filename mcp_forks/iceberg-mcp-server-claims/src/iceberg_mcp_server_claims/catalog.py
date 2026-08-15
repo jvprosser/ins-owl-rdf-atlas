@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any, Callable
 
+from iceberg_mcp_server_claims.pack_fixtures import merge_pack_catalog
 from iceberg_mcp_server_claims.tools import audit_tools, claim_tools, impala_tools, view_tools
 
 CATALOG_VERSION = 1
@@ -126,6 +127,11 @@ WRITE_OPS: dict[str, dict[str, Any]] = {
     },
 }
 
+# Env-gated: PACK_ROOT / pack.yaml + catalog_fixtures.json (demo packs).
+PACK_ID = merge_pack_catalog(READ_OPS, WRITE_OPS)
+
+_ALIAS_KEYS = frozenset({"case_id", "claim_id"})
+
 
 def _as_json_string(value: Any) -> str:
     if isinstance(value, str):
@@ -203,6 +209,10 @@ def _merge_params(
         if value is None or value == "":
             continue
         params.setdefault(key, value)
+    if not params.get("claim_id") and params.get("case_id"):
+        params["claim_id"] = params["case_id"]
+    if not params.get("case_id") and params.get("claim_id"):
+        params["case_id"] = params["claim_id"]
     return params
 
 
@@ -245,7 +255,9 @@ def _dispatch(
     extra = [
         k
         for k in params
-        if k not in spec["required"] and k not in spec["optional"]
+        if k not in spec["required"]
+        and k not in spec["optional"]
+        and k not in _ALIAS_KEYS
     ]
     if extra:
         return _error(
@@ -263,9 +275,11 @@ def run_named_query(
     params_json: str | dict[str, Any] | None = None,
     *,
     claim_id: str | None = None,
+    case_id: str | None = None,
     database: str | None = None,
 ) -> str:
-    """Run a catalog read by label. Flat claim_id is Studio-safe."""
+    """Run a catalog read by label. Flat claim_id / case_id is Studio-safe."""
+    cid = claim_id or case_id
     return _dispatch(
         label,
         params_json,
@@ -273,7 +287,7 @@ def run_named_query(
         kind="read",
         other_ops=WRITE_OPS,
         other_kind="write",
-        extra_params={"claim_id": claim_id, "database": database},
+        extra_params={"claim_id": cid, "case_id": cid, "database": database},
     )
 
 

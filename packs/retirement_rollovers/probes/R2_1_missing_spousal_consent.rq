@@ -1,0 +1,6 @@
+# probe_id: R2.1
+# form: ASK
+PREFIX ex: <https://example.org/ins/>
+ASK {
+  <{{case_iri}}> ex:missingSpousalConsent true .
+}

@@ -1,0 +1,9 @@
+{
+  "claim_id": "7002",
+  "case_id": "7002",
+  "signals": {
+    "hardship_substantiation_missing": true,
+    "hold_or_aml_flag": false,
+    "rmd_underpaid": false
+  }
+}
