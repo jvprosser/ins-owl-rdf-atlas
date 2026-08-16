@@ -1,4 +1,4 @@
-"""Style B router: execute Git-managed SPARQL probes + playbook actions."""
+"""Execute Git-managed SPARQL probes + playbook actions."""
 
 from __future__ import annotations
 

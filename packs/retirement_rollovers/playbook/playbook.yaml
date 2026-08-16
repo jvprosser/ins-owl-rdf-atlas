@@ -5,10 +5,6 @@ probes_relpath: probes
 iri_base: https://example.org/ins/
 case_iri_template: https://example.org/ins/id/RolloverRequest/{case_id}
 
-loop:
-  max_route_passes: 4
-  no_progress_limit: 2
-
 priorities:
   - R0.1
   - R1.1

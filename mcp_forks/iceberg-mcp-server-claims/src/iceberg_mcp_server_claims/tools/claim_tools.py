@@ -92,7 +92,7 @@ def get_claim_routing_signals(
     *,
     query_rows: QueryFn | None = None,
 ) -> str:
-    """Return existence / routing flags for Style B probe inputs.
+    """Return existence / routing flags for playbook probe inputs.
 
     JSON shape::
 

@@ -56,7 +56,7 @@ Facade stubs already exist in `agent_studio/src/ins_claims_agent/mcp_facade/atla
 
 ### Phase C — optional join-up
 
-Intake unchanged. After route, a governance step may *record* that the run used tables bound to those IRIs (evidence JSON or Atlas note). Style B / WAP remain Iceberg; Atlas/Ranger do not store the claim graph.
+Intake unchanged. After route, a governance step may *record* that the run used tables bound to those IRIs (evidence JSON or Atlas note). Audit writes remain Iceberg; Atlas/Ranger do not store the claim graph.
 
 ## Out of scope for this plan
 
@@ -64,7 +64,7 @@ Intake unchanged. After route, a governance step may *record* that the run used 
 - Putting `claim_{id}_graph.ttl` into Atlas
 - Agent-authored Ranger policies
 - Dual Atlas servers
-- Blocking closeout / PD pastes or Style B on Atlas
+- Blocking closeout / PD pastes on Atlas
 
 ## Crew / Studio
 

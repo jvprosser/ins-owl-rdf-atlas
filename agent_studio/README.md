@@ -1,6 +1,6 @@
 # ins-claims-agent (Agent Studio tool package)
 
-Phase 1 scaffold for Style B claim routing:
+Structured claim intake for Agent Studio:
 
 - **Manager agent** — NL interface: drives tools, explains results, assigns unstructured LLM subtasks (ADR 0001 D0)
 - **Python tools** — deterministic build / validate / route (SPARQL probes + playbook)
@@ -14,13 +14,12 @@ RDF/SPARQL is **not** an MCP — it runs in-process via `rdflib`. The manager ag
 ```text
 agent_studio/
   src/ins_claims_agent/
-    mcp_facade/       # thin wrappers over the three MCPs
+    mcp_facade/       # thin wrappers over Iceberg (Atlas/Ranger stubs)
     graph/            # build / sparql / validate / route
-    audit/            # WAP audit orchestration
+  studio_tools/       # thin tool.py + requirements.txt + agent pastes
   ../ontology/        # TBox turtle
   ../probes/          # SPARQL probe files
   ../playbook/        # step → agent → tools
-  workflows/          # Style B loop notes
 ```
 
 ## Install (local)
@@ -40,12 +39,4 @@ Thin tools in `studio_tools/` (`tool.py` + `requirements.txt` only; git-pin `ins
 3. `validate_claim_graph` / `route_claim` — graph artifact + `WORKFLOW_DATA_DIRECTORY` probes/playbook
 4. `pre_route_text` — unstructured NL cosine triage (litigation vs claims); LLM only if `needs_llm`
 
-See [`studio_tools/README.md`](studio_tools/README.md).
-
-## Full Style B wiring (later)
-
-1. Register MCPs: Iceberg fork, data-contract Atlas fork, Ranger upstream.
-2. Bind MCP: `bind_mcp_caller(caller)` or `bind_agent_studio_mcp(call_tool)`.
-3. Workflow loop: `run_style_b_loop(...)` → Route → Worker → Refresh → Route … until terminal.
-
-See `workflows/style_b_route_loop.md` and `../docs/mcp-fork-charter.md`.
+See [`studio_tools/README.md`](studio_tools/README.md) and [`../docs/mcp-fork-charter.md`](../docs/mcp-fork-charter.md).

@@ -1,4 +1,4 @@
-# Style B router playbook — rules as Git-reviewed config (not Iceberg UI).
+# Router playbook — rules as Git-reviewed config (not Iceberg UI).
 # NOTE: do not use YAML key `on:` — in YAML 1.1 it is a boolean synonym for true.
 
 version: 1
@@ -6,10 +6,6 @@ ontology_relpath: ontology/claims_mvt.ttl
 probes_relpath: probes
 iri_base: https://example.org/ins/
 claim_iri_template: https://example.org/ins/id/Claim/{claim_id}
-
-loop:
-  max_route_passes: 8
-  no_progress_limit: 2
 
 # Evaluation order: integrity → lane → gaps → financial → subro → SIU
 priorities:

@@ -16,7 +16,7 @@ After `route_claim`, the decision’s `agent_role` + `allowed_tools` name the ne
 
 V7 MCP registers only `get_server_info`, `list_named_queries`, `run_named_query`, `run_named_write`. Playbook names are catalog **labels**, not MCP tool names.
 
-Optional lifecycle (not in playbook, useful for Style B): `begin_agent_audit_run`, `append_agent_audit_evidence`, `abandon_agent_audit_run`.
+Optional catalog lifecycle labels (not used on the one-shot intake path): `begin_agent_audit_run`, `append_agent_audit_evidence`, `abandon_agent_audit_run`.
 
 ## Recommended Studio agents
 
