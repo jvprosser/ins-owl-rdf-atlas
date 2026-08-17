@@ -1,6 +1,0 @@
-# probe_id: R0.1
-# form: ASK
-PREFIX ex: <https://example.org/ins/>
-ASK {
-  <{{case_iri}}> a ex:RolloverRequest .
-}

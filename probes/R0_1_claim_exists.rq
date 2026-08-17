@@ -1,7 +1,0 @@
-# probe_id: R0.1
-# form: ASK
-# purpose: Claim individual exists in the in-memory graph
-PREFIX ex: <https://example.org/ins/>
-ASK {
-  <{{claim_iri}}> a ex:AutoClaim .
-}

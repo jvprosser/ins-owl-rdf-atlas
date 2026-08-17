@@ -38,9 +38,8 @@ packs/<id>/
 | `pack.yaml` | Pack `id`, IRI template, paths to ontology/playbook/probes/exemplars, `graph.builder: generic`, JSON field → RDF predicate maps, optional catalog notes | Studio tools (`load_pack` / `build_case_graph` / `route_claim`) via Workflow Data |
 | `exemplars.yaml` | Unstructured phrases, `labels`, `dispatch` (coworker / `agent_role` / `next_step`) | Studio `pre_route_text` (Routing Agent). Advisory only; a `claim_id` still goes through structured intake |
 | `catalog_fixtures.json` | MCP allow-list for this pack: each `run_named_query` **label**, required params, and `fixture_dir` | MCP only (when it can load pack fixtures). Not used by graph tools |
-| `ontology/*.ttl` | TBox: classes (`DistributionRequest`, `RolloverRequest`) and datatype properties | `build_claim_graph` (generic builder parses this into the session graph) |
-| `playbook/playbook.yaml` | Probe priority, `case_iri_template`, actions (`step`, `agent`, `lane`, tools) | `route_claim` |
-| `probes/*.rq` | One SPARQL check per playbook probe (`{{case_iri}}`) | `route_claim` |
+| `ontology/*.json` | Case field schema (replaces Turtle TBox) | `build_claim_graph` / humans |
+| `playbook/playbook.yaml` | Probe YAML `match` + actions (`step`, `agent`, `lane`, tools) | `route_claim` |
 | `fixtures/<label>/<id>.json` | Fake lake payload for that named query and case (spine, signals, exception/ERISA/RMD view) | MCP `run_named_query` if fixtures are loaded. Same JSON shape Manager would pass into `build_claim_graph` |
 | `agents/*.md` | Paste-ready Studio agents (Orchestrator, Manager, specialists) | Humans → Agent Studio fields. Not uploaded to Workflow Data |
 

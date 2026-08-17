@@ -1,8 +1,8 @@
 # Architecture and patterns
 
-High-level view for data engineers. This stack routes operational cases (auto claims today; retirement distributions/rollovers as the same control plane) on Cloudera: Iceberg via Impala, a Git-reviewed OWL/RDF TBox, and Cloudera AI Agent Studio. The LLM is the NL front door. It is not the rules engine.
+High-level view for data engineers. This stack routes operational cases (auto claims today; retirement distributions/rollovers as the same control plane) on Cloudera: Iceberg via Impala, a Git-reviewed JSON case schema + YAML playbook, and Cloudera AI Agent Studio. The LLM is the NL front door. It is not the rules engine.
 
-Related: [ADR 0001](adr/0001-agent-studio-mcp-and-tool-layout.md), [MCP fork charter](mcp-fork-charter.md), [Atlas/Ranger plan](atlas-ranger-integration-plan.md), [finserv packs](finserv-pattern-pack.md), [probe/action test prompts](probe-action-tests.md).
+Related: [ADR 0001](adr/0001-agent-studio-mcp-and-tool-layout.md), [MCP fork charter](mcp-fork-charter.md), [Atlas/Ranger plan](atlas-ranger-integration-plan.md), [finserv packs](finserv-pattern-pack.md), [probe/action test prompts](probe-action-tests.md), [RDF/SPARQL restore](rdf-sparql-branch.md).
 
 ## Problem split
 
@@ -11,8 +11,8 @@ Three different jobs are easy to collapse. They are kept separate on purpose.
 | Job | Question | Owner |
 |---|---|---|
 | Lake I/O | What rows exist for this id, and what may we write? | Iceberg + Impala + a **named-query catalog** on MCP |
-| Instance meaning | What is this case as RDF, and is the spine intact? | Session graph (`rdflib`) + SPARQL checks |
-| Next work | Which lane and specialist run next? | Git playbook + SPARQL probes |
+| Instance meaning | What is this case, and is the spine intact? | Session case JSON + field checks |
+| Next work | Which lane and specialist run next? | Git playbook + YAML probes |
 
 Atlas (deferred) would answer “what *is* this table/column in the ontology?” Ranger (deferred) would answer “who may see or change it?” Neither stores the per-run graph or chooses `next_step`.
 
@@ -36,7 +36,7 @@ User
 
 Custom Studio tools **cannot** call MCP in-process. The agent is the only bridge: MCP result → tool argument → session artifact.
 
-Unstructured notes go to Routing Agent (`pre_route_text`, TF-IDF cosine). If a `claim_id` is present, structured intake still wins. Cosine does not override SPARQL.
+Unstructured notes go to Routing Agent (`pre_route_text`, TF-IDF cosine). If a `claim_id` is present, structured intake still wins. Cosine does not override YAML probes.
 
 ## Pattern: allow-listed lake access (not free SQL)
 
@@ -50,21 +50,21 @@ Audit lands in Iceberg (`agent_run_audit` / `agent_run_evidence`), partitioned b
 
 Think of the catalog as a **published data product API** over the same tables you would otherwise expose as views — except the consumer is an agent, and the contract is Git-reviewed Python rather than a BI semantic layer.
 
-## Pattern: session ABox, Git TBox
+## Pattern: session case JSON, Git schema
 
-The ontology (TBox) is Turtle in Git (`ontology/claims_mvt.ttl`, or a pack TTL). It is not stored in Atlas and not queried as a lake table.
+The schema is JSON in Git (`ontology/claims.json`, or a pack `ontology/*.json`). It is not stored in Atlas and not queried as a lake table.
 
-`build_claim_graph` materializes **this run’s** ABox: claim/policy/vehicle triangle (auto) or a generic case IRI + mapped literals/booleans (packs). Output is `SESSION_DIRECTORY/claim_{id}_graph.ttl` (`/workspace` in Studio). That file is the only instance graph. It is not written back to Iceberg.
+`build_claim_graph` materializes **this run’s** case document: claim/policy/vehicle triangle fields (auto) or mapped literals/booleans (packs). Output is `SESSION_DIRECTORY/claim_{id}_case.json` (`/workspace` in Studio). That file is the only instance document. It is not written back to Iceberg.
 
-`validate_claim_graph` is SPARQL ASK on that graph (auto: exists / policy / vehicle / triangle). It is instance quality for routing, not a table-level ODCS contract.
+`validate_claim_graph` checks required fields on that JSON (auto: exists / policy / vehicle / triangle). It is instance quality for routing, not a table-level ODCS contract.
 
-Mapping from lake JSON → RDF is code (claims builder) or `pack.yaml` field maps (generic builder). There is no runtime join from Atlas IRIs into the builder today.
+Mapping from lake JSON → case JSON is code (claims builder) or `pack.yaml` field maps (generic builder). There is no runtime join from Atlas IRIs into the builder today.
 
 ## Pattern: probes + playbook as the router
 
-`route_claim` evaluates Git SPARQL probes in playbook priority order (`ASK` / `SELECT`). The first matching action wins (`next_step`, `agent_role`, `lane`, `allowed_tools`, `terminal`). Default action is human-review/wait.
+`route_claim` evaluates Git YAML probes in playbook priority order (`ASK` / `SELECT` on case JSON paths). The first matching action wins (`next_step`, `agent_role`, `lane`, `allowed_tools`, `terminal`). Default action is human-review/wait.
 
-Probes bind `{{claim_iri}}` / `{{case_iri}}` from a template. Rules are reviewed as YAML + `.rq` files, not as prompt text and not as Iceberg UI config.
+Probes bind field paths on the case document (`litigation_indicator`, `triangle`, …). Rules are reviewed as YAML, not as prompt text and not as Iceberg UI config.
 
 The playbook can name specialists that have no Studio paste yet (`PdClaimsAgent`, `SiuAgent`, …). Orchestrator must Final Answer the route JSON rather than invent a Role.
 
@@ -74,7 +74,7 @@ The playbook can name specialists that have no Studio paste yet (`PdClaimsAgent`
 |---|---|---|
 | Mount | `/workflow_data` (`WORKFLOW_DATA_DIRECTORY`) | `/workspace` (`SESSION_DIRECTORY`) |
 | Access | Read-only | Read-write |
-| Contents | Ontology, probes, playbook, `pack.yaml`, exemplars | `claim_{id}_graph.ttl`, validation JSON, route JSON |
+| Contents | Schema JSON, playbook, `pack.yaml`, exemplars | `claim_{id}_case.json`, validation JSON, route JSON |
 | Scope | All tools in the workflow | Same, per run |
 
 Thin tools: each Studio tool is `tool.py` + `requirements.txt` only. Shared logic is `ins-claims-agent` pinned from git.
@@ -83,7 +83,7 @@ MCP is a **separate** `uvx` stdio process started by the workflow engine. It inh
 
 ## Pattern: domain packs (same control plane)
 
-A **pack** swaps TBox, probes, playbook, cosine exemplars, and (for demos) fixture payloads. It does not clone MCP and does not rename Studio tools. Tool param remains `claim_id`.
+A **pack** swaps schema JSON, playbook, cosine exemplars, and (for demos) fixture payloads. It does not clone MCP and does not rename Studio tools. Tool param remains `claim_id`.
 
 Claims today is the **default product**: walk-up to repo-root `ontology/` + `playbook/`. Do not move those trees until 402 has been proven from a pointer pack.
 
@@ -108,11 +108,11 @@ The LLM is justified for NL ops and unstructured text. Hardship, RMD, ERISA, lit
 
 | Concern | Today | Later |
 |---|---|---|
-| Schema → ontology bind | Implicit (SQL handlers + builder maps + Git TBox) | Atlas business metadata `ontology.iri` on table/column GUIDs |
+| Schema → ontology bind | Implicit (SQL handlers + builder maps + Git schema JSON) | Atlas business metadata `ontology.iri` on table/column GUIDs |
 | Access / masking | Impala principal on MCP; catalog fail-closed for SQL | Ranger policies; prefer tags from Atlas classifications |
-| Contract / quality | MCP catalog + per-run SPARQL validate | ODCS / Atlas contracts for **table** drift; do not replace instance validate |
+| Contract / quality | MCP catalog + per-run case JSON validate | ODCS / Atlas contracts for **table** drift; do not replace instance validate |
 
-Atlas is complementary catalog glue. It is not a triple store and not a SPARQL endpoint. Ranger does not define Claim vs LitigationCase. Session Turtle and `event_json` are outside Impala masking.
+Atlas is complementary catalog glue. It is not a triple store and not a SPARQL endpoint. Ranger does not define Claim vs LitigationCase. Session case JSON and `event_json` are outside Impala masking.
 
 ## What is intentionally not here
 
@@ -124,29 +124,28 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 
 ## Terms
 
-**OWL / graph**
+**Schema / case JSON**
 
 | Term | Meaning |
 |---|---|
-| TBox | Ontology schema: classes and properties. Git Turtle, not a lake table. |
-| ABox | Instance triples for **this run** (this claim or case). |
-| Triangle | Claims check that claim, policy, and vehicle IRIs exist and are linked. |
-| Spine / `get_claim_spine` | Named query for the core claim row used to build the graph. |
-| Session graph | Per-run Turtle in `SESSION_DIRECTORY`. Not written to Iceberg. |
-| `{{claim_iri}}` / `{{case_iri}}` | Probe placeholders filled from the pack or claims IRI template. |
+| Schema JSON | Field list for the case document (`ontology/claims.json`). Not a lake table. |
+| Case JSON | Instance document for **this run** (`claim_{id}_case.json`). |
+| Triangle | Claims check that policy, vehicle, and `policy_covers_vehicle` are set. |
+| Spine / `get_claim_spine` | Named query for the core claim row used to build the case JSON. |
+| Session case | Per-run JSON in `SESSION_DIRECTORY`. Not written to Iceberg. |
 
 **Playbook / route**
 
 | Term | Meaning |
 |---|---|
-| Probe | Git SPARQL `ASK`/`SELECT` (`.rq`). First playbook match wins. |
+| Probe | YAML `ASK`/`SELECT` on case JSON paths. First playbook match wins. |
 | Playbook | YAML that orders probes and names the action. Not an ops runbook. |
 | `next_step` | Action id the specialist should perform. |
 | `agent_role` | Specialist coworker to Delegate to. |
 | `lane` | Routing bucket (litigation, BI, closeout, …). |
 | `allowed_tools` | Catalog labels that specialist may call. |
 | `terminal` | Router says this run is done (no further specialist). |
-| Structured intake | User supplied a case/claim id. SPARQL path wins over cosine. |
+| Structured intake | User supplied a case/claim id. YAML probes win over cosine. |
 
 **MCP / audit**
 
@@ -181,7 +180,7 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 
 | Term | Meaning |
 |---|---|
-| Pack | Directory that swaps TBox, probes, playbook, exemplars, and (for demos) fixtures. Same MCP and Studio tool names. |
+| Pack | Directory that swaps schema JSON, playbook, exemplars, and (for demos) fixtures. Same MCP and Studio tool names. |
 | `PACK_ROOT` | Host path on the MCP process to a pack with `catalog_fixtures.json`. Not the tool sandbox. |
 | `PACK_ID` | Planned string to select fixtures baked into the MCP package (`unset` = live claims Impala). |
 | Fixture | Canned JSON for a named query. Lake-shaped payload, not a routing rule. |
@@ -193,14 +192,14 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 
 | Term | Meaning |
 |---|---|
-| ODCS | Open Data Contract Standard. Table-level contract/quality. Does not replace per-run SPARQL validate. |
+| ODCS | Open Data Contract Standard. Table-level contract/quality. Does not replace per-run case JSON validate. |
 | `ontology.iri` | Planned Atlas business-metadata key: table/column GUID → ontology IRI. |
 
 ## Repo map
 
 | Path | Role |
 |---|---|
-| `ontology/`, `probes/`, `playbook/` | Live claims TBox and router (402) |
+| `ontology/`, `playbook/` | Live claims schema JSON and router (402) |
 | `ddl/hive_iceberg/` | Audit table DDL |
 | `mcp_forks/iceberg-mcp-server-claims/` | Impala MCP V7 + named catalog |
 | `agent_studio/src/ins_claims_agent/` | Shared build / validate / route / pack loader |

@@ -15,7 +15,7 @@ class Pack:
     root: Path
     case_id_param: str = "claim_id"
     iri_template: str = "https://example.org/ins/id/Claim/{case_id}"
-    ontology: str = "ontology/claims_mvt.ttl"
+    schema: str = "ontology/claims.json"
     playbook: str = "playbook/playbook.yaml"
     probes: str = "probes"
     exemplars: str = "exemplars.yaml"
@@ -29,7 +29,11 @@ class Pack:
 
     @property
     def ontology_path(self) -> Path:
-        return self.path(self.ontology)
+        return self.path(self.schema)
+
+    @property
+    def schema_path(self) -> Path:
+        return self.path(self.schema)
 
     @property
     def playbook_path(self) -> Path:
@@ -61,7 +65,11 @@ def load_pack(root: str | Path) -> Pack:
             raw.get("iri_template")
             or "https://example.org/ins/id/Claim/{case_id}"
         ),
-        ontology=str(raw.get("ontology") or "ontology/claims_mvt.ttl"),
+        schema=str(
+            raw.get("schema")
+            or raw.get("ontology")
+            or "ontology/claims.json"
+        ),
         playbook=str(raw.get("playbook") or "playbook/playbook.yaml"),
         probes=str(raw.get("probes") or "probes"),
         exemplars=str(raw.get("exemplars") or "exemplars.yaml"),
@@ -77,6 +85,7 @@ def is_pack_root(candidate: Path) -> bool:
 
 
 def is_legacy_claims_root(candidate: Path) -> bool:
-    return (candidate / "ontology" / "claims_mvt.ttl").is_file() and (
-        candidate / "playbook" / "playbook.yaml"
-    ).is_file()
+    playbook = (candidate / "playbook" / "playbook.yaml").is_file()
+    schema = (candidate / "ontology" / "claims.json").is_file()
+    turtle = (candidate / "ontology" / "claims_mvt.ttl").is_file()
+    return playbook and (schema or turtle)

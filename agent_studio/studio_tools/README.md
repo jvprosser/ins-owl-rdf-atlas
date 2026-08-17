@@ -19,7 +19,7 @@ FILE: agent_studio/studio_tools/...
 
 | Tool | Input | Output (`SESSION_DIRECTORY`) |
 |---|---|---|
-| `build_claim_graph/` | `claim_id` + MCP `spine_json` / `signals_json` | `claim_{id}_graph.ttl` |
+| `build_claim_graph/` | `claim_id` + MCP `spine_json` / `signals_json` | `claim_{id}_case.json` |
 | `validate_claim_graph/` | `claim_id` | `claim_{id}_validation.json` |
 | `route_claim/` | `claim_id` | `claim_{id}_route.json` |
 | `pre_route_text/` | unstructured `text` (+ optional `claim_id`) | `pre_route_{id}.json` — cosine label/score; `needs_llm` if below threshold |
@@ -35,12 +35,11 @@ FILE: agent_studio/studio_tools/...
 
 ```text
 workflow_data/
-  ontology/claims_mvt.ttl
-  probes/*.rq
+  ontology/claims.json
   playbook/playbook.yaml
 ```
 
-Copy from this repo’s `ontology/`, `probes/`, `playbook/`.
+Copy from this repo’s `ontology/` and `playbook/`.
 
 3. Register each tool by uploading **only** that folder’s `tool.py` + `requirements.txt` (no vendored trees).
 4. **Push this repo to `main` before Studio runs** so the git pin resolves package code (`studio_io`, etc.). Prefer pinning a commit SHA once stable.

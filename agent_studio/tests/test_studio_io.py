@@ -108,6 +108,6 @@ def test_build_accepts_fork_envelope():
         "payment_ids": [],
         "recovery_ids": [],
     }
-    g = build_claim_graph(401, spine=spine, signals=signals)
-    report = validate_claim_graph(g, 401)
+    case = build_claim_graph(401, spine=spine, signals=signals)
+    report = validate_claim_graph(case, 401)
     assert report["passed"] is True

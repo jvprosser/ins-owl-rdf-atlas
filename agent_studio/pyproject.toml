@@ -1,11 +1,10 @@
 [project]
 name = "ins-claims-agent"
 version = "0.1.0"
-description = "Cloudera Agent Studio tools for RDF/SPARQL claim routing over Iceberg/Atlas/Ranger MCP"
+description = "Cloudera Agent Studio tools for JSON/YAML claim routing over Iceberg MCP"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-  "rdflib>=7.0.0",
   "pyyaml>=6.0",
   "numpy>=1.24",
 ]

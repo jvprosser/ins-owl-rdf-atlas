@@ -1,20 +1,13 @@
 """
-CONTENT_ID: INS_CLAIMS_BUILD_PATH_A_V2
-REPO_REF: 319ede0
-UPDATED: 2026-08-05
+CONTENT_ID: INS_CLAIMS_BUILD_JSON_V1
+REPO_REF: json-yaml-runtime
+UPDATED: 2026-08-16
 FILE: agent_studio/studio_tools/build_claim_graph/tool.py
 
 CUSTOM TOOL build_claim_graph — structured claim intake.
 
 Agent must call MCP get_claim_spine (+ get_claim_routing_signals), then pass
-those JSON payloads here. Writes claim_{id}_graph.ttl to SESSION_DIRECTORY.
-
-Tool params example:
-  {
-    "claim_id": "401",
-    "spine_json": "<MCP get_claim_spine result>",
-    "signals_json": "<MCP get_claim_routing_signals result>"
-  }
+those JSON payloads here. Writes claim_{id}_case.json to SESSION_DIRECTORY.
 """
 
 from __future__ import annotations
@@ -25,12 +18,10 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-TOOL_FINGERPRINT = "INS_CLAIMS_BUILD_PATH_A_V2"
+TOOL_FINGERPRINT = "INS_CLAIMS_BUILD_JSON_V1"
 
 
 class UserParameters(BaseModel):
-    """No Hive secrets — lake I/O is via agent MCP."""
-
     pass
 
 
@@ -61,25 +52,24 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
     signals = studio_io.normalize_signals_payload(args.signals_json)
     pack = current_pack()
     if pack is not None and pack.graph.get("builder") == "generic":
-        graph = build_case_graph(claim_id, pack=pack, spine=spine, signals=signals)
+        case = build_case_graph(claim_id, pack=pack, spine=spine, signals=signals)
     else:
         studio_io.assert_spine_has_triangle_fields(spine)
-        graph = build_claim_graph(claim_id, spine=spine, signals=signals)
+        case = build_claim_graph(claim_id, spine=spine, signals=signals)
 
-    ttl_path = studio_io.graph_artifact_path(claim_id)
-    ttl_path.parent.mkdir(parents=True, exist_ok=True)
-    graph.serialize(destination=str(ttl_path), format="turtle")
+    case_path = studio_io.graph_artifact_path(claim_id)
+    studio_io.write_json_artifact(case_path, case)
 
     meta = {
         "tool_fingerprint": TOOL_FINGERPRINT,
         "content_id": TOOL_FINGERPRINT,
         "claim_id": str(claim_id),
         "database": args.database or spine.get("database") or "car_insurance_claims",
-        "triple_count": len(graph),
+        "field_count": len(case),
         "policy_id": spine.get("policy_id"),
         "insurable_object_id": spine.get("insurable_object_id"),
         "coverage_type_code": spine.get("coverage_type_code"),
-        "graph_artifact": str(ttl_path.resolve()),
+        "graph_artifact": str(case_path.resolve()),
         "session_directory": str(studio_io.session_dir()),
         "workflow_data_directory": str(assets),
         "status": "success",
@@ -91,9 +81,9 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
         **meta,
         "artifacts_created": [
             {
-                "file_name": ttl_path.name,
-                "file_path": str(ttl_path.resolve()),
-                "description": "Claim RDF graph (Turtle) for validate/route",
+                "file_name": case_path.name,
+                "file_path": str(case_path.resolve()),
+                "description": "Case JSON for validate/route",
             },
             {
                 "file_name": meta_path.name,

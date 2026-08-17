@@ -1,6 +1,0 @@
-# probe_id: R2.2
-# form: ASK
-PREFIX ex: <https://example.org/ins/>
-ASK {
-  <{{case_iri}}> ex:hardshipSubstantiationMissing true .
-}

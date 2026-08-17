@@ -1,0 +1,15 @@
+{
+  "id": "retirement_distributions",
+  "label": "Retirement distribution request case JSON",
+  "case_class": "DistributionRequest",
+  "fields": {
+    "case_exists": { "type": "boolean" },
+    "request_status_code": { "type": "string" },
+    "distribution_type_code": { "type": "string" },
+    "plan_id": { "type": "string" },
+    "participant_id": { "type": "string" },
+    "hold_or_aml_flag": { "type": "boolean" },
+    "hardship_substantiation_missing": { "type": "boolean" },
+    "rmd_underpaid": { "type": "boolean" }
+  }
+}

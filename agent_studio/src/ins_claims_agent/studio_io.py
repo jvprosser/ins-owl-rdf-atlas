@@ -40,7 +40,8 @@ def configure_workflow_assets(assets_root: str | None = None) -> Path:
 
 
 def graph_artifact_path(claim_id: str | int) -> Path:
-    return session_dir() / f"claim_{claim_id}_graph.ttl"
+    """Session case JSON (legacy name; was Turtle)."""
+    return session_dir() / f"claim_{claim_id}_case.json"
 
 
 def validation_artifact_path(claim_id: str | int) -> Path:

@@ -98,4 +98,4 @@ def test_legacy_claims_root_without_pack_env(monkeypatch):
     from ins_claims_agent.paths import current_pack, default_ontology_path
 
     assert current_pack() is None
-    assert default_ontology_path().name == "claims_mvt.ttl"
+    assert default_ontology_path().name == "claims.json"

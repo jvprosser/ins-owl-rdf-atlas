@@ -1,7 +1,0 @@
-# probe_id: R1.1
-# form: SELECT
-PREFIX ex: <https://example.org/ins/>
-SELECT ?status
-WHERE {
-  <{{case_iri}}> ex:requestStatusCode ?status .
-}

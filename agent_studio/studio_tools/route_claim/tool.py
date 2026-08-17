@@ -1,12 +1,12 @@
 """
-CONTENT_ID: INS_CLAIMS_ROUTE_PATH_A_V2
-REPO_REF: 319ede0
-UPDATED: 2026-08-05
+CONTENT_ID: INS_CLAIMS_ROUTE_JSON_V1
+REPO_REF: json-yaml-runtime
+UPDATED: 2026-08-16
 FILE: agent_studio/studio_tools/route_claim/tool.py
 
 CUSTOM TOOL route_claim — structured claim intake.
 
-Reads claim_{id}_graph.ttl from SESSION_DIRECTORY; probes + playbook from
+Reads claim_{id}_case.json from SESSION_DIRECTORY; playbook YAML from
 WORKFLOW_DATA_DIRECTORY. Returns next_step / lane / agent_role / reason_probe_ids.
 """
 
@@ -18,7 +18,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-TOOL_FINGERPRINT = "INS_CLAIMS_ROUTE_PATH_A_V2"
+TOOL_FINGERPRINT = "INS_CLAIMS_ROUTE_JSON_V1"
 
 
 class UserParameters(BaseModel):
@@ -29,32 +29,29 @@ class ToolParameters(BaseModel):
     claim_id: str = Field(description="Claim surrogate id to route")
     graph_path: Optional[str] = Field(
         default=None,
-        description="Optional Turtle path; default SESSION_DIRECTORY/claim_{id}_graph.ttl",
+        description="Optional case JSON path; default SESSION_DIRECTORY/claim_{id}_case.json",
     )
 
 
 def run_tool(config: UserParameters, args: ToolParameters) -> Any:
     from pathlib import Path
 
-    from rdflib import Graph
-
     from ins_claims_agent import studio_io
     from ins_claims_agent.graph.route_claim import route_claim
 
     assets = studio_io.configure_workflow_assets()
     claim_id = args.claim_id
-    ttl_path = (
+    case_path = (
         Path(args.graph_path) if args.graph_path else studio_io.graph_artifact_path(claim_id)
     )
-    if not ttl_path.is_file():
+    if not case_path.is_file():
         raise FileNotFoundError(
-            f"Graph artifact not found: {ttl_path}. "
+            f"Case artifact not found: {case_path}. "
             "Run build_claim_graph first (MCP spine → build)."
         )
 
-    graph = Graph()
-    graph.parse(str(ttl_path), format="turtle")
-    decision = route_claim(graph, claim_id)
+    case = json.loads(case_path.read_text(encoding="utf-8"))
+    decision = route_claim(case, claim_id)
 
     summary = {
         "tool_fingerprint": TOOL_FINGERPRINT,
@@ -67,7 +64,7 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
         "needs_llm": decision.get("needs_llm"),
         "terminal": decision.get("terminal"),
         "reason_probe_ids": decision.get("reason_probe_ids"),
-        "graph_artifact": str(ttl_path.resolve()),
+        "graph_artifact": str(case_path.resolve()),
         "workflow_data_directory": str(assets),
         "session_directory": str(studio_io.session_dir()),
     }

@@ -1,0 +1,14 @@
+{
+  "id": "retirement_rollovers",
+  "label": "Retirement rollover request case JSON",
+  "case_class": "RolloverRequest",
+  "fields": {
+    "case_exists": { "type": "boolean" },
+    "request_status_code": { "type": "string" },
+    "rollover_type_code": { "type": "string" },
+    "plan_id": { "type": "string" },
+    "participant_id": { "type": "string" },
+    "missing_spousal_consent": { "type": "boolean" },
+    "missing_required_docs": { "type": "boolean" }
+  }
+}

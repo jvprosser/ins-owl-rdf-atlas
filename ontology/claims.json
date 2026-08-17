@@ -1,0 +1,30 @@
+{
+  "id": "claims",
+  "label": "Car insurance claims case JSON",
+  "comment": "Field names on the session case document (spine + signals). RDF/SPARQL restore: git checkout rdf-sparql-runtime.",
+  "case_class": "AutoClaim",
+  "fields": {
+    "claim_id": { "type": "string" },
+    "claim_exists": { "type": "boolean" },
+    "claim_status_code": { "type": "string" },
+    "litigation_indicator": { "type": "boolean" },
+    "has_litigation_case": { "type": "boolean" },
+    "subrogation_indicator": { "type": "boolean" },
+    "policy_id": { "type": "string" },
+    "insurable_object_id": { "type": "string" },
+    "policy_covers_vehicle": { "type": "boolean" },
+    "triangle": { "type": "boolean", "comment": "policy + vehicle + covers" },
+    "coverage_type_codes": { "type": "string[]" },
+    "has_adjuster": { "type": "boolean" },
+    "has_police_report": { "type": "boolean" },
+    "has_fault_determination": { "type": "boolean" },
+    "has_injury": { "type": "boolean" },
+    "has_extended_offer": { "type": "boolean" },
+    "has_accepted_offer": { "type": "boolean" },
+    "has_loss_payment": { "type": "boolean" },
+    "has_recovery": { "type": "boolean" },
+    "has_subrogation_case": { "type": "boolean" },
+    "subrogation_status_code": { "type": "string" },
+    "has_siu_suspected": { "type": "boolean" }
+  }
+}

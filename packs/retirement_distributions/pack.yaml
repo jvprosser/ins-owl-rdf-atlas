@@ -1,7 +1,7 @@
 id: retirement_distributions
 case_id_param: claim_id
 iri_template: https://example.org/ins/id/DistributionRequest/{case_id}
-ontology: ontology/distributions.ttl
+ontology: ontology/distributions.json
 playbook: playbook/playbook.yaml
 probes: probes
 exemplars: exemplars.yaml

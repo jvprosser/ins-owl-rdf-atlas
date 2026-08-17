@@ -1,4 +1,4 @@
-"""Resolve repo-relative paths for ontology, probes, and playbook."""
+"""Resolve repo-relative paths for schema, playbook, and optional probe files."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ def _find_repo_root() -> Path:
         if _has_assets(candidate):
             return candidate
     raise FileNotFoundError(
-        "Could not locate pack.yaml or ontology/claims_mvt.ttl + playbook/ "
+        "Could not locate pack.yaml or ontology/claims.json + playbook/ "
         "(set WORKFLOW_DATA_DIRECTORY, PACK_ROOT, or INS_CLAIMS_REPO_ROOT)"
     )
 
@@ -79,7 +79,7 @@ def default_ontology_path() -> Path:
     pack = current_pack()
     if pack is not None:
         return pack.ontology_path
-    return repo_path("ontology", "claims_mvt.ttl")
+    return repo_path("ontology", "claims.json")
 
 
 def default_probes_dir() -> Path:

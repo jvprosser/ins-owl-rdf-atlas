@@ -1,19 +1,16 @@
 # This YAML file is the declarative Router Playbook: the deterministic
-# business-rules engine for the claims control plane. It evaluates SPARQL
-# probes against the ephemeral session ABox graph to assign work lanes,
-# target agent roles, and allowed tool permissions without LLM
+# business-rules engine for the claims control plane. It evaluates YAML
+# probes against the session case JSON (spine + signals) to assign work
+# lanes, target agent roles, and allowed tool permissions without LLM
 # decision-making.
 #
+# RDF/SPARQL restore: git checkout rdf-sparql-runtime (tag rdf-sparql-runtime).
 # NOTE: do not use YAML key `on:` — in YAML 1.1 it is a boolean synonym for true.
 
-# Graph metadata & templates: bind the runtime to the Git TBox
-# (ontology/claims_mvt.ttl), the SPARQL probe directory, and the claim IRI
-# construction template.
+# Schema + case JSON: bind the runtime to ontology/claims.json field names.
 version: 1
-ontology_relpath: ontology/claims_mvt.ttl
-probes_relpath: probes
+schema_relpath: ontology/claims.json
 iri_base: https://example.org/ins/
-claim_iri_template: https://example.org/ins/id/Claim/{claim_id}
 
 # Priority evaluation order (first-match-wins):
 #   Data integrity:     R0.1 claim exists, R0.4 validation triangle complete
@@ -39,56 +36,104 @@ priorities:
   - R1.3
   - R1.4
 
-# Probe registry: rule id → Git SPARQL file (.rq) and form (ASK, SELECT, CONSTRUCT).
+# Probe registry: rule id → YAML match on case JSON (ASK bool, SELECT path).
 probes:
+  # R0.1 ASK: case document built for this claim_id?
   R0.1:
-    file: R0_1_claim_exists.rq
     form: ASK
+    match:
+      path: claim_exists
+      equals: true
+  # R0.4 ASK: policy + vehicle + policy_covers_vehicle (triangle).
   R0.4:
-    file: R0_4_triangle.rq
     form: ASK
+    match:
+      path: triangle
+      equals: true
+  # R1.1 SELECT: claim_status_code. SELECT_EQUALS CLOSED → CloseoutAudit.
   R1.1:
-    file: R1_1_claim_status.rq
     form: SELECT
+    path: claim_status_code
+  # R1.2 ASK: litigation flag or litigation case.
   R1.2:
-    file: R1_2_litigation_active.rq
     form: ASK
+    match:
+      any:
+        - { path: litigation_indicator, equals: true }
+        - { path: has_litigation_case, equals: true }
+  # R1.3 ASK: injury rows or BI_LIABILITY coverage.
   R1.3:
-    file: R1_3_bi_involved.rq
     form: ASK
+    match:
+      any:
+        - { path: has_injury, equals: true }
+        - { path: coverage_type_codes, contains: BI_LIABILITY }
+  # R1.4 ASK: COLLISION or COMPREHENSIVE coverage.
   R1.4:
-    file: R1_4_pd_involved.rq
     form: ASK
+    match:
+      any:
+        - { path: coverage_type_codes, contains: COLLISION }
+        - { path: coverage_type_codes, contains: COMPREHENSIVE }
+  # R2.1 ASK: no police report.
   R2.1:
-    file: R2_1_missing_police_report.rq
     form: ASK
+    match:
+      path: has_police_report
+      equals: false
+  # R2.2 ASK: no fault determination.
   R2.2:
-    file: R2_2_missing_fault.rq
     form: ASK
+    match:
+      path: has_fault_determination
+      equals: false
+  # R2.3 ASK: no ADJUSTER party role.
   R2.3:
-    file: R2_3_missing_adjuster.rq
     form: ASK
+    match:
+      path: has_adjuster
+      equals: false
+  # R2.5 ASK: BI_LIABILITY coverage and no injury.
   R2.5:
-    file: R2_5_bi_missing_injury.rq
     form: ASK
+    match:
+      all:
+        - { path: coverage_type_codes, contains: BI_LIABILITY }
+        - { path: has_injury, equals: false }
+  # R3.2 ASK: EXTENDED offer still open.
   R3.2:
-    file: R3_2_unresolved_offer.rq
     form: ASK
+    match:
+      path: has_extended_offer
+      equals: true
+  # R3.4 ASK: ACCEPTED offer and no loss payment.
   R3.4:
-    file: R3_4_accepted_offer_no_payment.rq
     form: ASK
+    match:
+      all:
+        - { path: has_accepted_offer, equals: true }
+        - { path: has_loss_payment, equals: false }
+  # R4.1 ASK: subro indicated, no subrogation case.
   R4.1:
-    file: R4_1_subrogation_gap.rq
     form: ASK
+    match:
+      all:
+        - { path: subrogation_indicator, equals: true }
+        - { path: has_subrogation_case, equals: false }
+  # R4.3 ASK: open subro case, no recovery.
   R4.3:
-    file: R4_3_subro_no_recovery.rq
     form: ASK
+    match:
+      all:
+        - { path: has_subrogation_case, equals: true }
+        - { path: subrogation_status_code, in: [OPEN, NEGOTIATING, DEMANDED] }
+        - { path: has_recovery, equals: false }
+  # R5.1 ASK: SIU / fraud suspected or pending.
   R5.1:
-    file: R5_1_siu_suspected.rq
     form: ASK
-  R6.1:
-    file: R6_1_claim_context.rq
-    form: CONSTRUCT
+    match:
+      path: has_siu_suspected
+      equals: true
 
 # Action matrix: probe result (ASK_TRUE, ASK_FALSE, SELECT_EQUALS) → execution.
 #   agent:     playbook agent_role for Orchestrator handoff (e.g. SiuAgent)
@@ -213,5 +258,3 @@ default_action:
   needs_llm: false
   tools: [write_audit_event]
   terminal: true
-
-context_probe: R6.1

@@ -1,7 +1,7 @@
 id: retirement_rollovers
 case_id_param: claim_id
 iri_template: https://example.org/ins/id/RolloverRequest/{case_id}
-ontology: ontology/rollovers.ttl
+ontology: ontology/rollovers.json
 playbook: playbook/playbook.yaml
 probes: probes
 exemplars: exemplars.yaml
