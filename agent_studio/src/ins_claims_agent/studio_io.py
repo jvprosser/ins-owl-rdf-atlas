@@ -102,7 +102,7 @@ def normalize_spine_payload(raw: Any) -> dict[str, Any]:
 
 
 def assert_spine_has_triangle_fields(spine: dict[str, Any]) -> None:
-    """Fail fast when build would produce a graph that validation cannot pass."""
+    """Fail fast when build would produce a case JSON that validation cannot pass."""
     missing = [
         key
         for key in ("policy_id", "insurable_object_id")

@@ -15,14 +15,9 @@ def build_claim_graph(
     iceberg: IcebergFacade | None = None,
     spine: dict[str, Any] | str | None = None,
     signals: dict[str, Any] | str | None = None,
-    ontology_path: str | None = None,
     database: str = "car_insurance_claims",
 ) -> dict[str, Any]:
-    """Return a case JSON document (Studio tool name unchanged).
-
-    ``ontology_path`` is ignored; schema lives in Git JSON, not Turtle.
-    """
-    del ontology_path
+    """Return a case JSON document (Studio tool name unchanged)."""
     if spine is None:
         if iceberg is None:
             raise ValueError("Provide iceberg facade or spine dict")
@@ -161,14 +156,20 @@ def build_pack_case(
         "case_exists": True,
         "case_class": str(pack.graph.get("case_class") or "Case"),
     }
-    for field in (pack.graph.get("literals") or {}):
-        case[str(field)] = merged.get(field)
-    for field in (pack.graph.get("booleans") or {}):
-        case[str(field)] = _as_bool(merged.get(field))
+    for field in _field_names(pack.graph.get("literals")):
+        case[field] = merged.get(field)
+    for field in _field_names(pack.graph.get("booleans")):
+        case[field] = _as_bool(merged.get(field))
     case["spine"] = spine
     case["signals"] = signals
     case.update({k: v for k, v in merged.items() if k not in case})
     return case
+
+
+def _field_names(mapping_or_list: Any) -> list[str]:
+    if isinstance(mapping_or_list, dict):
+        return [str(k) for k in mapping_or_list]
+    return [str(x) for x in (mapping_or_list or [])]
 
 
 def _as_bool(value: Any) -> bool:

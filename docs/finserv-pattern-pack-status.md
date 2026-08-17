@@ -2,7 +2,7 @@
 
 **Parked:** 2026-08-14  
 **Resume from:** this file, then [`finserv-pattern-pack.md`](finserv-pattern-pack.md), [`packs/README.md`](../packs/README.md).  
-**Do not** move repo-root `ontology/` / `playbook/` / `probes/`. Claim **402** stays on that tree.
+**Do not** move repo-root `ontology/` / `playbook/`. Claim **402** stays on that tree.
 
 ## Why this exists
 
@@ -11,7 +11,7 @@ Reuse the car-insurance **control plane** for a finserv customer demo, without c
 1. **Retirement distributions** — request classification and exception handling (lead case **7002**).
 2. **Retirement rollovers** — document / ERISA completeness (lead case **8001**).
 
-Same locked flow as claims: Orchestrator (no tools) → Manager catalog reads → Studio `build_claim_graph` → `validate_claim_graph` → `route_claim` → one specialist Delegate. SPARQL + playbook decide the lane. The LLM does not decide hardship, RMD, or ERISA.
+Same locked flow as claims: Orchestrator (no tools) → Manager catalog reads → Studio `build_claim_graph` → `validate_claim_graph` → `route_claim` → one specialist Delegate. YAML probes + playbook decide the lane. The LLM does not decide hardship, RMD, or ERISA.
 
 Language: say **structured claim intake sequence**, not “Path A” / “S1”. Studio tools still take `claim_id`.
 
@@ -23,12 +23,12 @@ Offline tests were green when parked (`agent_studio` 35 passed; MCP catalog/fixt
 
 | Piece | Location | Behavior |
 |---|---|---|
-| Pack loader | `agent_studio/src/ins_claims_agent/pack.py` | `pack.yaml` → ontology, playbook, IRI, graph mappings |
-| Path discovery | `agent_studio/src/ins_claims_agent/paths.py` | `PACK_ROOT` / `INS_CLAIMS_REPO_ROOT` / `WORKFLOW_DATA_DIRECTORY`, else walk-up to **legacy** `ontology/claims_mvt.ttl` + `playbook/` |
+| Pack loader | `agent_studio/src/ins_claims_agent/pack.py` | `pack.yaml` → schema JSON, playbook, graph field lists |
+| Path discovery | `agent_studio/src/ins_claims_agent/paths.py` | `PACK_ROOT` / `INS_CLAIMS_REPO_ROOT` / `WORKFLOW_DATA_DIRECTORY`, else walk-up to **legacy** `ontology/claims.json` + `playbook/` |
 | Generic graph | `agent_studio/src/ins_claims_agent/graph/build_case_graph.py` | Used when `pack.graph.builder == "generic"` |
 | Claims graph | `build_claim_graph.py` | Still used when no pack / builder ≠ generic (triangle / 402) |
-| Validate | `validate_graph.py` | Generic packs: case IRI + `case_class` only; claims: triangle |
-| Route | `route_claim.py` | `{{case_iri}}` / `{{case_id}}`; playbook `case_iri_template` |
+| Validate | `validate_graph.py` | Generic packs: `case_exists`; claims: triangle |
+| Route | `route_claim.py` | YAML `match` / `path` on case JSON |
 | Cosine | `pre_router/route_text.py` | Pack `exemplars.yaml` `labels` + `dispatch`; claims exemplars unchanged if no pack env |
 | Studio I/O | `studio_io.configure_workflow_assets` | Accepts pack.yaml **or** legacy claims tree |
 | Build tool | `studio_tools/build_claim_graph/tool.py` | Generic vs claims builder |

@@ -9,7 +9,6 @@
 # Schema: ontology/distributions.json field names (lake JSON keys).
 version: 1
 schema_relpath: ontology/distributions.json
-iri_base: https://example.org/ins/
 
 # Priority evaluation order (first-match-wins):
 #   Data integrity:  R0.1 request exists as DistributionRequest

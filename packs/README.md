@@ -1,8 +1,8 @@
 # Finserv demo packs
 
-Same control plane as car-insurance claims: Orchestrator (no tools) → Manager MCP catalog reads → Studio `build_claim_graph` → `validate_claim_graph` → `route_claim` → one specialist Delegate. SPARQL + playbook decide the lane. The LLM does not decide hardship, RMD, or ERISA.
+Same control plane as car-insurance claims: Orchestrator (no tools) → Manager MCP catalog reads → Studio `build_claim_graph` → `validate_claim_graph` → `route_claim` → one specialist Delegate. YAML probes + playbook decide the lane. The LLM does not decide hardship, RMD, or ERISA.
 
-Do **not** move `ontology/` / `playbook/` / `probes/` at the repo root. Claim **402** still uses those assets.
+Do **not** move `ontology/` / `playbook/` at the repo root. Claim **402** still uses those assets.
 
 | Pack | Demo | Cases |
 |---|---|---|
@@ -22,12 +22,11 @@ Both packs use the same layout. Paths below are relative to `packs/<id>/` (for e
 ```text
 packs/<id>/
   README.md                 # This pack’s demo script and Studio upload steps
-  pack.yaml                 # Pack identity + graph/playbook paths (Studio tools)
+  pack.yaml                 # Pack identity + schema/playbook paths (Studio tools)
   exemplars.yaml            # Cosine NL triage texts + dispatch
   catalog_fixtures.json     # MCP label list → fixture folders (not for tools)
-  ontology/                 # OWL/RDF TBox loaded into the session graph
+  ontology/                 # Case field schema JSON
   playbook/                 # Probe order and agent_role / next_step
-  probes/                   # SPARQL ASK/SELECT files
   fixtures/                 # Canned MCP JSON (stand-in for Impala)
   agents/                   # Studio Name / Role / Backstory / Goal / Tools pastes
 ```
@@ -35,7 +34,7 @@ packs/<id>/
 | Path | Purpose | Who reads it |
 |---|---|---|
 | `README.md` | Cases, expected routes, Workflow Data upload, Studio prompts | Humans |
-| `pack.yaml` | Pack `id`, IRI template, paths to ontology/playbook/probes/exemplars, `graph.builder: generic`, JSON field → RDF predicate maps, optional catalog notes | Studio tools (`load_pack` / `build_case_graph` / `route_claim`) via Workflow Data |
+| `pack.yaml` | Pack `id`, paths to schema/playbook/exemplars, `graph.builder: generic`, JSON field lists, optional catalog notes | Studio tools (`load_pack` / `build_case_graph` / `route_claim`) via Workflow Data |
 | `exemplars.yaml` | Unstructured phrases, `labels`, `dispatch` (coworker / `agent_role` / `next_step`) | Studio `pre_route_text` (Routing Agent). Advisory only; a `claim_id` still goes through structured intake |
 | `catalog_fixtures.json` | MCP allow-list for this pack: each `run_named_query` **label**, required params, and `fixture_dir` | MCP only (when it can load pack fixtures). Not used by graph tools |
 | `ontology/*.json` | Case field schema (replaces Turtle TBox) | `build_claim_graph` / humans |
@@ -43,9 +42,9 @@ packs/<id>/
 | `fixtures/<label>/<id>.json` | Fake lake payload for that named query and case (spine, signals, exception/ERISA/RMD view) | MCP `run_named_query` if fixtures are loaded. Same JSON shape Manager would pass into `build_claim_graph` |
 | `agents/*.md` | Paste-ready Studio agents (Orchestrator, Manager, specialists) | Humans → Agent Studio fields. Not uploaded to Workflow Data |
 
-**Workflow Data (Studio tools)** needs: `pack.yaml`, `exemplars.yaml`, `ontology/`, `playbook/`, `probes/`.  
+**Workflow Data (Studio tools)** needs: `pack.yaml`, `exemplars.yaml`, `ontology/`, `playbook/`.  
 **Do not** upload `agents/` (paste those).  
-**MCP fixtures** (`catalog_fixtures.json` + `fixtures/`) are the canned lake answers. They are **not** ontology or routing rules. As of 2026-08-14 MCP in Studio cannot see Workflow Data; see [`docs/finserv-pattern-pack-status.md`](../docs/finserv-pattern-pack-status.md).
+**MCP fixtures** (`catalog_fixtures.json` + `fixtures/`) are the canned lake answers. They are **not** schema or routing rules. As of 2026-08-14 MCP in Studio cannot see Workflow Data; see [`docs/finserv-pattern-pack-status.md`](../docs/finserv-pattern-pack-status.md).
 
 ### `pack.yaml` fields (short)
 
@@ -53,10 +52,9 @@ packs/<id>/
 |---|---|
 | `id` | Pack name (`retirement_distributions`, `retirement_rollovers`) |
 | `case_id_param` | Still `claim_id` so Studio tools stay unchanged |
-| `iri_template` | Case IRI, e.g. `…/DistributionRequest/{case_id}` |
 | `graph.builder` | `generic` → `build_case_graph`; claims 402 uses the triangle builder instead |
-| `graph.case_class` | RDF type asserted on the case IRI |
-| `graph.literals` / `booleans` | Spine/signal JSON keys → ontology properties |
+| `graph.case_class` | Label on the case JSON (`DistributionRequest`, `RolloverRequest`) |
+| `graph.literals` / `booleans` | Spine/signal JSON keys copied onto the case document |
 | `catalog` | Documentation of fixture labels; MCP actually reads `catalog_fixtures.json` |
 
 ### Fixture folders

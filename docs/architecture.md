@@ -169,7 +169,7 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 | `Manager agent` | Exact CrewAI **Role** string required for Delegate to Manager. |
 | Final Answer | CrewAI terminal reply. Orchestrator uses this when no coworker exists for a role. |
 | Studio paste | Name / Role / Backstory / Goal (and tools table) copied into Agent Studio. |
-| Workflow Data | Studio read-only tree: ontology, probes, playbook, `pack.yaml`, exemplars. |
+| Workflow Data | Studio read-only tree: schema JSON, playbook, `pack.yaml`, exemplars. |
 | `UserParameters` | Studio tool config fields. Do not put lake credentials here. |
 | `WORKFLOW_DATA_DIRECTORY` | Env for the Workflow Data mount (`/workflow_data`). |
 | `SESSION_DIRECTORY` | Env for per-run artifacts (`/workspace`). |

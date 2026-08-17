@@ -43,7 +43,7 @@ NL front door; delegates structured claim intake, unstructured pre-route, and po
 
 If Manager Role is still the long sentence Studio generated, Orchestrator must paste that **entire** Role as `coworker` — or rename Manager Role to `Manager agent` and retry.
 
-On unstructured text: delegate to `Routing Agent`. If cosine `needs_llm` is false, hand off to the returned `coworker`. If `claim_id` is also present, still run Manager structured claim intake — cosine does not override SPARQL.
+On unstructured text: delegate to `Routing Agent`. If cosine `needs_llm` is false, hand off to the returned `coworker`. If `claim_id` is also present, still run Manager structured claim intake — cosine does not override YAML probes.
 
 ### Routing Agent (Studio `pre_route_text` only)
 **Paste-ready definition:** [`agents/routing_agent.md`](agents/routing_agent.md)

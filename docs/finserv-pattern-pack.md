@@ -2,7 +2,7 @@
 
 Reuse the claims **control plane** for retirement operations. Do not clone the MCP server per product.
 
-Control-plane architecture (Iceberg, session RDF, playbook, Studio): [`architecture.md`](architecture.md).
+Control-plane architecture (Iceberg, session case JSON, playbook, Studio): [`architecture.md`](architecture.md).
 
 **Parked 2026-08-14.** Full status, Studio blocker, and resume plan: [`finserv-pattern-pack-status.md`](finserv-pattern-pack-status.md).
 
@@ -11,15 +11,15 @@ Control-plane architecture (Iceberg, session RDF, playbook, Studio): [`architect
 - Orchestrator has no tools; the user cannot skip it.
 - Manager runs catalog reads, then Studio `build_claim_graph` → `validate_claim_graph` → `route_claim`.
 - After route, Manager stops. Orchestrator maps `agent_role` → coworker Role and Delegates once.
-- SPARQL probes + Git-reviewed playbook are authoritative. Cosine is NL triage only.
+- YAML probes + Git-reviewed playbook are authoritative. Cosine is NL triage only.
 - Platform I/O is MCP `run_named_query` / `run_named_write`. Custom tools do not call MCP in-process.
 
 ## What a pack replaces
 
 A pack is a directory with `pack.yaml` (and `catalog_fixtures.json` for MCP). File-by-file legend: [`packs/README.md`](../packs/README.md#what-each-directory-and-file-is-for).
 
-- Ontology TBox + IRI template (`ontology/`, `pack.yaml`)
-- Probes + playbook (`probes/`, `playbook/`)
+- Schema JSON (`ontology/`, `pack.yaml`)
+- Playbook with inlined YAML probes (`playbook/`)
 - Fixture JSON for named reads (`fixtures/`, `catalog_fixtures.json`) — canned lake payloads, not routing rules
 - Cosine `exemplars.yaml`
 - Agent Studio pastes (`agents/`)

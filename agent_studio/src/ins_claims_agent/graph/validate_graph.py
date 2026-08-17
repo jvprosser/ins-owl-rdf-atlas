@@ -1,4 +1,4 @@
-"""Case JSON validation (required fields; not SPARQL)."""
+"""Case JSON validation (required fields)."""
 
 from __future__ import annotations
 

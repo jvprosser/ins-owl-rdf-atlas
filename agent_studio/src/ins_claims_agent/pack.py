@@ -14,10 +14,8 @@ class Pack:
     id: str
     root: Path
     case_id_param: str = "claim_id"
-    iri_template: str = "https://example.org/ins/id/Claim/{case_id}"
     schema: str = "ontology/claims.json"
     playbook: str = "playbook/playbook.yaml"
-    probes: str = "probes"
     exemplars: str = "exemplars.yaml"
     graph: dict[str, Any] = field(default_factory=dict)
     catalog: dict[str, Any] = field(default_factory=dict)
@@ -28,27 +26,20 @@ class Pack:
         return (self.root / rel).resolve()
 
     @property
-    def ontology_path(self) -> Path:
+    def schema_path(self) -> Path:
         return self.path(self.schema)
 
     @property
-    def schema_path(self) -> Path:
-        return self.path(self.schema)
+    def ontology_path(self) -> Path:
+        return self.schema_path
 
     @property
     def playbook_path(self) -> Path:
         return self.path(self.playbook)
 
     @property
-    def probes_dir(self) -> Path:
-        return self.path(self.probes)
-
-    @property
     def exemplars_path(self) -> Path:
         return self.path(self.exemplars)
-
-    def case_iri(self, case_id: int | str) -> str:
-        return self.iri_template.format(case_id=case_id, claim_id=case_id)
 
 
 def load_pack(root: str | Path) -> Pack:
@@ -61,17 +52,12 @@ def load_pack(root: str | Path) -> Pack:
         id=str(raw.get("id") or root_path.name),
         root=root_path,
         case_id_param=str(raw.get("case_id_param") or "claim_id"),
-        iri_template=str(
-            raw.get("iri_template")
-            or "https://example.org/ins/id/Claim/{case_id}"
-        ),
         schema=str(
             raw.get("schema")
             or raw.get("ontology")
             or "ontology/claims.json"
         ),
         playbook=str(raw.get("playbook") or "playbook/playbook.yaml"),
-        probes=str(raw.get("probes") or "probes"),
         exemplars=str(raw.get("exemplars") or "exemplars.yaml"),
         graph=dict(raw.get("graph") or {}),
         catalog=dict(raw.get("catalog") or {}),
@@ -87,5 +73,4 @@ def is_pack_root(candidate: Path) -> bool:
 def is_legacy_claims_root(candidate: Path) -> bool:
     playbook = (candidate / "playbook" / "playbook.yaml").is_file()
     schema = (candidate / "ontology" / "claims.json").is_file()
-    turtle = (candidate / "ontology" / "claims_mvt.ttl").is_file()
-    return playbook and (schema or turtle)
+    return playbook and schema

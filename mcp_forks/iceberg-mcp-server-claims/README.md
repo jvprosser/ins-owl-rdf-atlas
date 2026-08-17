@@ -79,7 +79,7 @@ uv run run-server
 Agent
   → MCP run_named_query label get_claim_spine
   → MCP run_named_query label get_claim_routing_signals
-  → custom tool (build graph / SPARQL route from payload + workflow_data)
+  → custom tool (build / validate / YAML route from payload + workflow_data)
   → MCP run_named_write label write_audit_event (optional)
 ```
 
@@ -162,32 +162,21 @@ uv run run-server
 Studio mounts this tree as `WORKFLOW_DATA_DIRECTORY` / `/workflow_data`. Use the **distributions** project. Upload contents of `packs/retirement_distributions/` so `/workflow_data/pack.yaml` exists (not `/workflow_data/retirement_distributions/pack.yaml`).
 
 1. Open the project → **Workflow Data**.
-2. Remove any leftover claims files (`ontology/claims_mvt.ttl`, claims playbook/probes).
+2. Remove any leftover claims files (`ontology/claims.json` or `claims_mvt.ttl`, claims playbook).
 3. Upload to the **root**: `pack.yaml`, `exemplars.yaml`.
-4. Create or upload folder `ontology/`, then upload `ontology/distributions.ttl`.
+4. Create or upload folder `ontology/`, then upload `ontology/distributions.json`.
 5. Create or upload folder `playbook/`, then upload `playbook/playbook.yaml`.
-6. Create or upload folder `probes/`, then upload:
-   - `R0_1_request_exists.rq`
-   - `R1_1_request_status.rq`
-   - `R2_1_hold_or_aml.rq`
-   - `R2_2_hardship_substantiation_missing.rq`
-   - `R2_3_rmd_underpaid.rq`
-7. Confirm:
+6. Confirm:
 
 ```text
 /workflow_data/
   pack.yaml
   exemplars.yaml
-  ontology/distributions.ttl
+  ontology/distributions.json
   playbook/playbook.yaml
-  probes/R0_1_request_exists.rq
-  probes/R1_1_request_status.rq
-  probes/R2_1_hold_or_aml.rq
-  probes/R2_2_hardship_substantiation_missing.rq
-  probes/R2_3_rmd_underpaid.rq
 ```
 
-Do **not** upload `agents/`, `fixtures/`, `catalog_fixtures.json`, or `README.md`. If Studio can upload a folder, upload `ontology`, `playbook`, and `probes` separately — not the parent `retirement_distributions` folder.
+Do **not** upload `agents/`, `fixtures/`, `catalog_fixtures.json`, or `README.md`. If Studio can upload a folder, upload `ontology` and `playbook` separately — not the parent `retirement_distributions` folder.
 
 #### Crew
 
@@ -329,28 +318,19 @@ Studio mounts this tree as `WORKFLOW_DATA_DIRECTORY` / `/workflow_data`. Use the
 1. Open the project → **Workflow Data**.
 2. Remove any leftover claims or distributions files.
 3. Upload to the **root**: `pack.yaml`, `exemplars.yaml`.
-4. Create or upload folder `ontology/`, then upload `ontology/rollovers.ttl`.
+4. Create or upload folder `ontology/`, then upload `ontology/rollovers.json`.
 5. Create or upload folder `playbook/`, then upload `playbook/playbook.yaml`.
-6. Create or upload folder `probes/`, then upload:
-   - `R0_1_request_exists.rq`
-   - `R1_1_request_status.rq`
-   - `R2_1_missing_spousal_consent.rq`
-   - `R2_2_missing_required_docs.rq`
-7. Confirm:
+6. Confirm:
 
 ```text
 /workflow_data/
   pack.yaml
   exemplars.yaml
-  ontology/rollovers.ttl
+  ontology/rollovers.json
   playbook/playbook.yaml
-  probes/R0_1_request_exists.rq
-  probes/R1_1_request_status.rq
-  probes/R2_1_missing_spousal_consent.rq
-  probes/R2_2_missing_required_docs.rq
 ```
 
-Do **not** upload `agents/`, `fixtures/`, `catalog_fixtures.json`, or `README.md`. If Studio can upload a folder, upload `ontology`, `playbook`, and `probes` separately — not the parent `retirement_rollovers` folder.
+Do **not** upload `agents/`, `fixtures/`, `catalog_fixtures.json`, or `README.md`. If Studio can upload a folder, upload `ontology` and `playbook` separately — not the parent `retirement_rollovers` folder.
 
 #### Crew
 

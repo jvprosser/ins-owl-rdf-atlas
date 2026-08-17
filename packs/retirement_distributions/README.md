@@ -19,38 +19,27 @@ Studio mounts this tree as `WORKFLOW_DATA_DIRECTORY` / `/workflow_data`. Upload 
 Do this in the **distributions** Agent Studio project (not the claims 402 project).
 
 1. Open the project → open **Workflow Data** (the project file tree for this workflow).
-2. If this project previously held claims files (`ontology/claims_mvt.ttl`, claims `playbook/`, claims `probes/`), delete those first so the pack is the only tree.
+2. If this project previously held claims files (`ontology/claims.json` or `claims_mvt.ttl`, claims `playbook/`), delete those first so the pack is the only tree.
 3. At the **root** of Workflow Data, upload these two files from `packs/retirement_distributions/`:
    - `pack.yaml`
    - `exemplars.yaml`
 4. Create folder `ontology` (or upload that directory). Inside it, upload:
-   - `ontology/distributions.ttl`
+   - `ontology/distributions.json`
 5. Create folder `playbook` (or upload that directory). Inside it, upload:
    - `playbook/playbook.yaml`
-6. Create folder `probes` (or upload that directory). Inside it, upload all five:
-   - `probes/R0_1_request_exists.rq`
-   - `probes/R1_1_request_status.rq`
-   - `probes/R2_1_hold_or_aml.rq`
-   - `probes/R2_2_hardship_substantiation_missing.rq`
-   - `probes/R2_3_rmd_underpaid.rq`
-7. Confirm the tree looks like this:
+6. Confirm the tree looks like this:
 
 ```text
 /workflow_data/
   pack.yaml
   exemplars.yaml
-  ontology/distributions.ttl
+  ontology/distributions.json
   playbook/playbook.yaml
-  probes/R0_1_request_exists.rq
-  probes/R1_1_request_status.rq
-  probes/R2_1_hold_or_aml.rq
-  probes/R2_2_hardship_substantiation_missing.rq
-  probes/R2_3_rmd_underpaid.rq
 ```
 
 **Do not** upload to Workflow Data: `agents/` (paste those into agent Name/Role/Backstory/Goal), `fixtures/`, `catalog_fixtures.json`, or `README.md`. Those last two are for MCP `PACK_ROOT` only.
 
-If Studio offers “upload folder”, select `ontology`, `playbook`, and `probes` individually. Do not upload the parent `retirement_distributions` folder as a single nest.
+If Studio offers “upload folder”, select `ontology` and `playbook` individually. Do not upload the parent `retirement_distributions` folder as a single nest.
 
 ## Where to set `PACK_ROOT`
 

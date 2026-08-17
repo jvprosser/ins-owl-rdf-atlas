@@ -1,9 +1,7 @@
 id: retirement_rollovers
 case_id_param: claim_id
-iri_template: https://example.org/ins/id/RolloverRequest/{case_id}
 ontology: ontology/rollovers.json
 playbook: playbook/playbook.yaml
-probes: probes
 exemplars: exemplars.yaml
 cosine_labels:
   - ERISA
@@ -12,13 +10,13 @@ graph:
   builder: generic
   case_class: RolloverRequest
   literals:
-    request_status_code: requestStatusCode
-    rollover_type_code: rolloverTypeCode
-    plan_id: planId
-    participant_id: participantId
+    - request_status_code
+    - rollover_type_code
+    - plan_id
+    - participant_id
   booleans:
-    missing_spousal_consent: missingSpousalConsent
-    missing_required_docs: missingRequiredDocs
+    - missing_spousal_consent
+    - missing_required_docs
 catalog:
   fixture_writes: true
   reads:

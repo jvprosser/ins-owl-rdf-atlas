@@ -1,4 +1,4 @@
-"""Resolve repo-relative paths for schema, playbook, and optional probe files."""
+"""Resolve repo-relative paths for schema JSON and playbook YAML."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ def _has_assets(candidate: Path) -> bool:
 
 
 def _find_repo_root() -> Path:
-    """Locate a pack.yaml or legacy ontology/ + playbook/ tree.
+    """Locate a pack.yaml or ontology/ + playbook/ tree.
 
     Order:
     1. ``PACK_ROOT`` / ``INS_CLAIMS_REPO_ROOT``
@@ -78,12 +78,5 @@ def default_playbook_path() -> Path:
 def default_ontology_path() -> Path:
     pack = current_pack()
     if pack is not None:
-        return pack.ontology_path
+        return pack.schema_path
     return repo_path("ontology", "claims.json")
-
-
-def default_probes_dir() -> Path:
-    pack = current_pack()
-    if pack is not None:
-        return pack.probes_dir
-    return repo_path("probes")

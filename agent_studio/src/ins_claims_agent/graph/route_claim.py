@@ -19,7 +19,7 @@ def route_claim(
 ) -> dict[str, Any]:
     """Run YAML probes in priority order; return next step / agent / tools."""
     if not isinstance(case, dict):
-        raise TypeError("route_claim expects a case JSON dict, not an RDF graph")
+        raise TypeError("route_claim expects a case JSON dict")
     playbook = _load_playbook(playbook_path)
     matched: list[dict[str, Any]] = []
     for probe_id in playbook.get("priorities", []):

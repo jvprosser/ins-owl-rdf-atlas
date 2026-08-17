@@ -1,9 +1,7 @@
 id: retirement_distributions
 case_id_param: claim_id
-iri_template: https://example.org/ins/id/DistributionRequest/{case_id}
 ontology: ontology/distributions.json
 playbook: playbook/playbook.yaml
-probes: probes
 exemplars: exemplars.yaml
 cosine_labels:
   - DISTRIBUTION
@@ -13,14 +11,14 @@ graph:
   builder: generic
   case_class: DistributionRequest
   literals:
-    request_status_code: requestStatusCode
-    distribution_type_code: distributionTypeCode
-    plan_id: planId
-    participant_id: participantId
+    - request_status_code
+    - distribution_type_code
+    - plan_id
+    - participant_id
   booleans:
-    hardship_substantiation_missing: hardshipSubstantiationMissing
-    hold_or_aml_flag: holdOrAmlFlag
-    rmd_underpaid: rmdUnderpaid
+    - hardship_substantiation_missing
+    - hold_or_aml_flag
+    - rmd_underpaid
 catalog:
   fixture_writes: true
   reads:

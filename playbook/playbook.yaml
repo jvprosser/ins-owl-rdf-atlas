@@ -10,7 +10,6 @@
 # Schema + case JSON: bind the runtime to ontology/claims.json field names.
 version: 1
 schema_relpath: ontology/claims.json
-iri_base: https://example.org/ins/
 
 # Priority evaluation order (first-match-wins):
 #   Data integrity:     R0.1 claim exists, R0.4 validation triangle complete
