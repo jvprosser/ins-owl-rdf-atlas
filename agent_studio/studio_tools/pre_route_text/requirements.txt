@@ -1,8 +1,8 @@
-# CONTENT_ID: INS_CLAIMS_PRE_ROUTE_REQ_V2
-# PACKAGE_PIN: main
+# CONTENT_ID: INS_CLAIMS_PRE_ROUTE_REQ_V3
+# PACKAGE_PIN: 8f60419
 # REPO_REF: main
-# UPDATED: 2026-08-13
+# UPDATED: 2026-08-17
 # FILE: agent_studio/studio_tools/pre_route_text/requirements.txt
 pydantic>=2.0
 numpy>=1.24
-ins-claims-agent @ git+https://github.com/jvprosser/ins-owl-rdf-atlas.git@main#subdirectory=agent_studio
+ins-claims-agent @ git+https://github.com/jvprosser/ins-owl-rdf-atlas.git@8f60419#subdirectory=agent_studio
