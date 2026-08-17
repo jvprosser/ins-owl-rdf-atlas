@@ -1,5 +1,0 @@
-# CONTENT_ID: INS_CLAIMS_S1_REQ_V3
-# REPO_REF: 319ede0
-# UPDATED: 2026-08-05
-# FILE: agent_studio/studio_tools/spikes/s1_mcp_from_tool/requirements.txt
-pydantic>=2.0

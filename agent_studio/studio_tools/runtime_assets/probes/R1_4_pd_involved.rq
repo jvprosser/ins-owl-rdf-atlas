@@ -1,9 +1,0 @@
-# probe_id: R1.4
-# form: ASK
-PREFIX ex: <https://example.org/ins/>
-ASK {
-  <{{claim_iri}}> ex:underPolicyCoverage ?pc .
-  ?pc ex:ofCoverageType ?cov .
-  ?cov ex:coverageTypeCode ?code .
-  FILTER(?code IN ("COLLISION", "COMPREHENSIVE"))
-}

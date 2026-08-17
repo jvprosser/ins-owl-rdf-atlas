@@ -13,7 +13,7 @@ Do **not** move `ontology/` / `playbook/` / `probes/` at the repo root. Claim **
 
 Upload steps for Workflow Data are in each pack README (**Upload workflow data**). Full MCP / crew / test prompts: [`mcp_forks/iceberg-mcp-server-claims/README.md`](../mcp_forks/iceberg-mcp-server-claims/README.md).
 
-Primary customer prompt: intake **7002**.
+Primary customer prompt: intake **7002**. Probe/action chat prompts (claims + both packs): [`docs/probe-action-tests.md`](../docs/probe-action-tests.md).
 
 ## What each directory and file is for
 

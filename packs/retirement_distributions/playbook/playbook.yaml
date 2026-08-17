@@ -1,10 +1,26 @@
-# Deterministic distribution routing. Do not use YAML key `on:`.
+# This YAML file is the declarative Router Playbook: the deterministic
+# business-rules engine for retirement distribution requests. It evaluates
+# SPARQL probes against the ephemeral session ABox graph to assign work
+# lanes, target agent roles, and allowed tool permissions without LLM
+# decision-making.
+#
+# NOTE: do not use YAML key `on:` — in YAML 1.1 it is a boolean synonym for true.
+
+# Graph metadata & templates: bind the runtime to the Git TBox
+# (ontology/distributions.ttl), the SPARQL probe directory, and the
+# DistributionRequest IRI construction template.
 version: 1
 ontology_relpath: ontology/distributions.ttl
 probes_relpath: probes
 iri_base: https://example.org/ins/
 case_iri_template: https://example.org/ins/id/DistributionRequest/{case_id}
 
+# Priority evaluation order (first-match-wins):
+#   Data integrity:  R0.1 request exists as DistributionRequest
+#   Fast-path:       R1.1 closed → closeout audit
+#   Exceptions:      R2.1 hold/AML, R2.2 hardship substantiation missing,
+#                    R2.3 RMD underpaid
+# Unmatched open requests fall through to ProcessDistribution.
 priorities:
   - R0.1
   - R1.1
@@ -12,23 +28,36 @@ priorities:
   - R2.2
   - R2.3
 
+# Probe registry: rule id → Git SPARQL file (.rq) and form (ASK, SELECT).
 probes:
+  # R0.1 ASK: is {{case_iri}} typed as DistributionRequest?
+  # ASK_FALSE → FixDataQuality / DataQualityAgent.
   R0.1:
     file: R0_1_request_exists.rq
     form: ASK
+  # R1.1 SELECT: requestStatusCode. SELECT_EQUALS CLOSED → CloseoutAudit.
   R1.1:
     file: R1_1_request_status.rq
     form: SELECT
+  # R2.1 ASK: holdOrAmlFlag true? ASK_TRUE → HoldReview / ExceptionQueueAgent.
   R2.1:
     file: R2_1_hold_or_aml.rq
     form: ASK
+  # R2.2 ASK: hardshipSubstantiationMissing true?
+  # ASK_TRUE → RequestSubstantiation / ExceptionQueueAgent (demo 7002).
   R2.2:
     file: R2_2_hardship_substantiation_missing.rq
     form: ASK
+  # R2.3 ASK: rmdUnderpaid true? ASK_TRUE → RmdReview / RmdOpsAgent (demo 7003).
   R2.3:
     file: R2_3_rmd_underpaid.rq
     form: ASK
 
+# Action matrix: probe result (ASK_TRUE, ASK_FALSE, SELECT_EQUALS) → execution.
+#   agent:     playbook agent_role for Orchestrator handoff
+#   lane/step: operational classification and next action id
+#   tools:     allow-list of MCP catalog labels (and Studio graph tools) for that step
+#   needs_llm: whether the step needs NL capability vs deterministic processing
 actions:
   R0.1:
     - when: ASK_FALSE
@@ -68,6 +97,8 @@ actions:
       needs_llm: false
       tools: [get_rmd_view, write_audit_event]
 
+# Fallback: no exception/RMD hit → ProcessDistribution / DistributionOpsAgent
+# (demo 7001), terminal: true.
 default_action:
   step: ProcessDistribution
   agent: DistributionOpsAgent

@@ -2,7 +2,7 @@
 
 High-level view for data engineers. This stack routes operational cases (auto claims today; retirement distributions/rollovers as the same control plane) on Cloudera: Iceberg via Impala, a Git-reviewed OWL/RDF TBox, and Cloudera AI Agent Studio. The LLM is the NL front door. It is not the rules engine.
 
-Related: [ADR 0001](adr/0001-agent-studio-mcp-and-tool-layout.md), [MCP fork charter](mcp-fork-charter.md), [Atlas/Ranger plan](atlas-ranger-integration-plan.md), [finserv packs](finserv-pattern-pack.md).
+Related: [ADR 0001](adr/0001-agent-studio-mcp-and-tool-layout.md), [MCP fork charter](mcp-fork-charter.md), [Atlas/Ranger plan](atlas-ranger-integration-plan.md), [finserv packs](finserv-pattern-pack.md), [probe/action test prompts](probe-action-tests.md).
 
 ## Problem split
 

@@ -1,13 +1,27 @@
-# Router playbook — rules as Git-reviewed config (not Iceberg UI).
+# This YAML file is the declarative Router Playbook: the deterministic
+# business-rules engine for the claims control plane. It evaluates SPARQL
+# probes against the ephemeral session ABox graph to assign work lanes,
+# target agent roles, and allowed tool permissions without LLM
+# decision-making.
+#
 # NOTE: do not use YAML key `on:` — in YAML 1.1 it is a boolean synonym for true.
 
+# Graph metadata & templates: bind the runtime to the Git TBox
+# (ontology/claims_mvt.ttl), the SPARQL probe directory, and the claim IRI
+# construction template.
 version: 1
 ontology_relpath: ontology/claims_mvt.ttl
 probes_relpath: probes
 iri_base: https://example.org/ins/
 claim_iri_template: https://example.org/ins/id/Claim/{claim_id}
 
-# Evaluation order: integrity → lane → gaps → financial → subro → SIU
+# Priority evaluation order (first-match-wins):
+#   Data integrity:     R0.1 claim exists, R0.4 validation triangle complete
+#   Fast-path lanes:    R1.1 closed audit, R1.2 litigation, R5.1 SIU / fraud
+#   Data gaps:          R2.3 missing adjuster, R2.1 missing police report,
+#                       R2.2 missing fault, R2.5 injury details missing
+#   Financials & subro: R3.2 / R3.4 offers/payments, R4.1 / R4.3 subrogation
+#   Standard review:    R1.3 bodily injury, R1.4 property damage
 priorities:
   - R0.1
   - R0.4
@@ -25,6 +39,7 @@ priorities:
   - R1.3
   - R1.4
 
+# Probe registry: rule id → Git SPARQL file (.rq) and form (ASK, SELECT, CONSTRUCT).
 probes:
   R0.1:
     file: R0_1_claim_exists.rq
@@ -75,6 +90,11 @@ probes:
     file: R6_1_claim_context.rq
     form: CONSTRUCT
 
+# Action matrix: probe result (ASK_TRUE, ASK_FALSE, SELECT_EQUALS) → execution.
+#   agent:     playbook agent_role for Orchestrator handoff (e.g. SiuAgent)
+#   lane/step: operational classification and next action id
+#   tools:     allow-list of MCP catalog labels (and Studio graph tools) for that step
+#   needs_llm: whether the step needs NL capability vs deterministic processing
 actions:
   R0.1:
     - when: ASK_FALSE
@@ -184,6 +204,8 @@ actions:
       needs_llm: false
       tools: [write_audit_event]
 
+# Fallback: unhandled or ambiguous cases → HumanReviewAgent, GENERAL lane,
+# terminal: true.
 default_action:
   step: HumanReviewOrWait
   agent: HumanReviewAgent

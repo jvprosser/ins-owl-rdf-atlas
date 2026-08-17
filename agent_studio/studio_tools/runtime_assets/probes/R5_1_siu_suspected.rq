@@ -1,8 +1,0 @@
-# probe_id: R5.1
-# form: ASK
-PREFIX ex: <https://example.org/ins/>
-ASK {
-  <{{claim_iri}}> ex:hasFraudAssessment ?fa .
-  ?fa ex:fraudOutcomeCode ?code .
-  FILTER(?code IN ("SUSPECTED", "PENDING"))
-}
