@@ -111,3 +111,38 @@ def test_build_accepts_fork_envelope():
     case = build_claim_graph(401, spine=spine, signals=signals)
     report = validate_claim_graph(case, 401)
     assert report["passed"] is True
+
+
+def test_save_claim_letter_writes_txt(tmp_path, monkeypatch):
+    from ins_claims_agent.studio_io import save_claim_letter
+
+    monkeypatch.setenv("SESSION_DIRECTORY", str(tmp_path))
+    body = "Subject: Claim 402 hold\n\nDiscovery is open; file is complete."
+    saved = save_claim_letter("402", body, run_id="demo-402-letter")
+    path = tmp_path / "claim_402_letter.txt"
+    assert path.is_file()
+    assert saved["letter_artifact"] == str(path.resolve())
+    assert "Discovery is open" in path.read_text(encoding="utf-8")
+    assert saved["bytes"] > 0
+
+
+def test_save_claim_letter_rejects_empty_body(tmp_path, monkeypatch):
+    from ins_claims_agent.studio_io import save_claim_letter
+
+    monkeypatch.setenv("SESSION_DIRECTORY", str(tmp_path))
+    try:
+        save_claim_letter("402", "   ")
+        assert False, "expected ValueError"
+    except ValueError as exc:
+        assert "body" in str(exc)
+
+
+def test_save_claim_letter_rejects_unsafe_claim_id(tmp_path, monkeypatch):
+    from ins_claims_agent.studio_io import save_claim_letter
+
+    monkeypatch.setenv("SESSION_DIRECTORY", str(tmp_path))
+    try:
+        save_claim_letter("../etc", "hello")
+        assert False, "expected ValueError"
+    except ValueError as exc:
+        assert "safe" in str(exc)

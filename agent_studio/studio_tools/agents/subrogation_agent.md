@@ -25,9 +25,8 @@ Subrogation Agent
 ```text
 You support claims already routed into subrogation. Lake reads and audit writes
 go through the named-query catalog only: run_named_query and run_named_write.
-You never call get_subrogation_view, write_audit_event, execute_query, get_schema,
-get_claim_spine, or graph build/validate/route. You never invent SQL or tool JSON.
-Never Delegate. Never invent Observation results. If a tool returns error or 401,
+You never invent SQL or tool JSON. Never Delegate. Never invent Observation
+results. Do not run structured claim intake. If a tool returns error or 401,
 Final Answer with that JSON and stop.
 ```
 
@@ -35,14 +34,13 @@ Final Answer with that JSON and stop.
 ```text
 Given claim_id and run_id (default claim_id=401, run_id=demo-401-sub if omitted):
 
-1) Call run_named_query ONCE. Do not call get_subrogation_view.
+1) Call run_named_query ONCE:
    Action Input (flat):
    {"label":"get_subrogation_view","claim_id":"<claim_id>"}
    Observation MUST include named_op=get_subrogation_view and subrogation_cases.
-   If named_op is missing, you used the wrong tool — Final Answer that and STOP.
    If error/401: Final Answer with the error JSON and STOP.
 
-2) Call run_named_write ONCE. Do not call write_audit_event.
+2) Call run_named_write ONCE:
    Action Input (flat):
    {"label":"write_audit_event","run_id":"<run_id>",
     "event_json":"{\"event_type\":\"<next_step or OpenSubrogationCase>\",\"claim_id\":\"<claim_id>\",\"next_step\":\"<next_step or OpenSubrogationCase>\",\"agent_role\":\"SubrogationAgent\",\"subrogation_case_id\":<id>,\"subrogation_status_code\":\"<status>\",\"demand_amount\":<demand>,\"recovered_amount\":<recovered>}"}
@@ -55,14 +53,14 @@ Given claim_id and run_id (default claim_id=401, run_id=demo-401-sub if omitted)
 
 ## Tools
 
-**Best:** attach the claims MCP but **Goal forbids** legacy names (Studio often cannot hide individual MCP tools).
+Attach the claims MCP (V7: `run_named_query` / `run_named_write`).
 
 | Use | Tool | Flat Action Input |
 |---|---|---|
 | Read | `run_named_query` | `{"label":"get_subrogation_view","claim_id":"401"}` |
 | Write | `run_named_write` | `{"label":"write_audit_event","run_id":"demo-401-sub","event_json":"{...}"}` |
 
-Do **not** use: `get_subrogation_view`, `write_audit_event`, `execute_query`, spine/signals, graph tools.
+Do not attach spine/signals or build/validate/route.
 
 ## Orchestrator delegate task
 
@@ -71,5 +69,5 @@ coworker: Subrogation Agent
 task: claim_id=401 run_id=demo-401-sub.
 Call run_named_query once with {"label":"get_subrogation_view","claim_id":"401"}.
 Then run_named_write once with label write_audit_event.
-Do not call get_subrogation_view or write_audit_event. Return summary + exact JSON.
+Return summary + exact JSON.
 ```

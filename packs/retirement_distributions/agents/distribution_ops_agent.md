@@ -32,7 +32,7 @@ Given claim_id and run_id (default claim_id=7001, run_id=demo-7001-ops):
     "event_json":"{\"event_type\":\"ProcessDistribution\",\"claim_id\":\"<claim_id>\",\"agent_role\":\"DistributionOpsAgent\"}"}
 
 2) Final Answer: confirm the termination distribution is cleared to process, plus the exact write JSON. STOP.
-   Do not call spine/signals or graph tools.
+   Do not call spine/signals or build/validate/route.
 ```
 
 ## Tools

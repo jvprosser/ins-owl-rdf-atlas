@@ -11,6 +11,10 @@ def test_get_litigation_view_shapes():
     def fake(sql: str):
         assert "litigation_case" in sql
         assert "402" in sql
+        assert "defense_counsel_party_id" in sql
+        assert "served_date" in sql
+        assert "venue_country_subdivision_code" in sql
+        assert "currency_code" in sql
         return [
             {
                 "litigation_case_id": 9101,

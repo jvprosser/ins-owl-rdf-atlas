@@ -151,7 +151,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'CodeList',
   'llm.acord_concept' = 'Codelist',
@@ -191,7 +190,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'CodeValue',
   'llm.acord_concept' = 'Codelist value',
@@ -230,7 +228,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'Party',
   'llm.acord_concept' = 'Party',
@@ -270,7 +267,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'Person',
   'llm.acord_concept' = 'Person',
@@ -307,7 +303,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'Organization',
   'llm.acord_concept' = 'Organization',
@@ -350,7 +345,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'PostalAddress',
   'llm.acord_concept' = 'Address',
@@ -397,7 +391,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'AutoInsurancePolicy',
   'llm.acord_concept' = 'Policy',
@@ -436,7 +429,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'PolicyPartyRole',
   'llm.acord_concept' = 'Party Role (Policy)',
@@ -472,7 +464,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'Coverage',
   'llm.acord_concept' = 'Coverage',
@@ -514,7 +505,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'PolicyCoverage',
   'llm.acord_concept' = 'Policy Coverage',
@@ -552,7 +542,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'InsurableObject',
   'llm.acord_concept' = 'Risk / Insured Object',
@@ -598,7 +587,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'Vehicle',
   'llm.acord_concept' = 'Vehicle',
@@ -637,7 +625,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'PolicyInsurableObject',
   'llm.acord_concept' = 'Policy risk / insured item link',
@@ -682,7 +669,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'LossEvent',
   'llm.acord_concept' = 'Loss / Accident',
@@ -727,7 +713,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'AutoClaim',
   'llm.acord_concept' = 'Claim',
@@ -767,7 +752,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'ClaimPartyRole',
   'llm.acord_concept' = 'Party Role (Claim)',
@@ -811,7 +795,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'ClaimLifecycle',
   'llm.acord_concept' = 'Claim process / status timestamps',
@@ -856,7 +839,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'ClaimReserve',
   'llm.acord_concept' = 'Claim reserve / financials',
@@ -893,7 +875,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'ClaimReserveComponent',
   'llm.acord_concept' = 'Reserve category amount',
@@ -933,7 +914,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'ClaimReserveTransaction',
   'llm.acord_concept' = 'Reserve transaction',
@@ -982,7 +962,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'ClaimPayment',
   'llm.acord_concept' = 'Claim payment',
@@ -1030,7 +1009,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'RepairEngagement',
   'llm.acord_concept' = 'Repair / vendor service',
@@ -1077,7 +1055,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'Location',
   'llm.acord_concept' = 'Location / Place',
@@ -1121,7 +1098,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'Driver',
   'llm.acord_concept' = 'Driver',
@@ -1161,7 +1137,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'PolicyDriver',
   'llm.acord_concept' = 'Driver on Policy',
@@ -1201,7 +1176,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'LossDriver',
   'llm.acord_concept' = 'Driver involved in loss',
@@ -1248,7 +1222,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'PoliceReport',
   'llm.acord_concept' = 'Police Report / Accident Report',
@@ -1291,7 +1264,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'FaultDetermination',
   'llm.acord_concept' = 'Liability / Fault',
@@ -1334,7 +1306,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'ClaimInjury',
   'llm.acord_concept' = 'Injury / Bodily Injury',
@@ -1379,7 +1350,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'DamageAssessment',
   'llm.acord_concept' = 'Appraisal / Damage Estimate',
@@ -1416,7 +1386,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'ClaimFolder',
   'llm.acord_concept' = 'Claim file / folder',
@@ -1462,7 +1431,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'ClaimDocument',
   'llm.acord_concept' = 'Attachment / Document',
@@ -1511,7 +1479,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'ClaimOffer',
   'llm.acord_concept' = 'Settlement Offer',
@@ -1556,7 +1523,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'SubrogationCase',
   'llm.acord_concept' = 'Subrogation',
@@ -1600,7 +1566,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'ClaimRecovery',
   'llm.acord_concept' = 'Recovery / Salvage',
@@ -1648,7 +1613,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'LitigationCase',
   'llm.acord_concept' = 'Suit / Litigation',
@@ -1666,6 +1630,32 @@ TBLPROPERTIES (
   'llm.related_tables' = 'claim;claim_party_role;claim_injury;claim_offer;party',
   'llm.decision_refs' = 'high_value_litigation',
   'llm.notes' = 'ATTORNEY rows in claim_party_role remain; this table holds case-level structure. Indicator on claim should align.'
+);
+
+
+CREATE TABLE IF NOT EXISTS car_insurance_claims.litigation_task (
+  litigation_task_id        BIGINT    COMMENT 'PK. Surrogate litigation task id.',
+  litigation_case_id        BIGINT    COMMENT 'FK -> litigation_case.litigation_case_id (nullable if suit row missing).',
+  claim_id                  BIGINT    COMMENT 'FK -> claim.claim_id.',
+  task_type_code            STRING    COMMENT 'COMPLETE_FILE | ESCALATE_DISCOVERY | DRAFT_HOLD.',
+  task_status_code          STRING    COMMENT 'OPEN | DONE | CANCELLED.',
+  due_date                  DATE      COMMENT 'Optional due date.',
+  run_id                    STRING    COMMENT 'Agent run that created the task.',
+  created_at                TIMESTAMP COMMENT 'Row creation timestamp.'
+)
+PARTITIONED BY SPEC (
+  task_status_code,
+  YEAR(created_at)
+)
+COMMENT 'Work item opened by LitigationAgent from playbook next_step (file completeness or discovery aging).'
+STORED BY ICEBERG
+TBLPROPERTIES (
+  'format-version' = '2',
+  'llm.domain' = 'personal_auto_pc_claims',
+  'llm.ontology_class' = 'LitigationTask',
+  'llm.primary_key' = 'litigation_task_id',
+  'llm.foreign_keys' = 'claim_id->claim.claim_id;litigation_case_id->litigation_case.litigation_case_id',
+  'llm.grain' = 'one work item on a litigated claim'
 );
 
 
@@ -1690,7 +1680,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'FraudAssessment',
   'llm.acord_concept' = 'SIU / Fraud Investigation',
@@ -1733,7 +1722,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'OtherInsurance',
   'llm.acord_concept' = 'Other Insurance',
@@ -1780,7 +1768,6 @@ STORED BY ICEBERG
 STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
-  'write.format.default' = 'parquet',
   'llm.domain' = 'personal_auto_pc_claims',
   'llm.ontology_class' = 'ClaimLifecycleEvent',
   'llm.acord_concept' = 'Claim activity / status event',

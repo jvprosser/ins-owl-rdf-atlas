@@ -23,7 +23,7 @@ User
   └─ Orchestrator          no tools; Delegate only
        ├─ Manager          MCP catalog + Studio build / validate / route
        ├─ Routing Agent    cosine pre_route_text (NL triage only)
-       └─ Specialist       MCP view label (if any) + write_audit_event
+       └─ Specialist       MCP view label (if any) + playbook write
 ```
 
 **Structured intake** (user supplies a case/claim id):
@@ -32,7 +32,7 @@ User
 2. Manager calls `run_named_query` for spine, then routing signals (catalog **labels**, not extra MCP tools).
 3. Manager passes those JSON payloads, unmodified, into `build_claim_graph` → `validate_claim_graph` → `route_claim`.
 4. Manager stops. Orchestrator maps `agent_role` → coworker **Role** and Delegates once.
-5. Specialist may run one view label, then `run_named_write` `write_audit_event` (Closeout also `promote_audit_run`).
+5. Specialist may run one view label, then the playbook write (`create_litigation_task` or `write_audit_event`; Closeout also `promote_audit_run`).
 
 Custom Studio tools **cannot** call MCP in-process. The agent is the only bridge: MCP result → tool argument → session artifact.
 
@@ -44,7 +44,7 @@ MCP V7 registers four tools: `get_server_info`, `list_named_queries`, `run_named
 
 The **catalog** is compiled into the MCP package (`READ_OPS` / `WRITE_OPS`). Each label has required/optional params and a Python handler that runs curated Impala. Agents discover labels via `list_named_queries` and via Goal text. Invented SQL or unknown labels fail closed.
 
-Claims labels (live lake): `get_claim_spine`, `get_claim_routing_signals`, specialist views (`get_litigation_view`, `get_bi_view`, `get_subrogation_view`), `get_schema`, and audit writes (`write_audit_event`, `promote_audit_run`, …).
+Claims labels (live lake): `get_claim_spine`, `get_claim_routing_signals`, specialist views (`get_litigation_view`, `get_bi_view`, `get_subrogation_view`), `get_schema`, audit writes (`write_audit_event`, `promote_audit_run`, …), and `create_litigation_task`.
 
 Audit lands in Iceberg (`agent_run_audit` / `agent_run_evidence`), partitioned by `run_id`. Impala mode is **table-append**; `promote_audit_run` is a no-op success (`mode=table_append`). Hive WAP branches are a later fork, not this path.
 
@@ -74,7 +74,7 @@ The playbook can name specialists that have no Studio paste yet (`PdClaimsAgent`
 |---|---|---|
 | Mount | `/workflow_data` (`WORKFLOW_DATA_DIRECTORY`) | `/workspace` (`SESSION_DIRECTORY`) |
 | Access | Read-only | Read-write |
-| Contents | Schema JSON, playbook, `pack.yaml`, exemplars | `claim_{id}_case.json`, validation JSON, route JSON |
+| Contents | Schema JSON, playbook, `pack.yaml`, exemplars | `claim_{id}_case.json`, validation JSON, route JSON, `claim_{id}_letter.txt` (R1.2) |
 | Scope | All tools in the workflow | Same, per run |
 
 Thin tools: each Studio tool is `tool.py` + `requirements.txt` only. Shared logic is `ins-claims-agent` pinned from git.
@@ -143,7 +143,7 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 | `next_step` | Action id the specialist should perform. |
 | `agent_role` | Specialist coworker to Delegate to. |
 | `lane` | Routing bucket (litigation, BI, closeout, …). |
-| `allowed_tools` | Catalog labels that specialist may call. |
+| `allowed_tools` | Catalog labels or Studio tools the specialist may call. |
 | `terminal` | Router says this run is done (no further specialist). |
 | Structured intake | User supplied a case/claim id. YAML probes win over cosine. |
 
@@ -159,6 +159,7 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 | Table-append / `mode=table_append` | Impala writes audit rows to main tables. No Iceberg branch. |
 | Hive WAP branches | Write-audit-publish on Iceberg branches. Later Hive fork; not this path. |
 | `write_audit_event` | Catalog write: `INSERT` one `agent_run_audit` row. |
+| `create_litigation_task` | Catalog write: `INSERT` one `litigation_task` row from `run_id` + `event_json`. |
 | `promote_audit_run` | No-op success on Impala (rows already on main). |
 | Routing signals / `get_claim_routing_signals` | Named query for extra facts the graph and probes need (flags, related ids). |
 
@@ -174,7 +175,7 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 | `WORKFLOW_DATA_DIRECTORY` | Env for the Workflow Data mount (`/workflow_data`). |
 | `SESSION_DIRECTORY` | Env for per-run artifacts (`/workspace`). |
 | Exemplars | Labeled NL snippets for cosine `pre_route_text`. |
-| `pre_route_text` | Studio tool that TF-IDF/cosine-labels unstructured notes. |
+| `save_claim_letter` | Studio tool: write `claim_{id}_letter.txt` to the session folder (R1.2). Does not send mail. |
 
 **Packs / demo**
 

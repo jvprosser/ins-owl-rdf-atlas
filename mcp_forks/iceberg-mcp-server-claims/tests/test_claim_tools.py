@@ -20,6 +20,10 @@ def test_claim_routing_signals_sql_uses_cte_not_scalar_count_gt():
     assert "COUNT(*) > 0" not in sql
     assert "CROSS JOIN" in sql
     assert "claim_id = 402" in sql
+    assert "docket_number" in sql
+    assert "missing_docket_or_counsel" in sql
+    assert "discovery_aging" in sql
+    assert "DATEDIFF" in sql
 
 
 def test_get_claim_spine_shapes_payload():

@@ -139,7 +139,15 @@ sub AS (
   FROM {db}.subrogation_case WHERE claim_id = {cid}
 ),
 lit AS (
-  SELECT COUNT(*) AS cnt, MIN(litigation_case_id) AS litigation_case_id
+  SELECT COUNT(*) AS cnt,
+         MIN(litigation_case_id) AS litigation_case_id,
+         MIN(docket_number) AS docket_number,
+         MIN(defense_counsel_party_id) AS defense_counsel_party_id,
+         MIN(plaintiff_counsel_party_id) AS plaintiff_counsel_party_id,
+         MIN(served_date) AS served_date,
+         MIN(filed_date) AS filed_date,
+         MIN(closed_date) AS closed_date,
+         MIN(litigation_status_code) AS litigation_status_code
   FROM {db}.litigation_case WHERE claim_id = {cid}
 ),
 inj AS (
@@ -185,6 +193,30 @@ SELECT
   sub.subrogation_status_code,
   (lit.cnt > 0) AS has_litigation_case,
   lit.litigation_case_id,
+  lit.docket_number,
+  lit.defense_counsel_party_id,
+  lit.plaintiff_counsel_party_id,
+  lit.served_date,
+  lit.filed_date,
+  lit.closed_date,
+  lit.litigation_status_code,
+  (
+    lit.cnt > 0
+    AND (
+      lit.docket_number IS NULL OR TRIM(lit.docket_number) = ''
+      OR (
+        lit.defense_counsel_party_id IS NULL
+        AND lit.plaintiff_counsel_party_id IS NULL
+      )
+    )
+  ) AS missing_docket_or_counsel,
+  (
+    lit.cnt > 0
+    AND lit.litigation_status_code = 'IN_DISCOVERY'
+    AND lit.closed_date IS NULL
+    AND lit.filed_date IS NOT NULL
+    AND DATEDIFF(CURRENT_DATE(), lit.filed_date) > 90
+  ) AS discovery_aging,
   (inj.cnt > 0) AS has_injury,
   (pr.cnt > 0) AS has_police_report,
   pr.police_report_id,

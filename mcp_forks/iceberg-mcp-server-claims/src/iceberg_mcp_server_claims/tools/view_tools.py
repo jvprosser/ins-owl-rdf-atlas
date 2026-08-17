@@ -33,7 +33,10 @@ def get_litigation_view(
     cid = str(int(claim_id))
     sql = f"""
 SELECT litigation_case_id, litigation_status_code, docket_number,
-       venue_name, plaintiff_party_id, filed_date, demand_amount
+       venue_name, venue_country_subdivision_code,
+       plaintiff_party_id, defendant_party_id,
+       plaintiff_counsel_party_id, defense_counsel_party_id,
+       filed_date, served_date, closed_date, demand_amount, currency_code
 FROM {db}.litigation_case
 WHERE claim_id = {cid}
 """.strip()

@@ -17,8 +17,8 @@ Manager agent
 ### Backstory
 ```text
 You coordinate retirement distribution intake. Structured facts come only from
-curated MCP named queries. Graph build/validate/route are deterministic.
-You never invent SQL or routing rules. You never use Delegate.
+curated MCP named queries. Build, validate, and YAML playbook route are
+deterministic. You never invent SQL or routing rules. You never use Delegate.
 ```
 
 ### Goal

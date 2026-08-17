@@ -52,6 +52,50 @@ def decision_artifact_path(claim_id: str | int) -> Path:
     return session_dir() / f"claim_{claim_id}_route.json"
 
 
+def letter_artifact_path(claim_id: str | int) -> Path:
+    """Session hold/status letter (R1.2 LitigationSupport)."""
+    return session_dir() / f"claim_{_safe_claim_id(claim_id)}_letter.txt"
+
+
+def write_text_artifact(path: Path, text: str) -> str:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    return str(path.resolve())
+
+
+def save_claim_letter(
+    claim_id: str | int,
+    body: str,
+    *,
+    run_id: str | None = None,
+    next_step: str = "LitigationSupport",
+) -> dict[str, Any]:
+    """Write drafted letter text to SESSION_DIRECTORY. Does not send mail."""
+    text = (body or "").strip()
+    if not text:
+        raise ValueError("body is required (drafted letter text)")
+    if not text.endswith("\n"):
+        text = text + "\n"
+    path = letter_artifact_path(claim_id)
+    write_text_artifact(path, text)
+    return {
+        "claim_id": _safe_claim_id(claim_id),
+        "run_id": run_id,
+        "next_step": next_step,
+        "letter_artifact": str(path.resolve()),
+        "session_directory": str(session_dir()),
+        "bytes": path.stat().st_size,
+    }
+
+
+def _safe_claim_id(claim_id: str | int) -> str:
+    cid = str(claim_id).strip()
+    if not cid or any(part in cid for part in ("/", "\\", "..")):
+        raise ValueError("claim_id is not a safe artifact name")
+    return cid
+
+
 def write_json_artifact(path: Path, data: Any) -> str:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)

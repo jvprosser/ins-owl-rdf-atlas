@@ -13,7 +13,7 @@ Reuse the car-insurance **control plane** for a finserv customer demo, without c
 
 Same locked flow as claims: Orchestrator (no tools) → Manager catalog reads → Studio `build_claim_graph` → `validate_claim_graph` → `route_claim` → one specialist Delegate. YAML probes + playbook decide the lane. The LLM does not decide hardship, RMD, or ERISA.
 
-Language: say **structured claim intake sequence**, not “Path A” / “S1”. Studio tools still take `claim_id`.
+Studio tools still take `claim_id`.
 
 ## What is done in the repo
 

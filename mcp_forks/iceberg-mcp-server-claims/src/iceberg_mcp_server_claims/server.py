@@ -77,7 +77,8 @@ def run_named_write(
     Flat Action Input example:
       {"label":"write_audit_event","run_id":"demo-402","event_json":"{\\"claim_id\\":\\"402\\"}"}
     Write labels: write_audit_event, promote_audit_run, begin_agent_audit_run,
-    append_agent_audit_event, append_agent_audit_evidence, abandon_agent_audit_run.
+    append_agent_audit_event, append_agent_audit_evidence, abandon_agent_audit_run,
+    create_litigation_task.
     """
     return catalog.run_named_write(
         label,

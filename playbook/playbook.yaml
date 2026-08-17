@@ -13,7 +13,9 @@ schema_relpath: ontology/claims.json
 
 # Priority evaluation order (first-match-wins):
 #   Data integrity:     R0.1 claim exists, R0.4 validation triangle complete
-#   Fast-path lanes:    R1.1 closed audit, R1.2 litigation, R5.1 SIU / fraud
+#   Fast-path lanes:    R1.1 closed audit, R1.2a missing docket/counsel,
+#                       R1.2b discovery aging, R1.2 remaining litigation,
+#                       R5.1 SIU / fraud
 #   Data gaps:          R2.3 missing adjuster, R2.1 missing police report,
 #                       R2.2 missing fault, R2.5 injury details missing
 #   Financials & subro: R3.2 / R3.4 offers/payments, R4.1 / R4.3 subrogation
@@ -22,6 +24,8 @@ priorities:
   - R0.1
   - R0.4
   - R1.1
+  - R1.2a
+  - R1.2b
   - R1.2
   - R5.1
   - R2.3
@@ -53,7 +57,19 @@ probes:
   R1.1:
     form: SELECT
     path: claim_status_code
-  # R1.2 ASK: litigation flag or litigation case.
+  # R1.2a ASK: litigated claim missing docket or both counsel ids.
+  R1.2a:
+    form: ASK
+    match:
+      path: missing_docket_or_counsel
+      equals: true
+  # R1.2b ASK: IN_DISCOVERY more than 90 days from filed_date, still open.
+  R1.2b:
+    form: ASK
+    match:
+      path: discovery_aging
+      equals: true
+  # R1.2 ASK: remaining litigation (file complete, discovery not aging).
   R1.2:
     form: ASK
     match:
@@ -163,13 +179,27 @@ actions:
       needs_llm: false
       tools: [write_audit_event, promote_audit_run]
       terminal: true
+  R1.2a:
+    - when: ASK_TRUE
+      step: CompleteLitigationFile
+      agent: LitigationAgent
+      lane: LITIGATION
+      needs_llm: false
+      tools: [get_litigation_view, create_litigation_task]
+  R1.2b:
+    - when: ASK_TRUE
+      step: EscalateDiscovery
+      agent: LitigationAgent
+      lane: LITIGATION
+      needs_llm: false
+      tools: [get_litigation_view, create_litigation_task]
   R1.2:
     - when: ASK_TRUE
       step: LitigationSupport
       agent: LitigationAgent
       lane: LITIGATION
-      needs_llm: false
-      tools: [get_litigation_view, write_audit_event]
+      needs_llm: true
+      tools: [get_litigation_view, write_audit_event, save_claim_letter]
   R5.1:
     - when: ASK_TRUE
       step: SiuInvestigation

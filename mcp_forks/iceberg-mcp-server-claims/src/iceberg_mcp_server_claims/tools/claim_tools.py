@@ -126,6 +126,8 @@ def get_claim_routing_signals(
         "has_current_reserve",
         "has_siu_suspected",
         "has_document",
+        "missing_docket_or_counsel",
+        "discovery_aging",
     ]
 
     try:

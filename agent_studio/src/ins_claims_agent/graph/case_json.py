@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import date, datetime
 from typing import Any
 
 from ins_claims_agent.mcp_facade import IcebergFacade
 from ins_claims_agent.pack import Pack
 from ins_claims_agent.studio_io import normalize_signals_payload, normalize_spine_payload
+
+DISCOVERY_AGING_DAYS = 90
 
 
 def build_claim_graph(
@@ -81,8 +84,13 @@ def build_claim_case(
     has_subrogation_case = bool(
         signals.get("has_subrogation_case") or signals.get("subrogation_case_id") is not None
     )
+    litigation_indicator = _as_bool(spine.get("litigation_indicator"))
     has_litigation_case = bool(
         signals.get("has_litigation_case") or signals.get("litigation_case_id") is not None
+    )
+    missing_docket_or_counsel, discovery_aging = _litigation_probe_flags(
+        signals,
+        in_litigation=litigation_indicator or has_litigation_case,
     )
     has_injury = bool(signals.get("has_injury") or injury_ids)
     has_loss_payment = bool(signals.get("has_loss_payment") or payment_ids)
@@ -93,8 +101,18 @@ def build_claim_case(
         "claim_exists": True,
         "claim_number": spine.get("claim_number"),
         "claim_status_code": spine.get("claim_status_code"),
-        "litigation_indicator": _as_bool(spine.get("litigation_indicator")),
+        "litigation_indicator": litigation_indicator,
         "has_litigation_case": has_litigation_case,
+        "litigation_case_id": signals.get("litigation_case_id"),
+        "docket_number": signals.get("docket_number"),
+        "defense_counsel_party_id": signals.get("defense_counsel_party_id"),
+        "plaintiff_counsel_party_id": signals.get("plaintiff_counsel_party_id"),
+        "served_date": signals.get("served_date"),
+        "filed_date": signals.get("filed_date"),
+        "closed_date": signals.get("closed_date"),
+        "litigation_status_code": signals.get("litigation_status_code"),
+        "missing_docket_or_counsel": missing_docket_or_counsel,
+        "discovery_aging": discovery_aging,
         "subrogation_indicator": _as_bool(spine.get("subrogation_indicator")),
         "fraudulent_claim_indicator": _as_bool(spine.get("fraudulent_claim_indicator")),
         "total_loss_indicator": _as_bool(spine.get("total_loss_indicator")),
@@ -180,3 +198,63 @@ def _as_bool(value: Any) -> bool:
     if isinstance(value, (int, float)):
         return bool(value)
     return str(value).strip().lower() in {"true", "1", "yes"}
+
+
+def _blank(value: Any) -> bool:
+    return value in (None, "", [], {})
+
+
+def _days_since(value: Any) -> int | None:
+    if _blank(value):
+        return None
+    if isinstance(value, datetime):
+        filed = value.date()
+    elif isinstance(value, date):
+        filed = value
+    else:
+        try:
+            filed = date.fromisoformat(str(value)[:10])
+        except ValueError:
+            return None
+    return (date.today() - filed).days
+
+
+def _litigation_probe_flags(
+    signals: dict[str, Any],
+    *,
+    in_litigation: bool,
+) -> tuple[bool, bool]:
+    """Compute R1.2a / R1.2b flags from routing signals (not specialist Goal)."""
+    has_file_fields = any(
+        key in signals
+        for key in (
+            "docket_number",
+            "defense_counsel_party_id",
+            "plaintiff_counsel_party_id",
+            "filed_date",
+            "closed_date",
+            "litigation_status_code",
+        )
+    )
+    if has_file_fields or in_litigation:
+        missing_docket = _blank(signals.get("docket_number"))
+        missing_counsel = _blank(signals.get("defense_counsel_party_id")) and _blank(
+            signals.get("plaintiff_counsel_party_id")
+        )
+        missing = in_litigation and (missing_docket or missing_counsel)
+    else:
+        missing = _as_bool(signals.get("missing_docket_or_counsel"))
+
+    if has_file_fields:
+        status = str(signals.get("litigation_status_code") or "").strip().upper()
+        days = _days_since(signals.get("filed_date"))
+        aging = (
+            in_litigation
+            and status == "IN_DISCOVERY"
+            and _blank(signals.get("closed_date"))
+            and days is not None
+            and days > DISCOVERY_AGING_DAYS
+        )
+    else:
+        aging = _as_bool(signals.get("discovery_aging"))
+    return missing, aging

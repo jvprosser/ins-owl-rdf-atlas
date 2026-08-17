@@ -26,7 +26,6 @@
   STORED AS PARQUET
   TBLPROPERTIES (
     'format-version' = '2',
-    'write.format.default' = 'parquet',
     'llm.domain' = 'personal_auto_pc_claims_agent',
     'llm.ontology_class' = 'AgentRunAuditEvent',
     'llm.notes' = 'WAP: agents write on audit branches; promote after accepted run.'
@@ -51,7 +50,6 @@
   STORED AS PARQUET
   TBLPROPERTIES (
     'format-version' = '2',
-    'write.format.default' = 'parquet',
     'llm.domain' = 'personal_auto_pc_claims_agent',
     'llm.ontology_class' = 'AgentRunEvidence',
     'llm.notes' = 'Keep PII out of evidence payloads unless required and masked via Ranger.'

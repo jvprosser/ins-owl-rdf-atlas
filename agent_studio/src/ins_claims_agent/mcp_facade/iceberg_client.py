@@ -200,6 +200,17 @@ class IcebergFacade(McpToolCaller):
             "subrogation_status_code": row.get("subrogation_status_code"),
             "has_litigation_case": bool(sql.coerce_bool(row.get("has_litigation_case"))),
             "litigation_case_id": row.get("litigation_case_id"),
+            "docket_number": row.get("docket_number"),
+            "defense_counsel_party_id": row.get("defense_counsel_party_id"),
+            "plaintiff_counsel_party_id": row.get("plaintiff_counsel_party_id"),
+            "served_date": row.get("served_date"),
+            "filed_date": row.get("filed_date"),
+            "closed_date": row.get("closed_date"),
+            "litigation_status_code": row.get("litigation_status_code"),
+            "missing_docket_or_counsel": bool(
+                sql.coerce_bool(row.get("missing_docket_or_counsel"))
+            ),
+            "discovery_aging": bool(sql.coerce_bool(row.get("discovery_aging"))),
             "has_injury": bool(sql.coerce_bool(row.get("has_injury"))),
             "injury_ids": injury_ids,
             "has_police_report": bool(sql.coerce_bool(row.get("has_police_report"))),

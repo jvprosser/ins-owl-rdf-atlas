@@ -1,17 +1,19 @@
 # Post-route agents
 
 After `route_claim`, the decision’s `agent_role` + `allowed_tools` name the next worker.
-**All lake I/O stays on MCP** (Claims Manager or specialist agents that have MCP attached). No new Studio Python tools are required for audit/views.
+**Lake I/O stays on MCP.** The R1.2 letter is a Studio file write (`save_claim_letter`), not mail send.
 
 ## Playbook tool → MCP tool
 
 | Playbook `allowed_tools` | MCP |
 |---|---|
 | `get_litigation_view` | `run_named_query` label `get_litigation_view` |
+| `create_litigation_task` | `run_named_write` label `create_litigation_task` |
 | `get_bi_view` | `run_named_query` label `get_bi_view` |
 | `get_subrogation_view` | `run_named_query` label `get_subrogation_view` |
 | `write_audit_event` | `run_named_write` label `write_audit_event` |
 | `promote_audit_run` | `run_named_write` label `promote_audit_run` |
+| `save_claim_letter` | Studio custom tool: writes `SESSION_DIRECTORY/claim_{id}_letter.txt` |
 | `build_claim_graph` / `validate_claim_graph` | Existing Studio custom tools |
 
 V7 MCP registers only `get_server_info`, `list_named_queries`, `run_named_query`, `run_named_write`. Playbook names are catalog **labels**, not MCP tool names.
@@ -50,22 +52,22 @@ On unstructured text: delegate to `Routing Agent`. If cosine `needs_llm` is fals
 
 NL first-touch triage. Cosine vs a small `LITIGATION` / `GENERAL_CLAIMS` catalog; `needs_llm` when the score is low. **Does not replace structured claim intake.** If `claim_id` is present, Manager structured claim intake is authoritative.
 
-### Claims Manager (MCP + graph Studio tools)
+### Claims Manager (MCP + build / validate / route Studio tools)
 **Paste-ready definition:** [`agents/manager_agent.md`](agents/manager_agent.md)
 
 **Role (exact for CrewAI coworker):** `Manager agent`  
 **Tools:** MCP `get_server_info` / `run_named_query` / `run_named_write`; Studio `build` / `validate` / `route`.  
 **Job:** Structured claim intake when asked to intake/route; **if asked for one MCP tool by name, call it once and stop**. After `route_claim`, STOP — Orchestrator hands off to the specialist named by `agent_role`.
 
-### Litigation Agent (MCP only)
+### Litigation Agent (MCP + `save_claim_letter`)
 **Finished paste-ready definition:** [`agents/litigation_agent.md`](agents/litigation_agent.md)
 
-Use when route returns `LitigationAgent` / `LitigationSupport`.
+Use when route returns `LitigationAgent` / `CompleteLitigationFile` / `EscalateDiscovery` / `LitigationSupport`.
 
 | Field | Value |
 |---|---|
 | Name / Role (exact coworker) | `Litigation Agent` |
-| Tools | Prefer `run_named_query` / `run_named_write` (legacy view/audit names forbidden in Goal) |
+| Tools | MCP `run_named_query` / `run_named_write`; Studio `save_claim_letter` (R1.2 letter only) |
 | Backstory / Goal | Copy from `agents/litigation_agent.md` |
 
 ### Subrogation Agent (MCP only)
@@ -109,8 +111,8 @@ For roles whose playbook tools are only `write_audit_event`: attach MCP audit to
 Paste Orchestrator Goal + user prompt from [`agents/orchestrator_agent.md`](agents/orchestrator_agent.md). Manager Goal must STOP after `route_claim`. Orchestrator maps `agent_role` → coworker Role (not litigation-only).
 
 1. Orchestrator → Manager: structured claim intake (`run_named_query` spine then signals → build → validate → route).
-2. Route returns `agent_role` (402: `LitigationAgent` / `LitigationSupport`).
-3. Orchestrator → mapped specialist: catalog read (if the map has a view) then `run_named_write` (`write_audit_event`). `run_id` `demo-<claim_id>-e2e`.
+2. Route returns `agent_role` (402: `LitigationAgent` / `EscalateDiscovery`).
+3. Orchestrator → mapped specialist: catalog read (if the map has a view) then the write label for that `next_step` (`create_litigation_task` on 402; Closeout also `promote_audit_run`). `run_id` `demo-<claim_id>-e2e`.
 4. Orchestrator Final Answer: route decision + specialist summary + write JSON.
 
 Specialists other than Litigation still need Studio pastes in the same Crew, or step 3 ends with coworker-not-found.

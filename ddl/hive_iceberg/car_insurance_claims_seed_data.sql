@@ -40,6 +40,7 @@
 USE car_insurance_claims;
 
 -- Optional cleanup (uncomment for idempotent re-seed on empty-or-replace workflows)
+-- TRUNCATE TABLE litigation_task;
 -- TRUNCATE TABLE claim_lifecycle_event;
 -- TRUNCATE TABLE fraud_assessment;
 -- TRUNCATE TABLE litigation_case;
@@ -587,6 +588,8 @@ SELECT * FROM (
 ) s;
 
 
+-- 9101 / claim 402: docket + counsel present; IN_DISCOVERY filed 2025-08-01
+-- (R1.2b EscalateDiscovery once filed_date is older than 90 days).
 INSERT INTO TABLE car_insurance_claims.litigation_case
 SELECT * FROM (
   SELECT CAST(9101 AS BIGINT) AS litigation_case_id, CAST(402 AS BIGINT) AS claim_id, 'IN_DISCOVERY' AS litigation_status_code, '2025-CV-4412' AS docket_number, 'Sangamon County Circuit Court' AS venue_name, 'IL' AS venue_country_subdivision_code, CAST(2 AS BIGINT) AS plaintiff_party_id, CAST(10 AS BIGINT) AS defendant_party_id, CAST(9 AS BIGINT) AS plaintiff_counsel_party_id, CAST(9 AS BIGINT) AS defense_counsel_party_id, CAST('2025-08-01' AS DATE) AS filed_date, CAST('2025-08-05' AS DATE) AS served_date, CAST(NULL AS DATE) AS closed_date, CAST(75000.00 AS DECIMAL(18,2)) AS demand_amount, 'USD' AS currency_code, CAST('2025-08-01 09:00:00' AS TIMESTAMP) AS created_at

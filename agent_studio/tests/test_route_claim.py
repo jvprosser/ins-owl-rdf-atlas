@@ -65,8 +65,64 @@ def test_route_litigation():
     spine["subrogation_indicator"] = False
     case = build_claim_graph(402, spine=spine, signals={})
     decision = route_claim(case, 402)
+    assert case["missing_docket_or_counsel"] is True
+    assert case["discovery_aging"] is False
+    assert decision["next_step"] == "CompleteLitigationFile"
+    assert decision["agent_role"] == "LitigationAgent"
+    assert decision["needs_llm"] is False
+    assert "create_litigation_task" in decision["allowed_tools"]
+
+
+def _signals_litigation_file_complete(**overrides: object) -> dict:
+    row = {
+        "has_litigation_case": True,
+        "litigation_case_id": 9101,
+        "docket_number": "2025-CV-4412",
+        "defense_counsel_party_id": 9,
+        "plaintiff_counsel_party_id": 9,
+        "served_date": "2025-08-05",
+        "filed_date": "2025-08-01",
+        "closed_date": None,
+        "litigation_status_code": "IN_DISCOVERY",
+        "has_police_report": True,
+        "has_fault_determination": True,
+    }
+    row.update(overrides)
+    return row
+
+
+def test_route_litigation_discovery_aging():
+    spine = _spine_401()
+    spine["litigation_indicator"] = True
+    spine["subrogation_indicator"] = False
+    case = build_claim_graph(402, spine=spine, signals=_signals_litigation_file_complete())
+    decision = route_claim(case, 402)
+    assert case["missing_docket_or_counsel"] is False
+    assert case["discovery_aging"] is True
+    assert decision["next_step"] == "EscalateDiscovery"
+    assert decision["agent_role"] == "LitigationAgent"
+    assert "R1.2b" in decision["reason_probe_ids"]
+
+
+def test_route_litigation_support_letter():
+    spine = _spine_401()
+    spine["litigation_indicator"] = True
+    spine["subrogation_indicator"] = False
+    case = build_claim_graph(
+        402,
+        spine=spine,
+        signals=_signals_litigation_file_complete(
+            litigation_status_code="ANSWERED",
+            filed_date="2026-08-01",
+        ),
+    )
+    decision = route_claim(case, 402)
+    assert case["missing_docket_or_counsel"] is False
+    assert case["discovery_aging"] is False
     assert decision["next_step"] == "LitigationSupport"
     assert decision["agent_role"] == "LitigationAgent"
+    assert decision["needs_llm"] is True
+    assert "save_claim_letter" in decision["allowed_tools"]
 
 
 def test_route_closed_terminal():

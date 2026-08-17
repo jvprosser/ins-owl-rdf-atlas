@@ -2,7 +2,7 @@
 
 One chat prompt per playbook **probe → action** pair. Chat the **Orchestrator** (not Manager). The LLM must not choose the lane. Pass = `route_claim` returns the expected `next_step`, `agent_role`, and `reason_probe_ids`.
 
-First-match-wins: a later probe only fires if every earlier action’s `when` failed. You cannot test `R1.4` on claim **402**; litigation (`R1.2`) wins first.
+First-match-wins: a later probe only fires if every earlier action’s `when` failed. You cannot test `R1.4` on claim **402**; litigation (`R1.2b` discovery aging) wins first.
 
 Specialist Delegate after route only if that `agent_role` has a Studio paste. Otherwise Orchestrator Final Answers the route JSON (`SiuAgent`, `PdClaimsAgent`, `SettlementAgent`, `DataQualityAgent`, `HumanReviewAgent`).
 
@@ -39,7 +39,9 @@ Studio project: live Impala catalog, Workflow Data = repo `ontology/` + `probes/
 | R0.1 | ASK_FALSE | `FixDataQuality` / `DataQualityAgent` / DATA_QUALITY | Graph has no `AutoClaim` at the claim IRI (builder usually prevents this) | none |
 | R0.4 | ASK_FALSE | `FixDataQuality` / `DataQualityAgent` / DATA_QUALITY | Claim exists but triangle broken (no policy↔vehicle) | none |
 | R1.1 | SELECT_EQUALS CLOSED | `CloseoutAudit` / `CloseoutAgent` / CLOSEOUT | Status CLOSED | **403** |
-| R1.2 | ASK_TRUE | `LitigationSupport` / `LitigationAgent` / LITIGATION | Litigation indicator or litigation case | **402** |
+| R1.2a | ASK_TRUE | `CompleteLitigationFile` / `LitigationAgent` / LITIGATION | Litigated claim missing docket or both counsel ids | pytest `test_route_litigation` |
+| R1.2b | ASK_TRUE | `EscalateDiscovery` / `LitigationAgent` / LITIGATION | IN_DISCOVERY, closed_date null, filed_date > 90 days | **402** |
+| R1.2 | ASK_TRUE | `LitigationSupport` / `LitigationAgent` / LITIGATION | Remaining litigation (file complete, not aging); `needs_llm`; letter via `save_claim_letter` | pytest `test_route_litigation_support_letter`; email smoke **402** (skip intake) |
 | R5.1 | ASK_TRUE | `SiuInvestigation` / `SiuAgent` / SIU | SIU / fraud suspected | pytest `test_route_siu_suspected` |
 | R2.3 | ASK_TRUE | `AssignAdjuster` / `DataQualityAgent` / DATA_QUALITY | No ADJUSTER party role | none |
 | R2.1 | ASK_TRUE | `RequestPoliceReport` / `PdClaimsAgent` / PD | No police report; earlier probes miss | pytest `test_route_missing_police_report` |
@@ -90,23 +92,95 @@ Do not skip the Orchestrator.
 3) Final Answer: route + exact write JSON + exact promote JSON. STOP.
 ```
 
-### R1.2 ASK_TRUE — LitigationSupport (402)
+### R1.2a ASK_TRUE — CompleteLitigationFile
+
+```text
+Intake and route claim_id 99912a. Do not skip the Orchestrator.
+Delegate ONCE to Manager: structured intake. STOP after route.
+Expect next_step=CompleteLitigationFile, agent_role=LitigationAgent,
+reason_probe_ids includes R1.2a.
+If Litigation Agent is in the Crew: Delegate ONCE — get_litigation_view
+then create_litigation_task task_type_code COMPLETE_FILE.
+```
+
+Offline: `pytest tests/test_route_claim.py::test_route_litigation` (litigation indicator, empty signals).
+
+### R1.2b ASK_TRUE — EscalateDiscovery (402)
 
 ```text
 Intake and route claim_id 402, then complete the post-route specialist work.
 Do not skip the Orchestrator.
 
 1) Delegate ONCE to Manager: structured intake for 402. STOP after route_claim.
-   Expect next_step=LitigationSupport, agent_role=LitigationAgent,
-   reason_probe_ids includes R1.2.
+   Expect next_step=EscalateDiscovery, agent_role=LitigationAgent,
+   reason_probe_ids includes R1.2b.
 
 2) Delegate ONCE to Litigation Agent.
-   Task: claim_id=402 run_id=demo-402-e2e.
+   Task: claim_id=402 run_id=demo-402-e2e next_step=EscalateDiscovery.
    run_named_query {"label":"get_litigation_view","claim_id":"402"}
-   then run_named_write write_audit_event.
+   then run_named_write create_litigation_task
+   event_json task_type_code ESCALATE_DISCOVERY.
 
 3) Final Answer: route + specialist summary + exact write JSON. STOP.
 ```
+
+Offline: `pytest tests/test_route_claim.py::test_route_litigation_discovery_aging`.
+
+### R1.2 ASK_TRUE — LitigationSupport (letter)
+
+No live seed today. Seed **402** is R1.2b (`EscalateDiscovery`), not this probe. To fire R1.2 you need a litigated claim with docket + counsel and discovery **not** aging (not `IN_DISCOVERY` with `filed_date` older than 90 days and `closed_date` null).
+
+```text
+Intake and route claim_id <ID>, then complete the post-route specialist work.
+Do not skip the Orchestrator.
+
+1) Delegate ONCE to Manager: structured intake for <ID>. STOP after route_claim.
+   Expect next_step=LitigationSupport, agent_role=LitigationAgent, needs_llm true,
+   reason_probe_ids includes R1.2.
+
+2) Delegate ONCE to Litigation Agent.
+   Task: claim_id=<ID> run_id=demo-<ID>-letter next_step=LitigationSupport.
+   run_named_query {"label":"get_litigation_view","claim_id":"<ID>"}
+   then run_named_write write_audit_event.
+   Draft a short hold/status email from the view only (Subject + body).
+   Do not invent docket, counsel, dates, or amounts.
+   Then save_claim_letter once with that body.
+   Do not create a litigation_task.
+
+3) Final Answer: route + email summary + exact write JSON + letter file_path.
+   Expect SESSION_DIRECTORY/claim_<ID>_letter.txt. STOP.
+```
+
+Offline: `pytest tests/test_route_claim.py::test_route_litigation_support_letter`
+(route only).
+
+### Generate litigation hold/status email (letter artifact)
+
+Use this when you want the `.txt` email, including on seed **402** (skip intake — 402 would otherwise route to R1.2b and would not draft a letter). Chat the **Orchestrator**. `save_claim_letter` writes the file; it does not send mail.
+
+```text
+Generate a litigation hold/status email for claim_id 402.
+Do not skip the Orchestrator. Do not run structured claim intake.
+
+1) Delegate ONCE to Litigation Agent (Role exactly "Litigation Agent").
+   Task: claim_id=402 run_id=demo-402-letter next_step=LitigationSupport.
+   Call run_named_query once:
+   {"label":"get_litigation_view","claim_id":"402"}
+   Then run_named_write once label write_audit_event.
+   Draft a short hold/status email from the view Observation only.
+   Include a Subject line and 1–2 short paragraphs (status, docket, venue,
+   counsel, dates, demand). Do not invent ids or amounts.
+   Then call save_claim_letter once:
+   {"claim_id":"402","run_id":"demo-402-letter","next_step":"LitigationSupport",
+    "body":"<the drafted email>"}
+   Do not create_litigation_task. Do not send mail.
+
+2) Final Answer: the email text, exact write JSON, and letter file_path.
+   Expect claim_402_letter.txt in SESSION_DIRECTORY. Then STOP.
+   Do not Delegate a second time.
+```
+
+Pass = `save_claim_letter` returns `status=success` and `claim_402_letter.txt` is in the session folder. Offline file write (canned body, no LLM): `pytest tests/test_studio_io.py::test_save_claim_letter_writes_txt`.
 
 ### R5.1 ASK_TRUE — SiuInvestigation
 

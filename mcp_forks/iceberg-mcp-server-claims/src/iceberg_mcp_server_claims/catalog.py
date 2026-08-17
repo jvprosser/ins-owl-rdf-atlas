@@ -6,7 +6,13 @@ import json
 from typing import Any, Callable
 
 from iceberg_mcp_server_claims.pack_fixtures import merge_pack_catalog
-from iceberg_mcp_server_claims.tools import audit_tools, claim_tools, impala_tools, view_tools
+from iceberg_mcp_server_claims.tools import (
+    audit_tools,
+    claim_tools,
+    impala_tools,
+    litigation_tasks,
+    view_tools,
+)
 
 CATALOG_VERSION = 1
 
@@ -31,7 +37,7 @@ READ_OPS: dict[str, dict[str, Any]] = {
     "get_litigation_view": {
         "required": ("claim_id",),
         "optional": ("database",),
-        "summary": "Litigation case rows",
+        "summary": "Litigation case rows (docket, counsel, dates, demand)",
         "handler": lambda p: view_tools.get_litigation_view(
             str(p["claim_id"]), p.get("database")
         ),
@@ -123,6 +129,16 @@ WRITE_OPS: dict[str, dict[str, Any]] = {
         "summary": "Delete audit rows for run_id",
         "handler": lambda p: audit_tools.abandon_agent_audit_run(
             str(p["run_id"]), p.get("database")
+        ),
+    },
+    "create_litigation_task": {
+        "required": ("run_id", "event_json"),
+        "optional": ("database",),
+        "summary": "Insert one litigation_task row (COMPLETE_FILE | ESCALATE_DISCOVERY | DRAFT_HOLD)",
+        "handler": lambda p: litigation_tasks.create_litigation_task(
+            str(p["run_id"]),
+            _as_json_string(p["event_json"]),
+            p.get("database"),
         ),
     },
 }

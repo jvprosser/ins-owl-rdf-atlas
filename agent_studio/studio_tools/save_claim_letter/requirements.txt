@@ -1,0 +1,7 @@
+# CONTENT_ID: INS_CLAIMS_LETTER_REQ_V1
+# PACKAGE_PIN: 8f60419
+# REPO_REF: main
+# UPDATED: 2026-08-17
+# FILE: agent_studio/studio_tools/save_claim_letter/requirements.txt
+pydantic>=2.0
+ins-claims-agent @ git+https://github.com/jvprosser/ins-owl-rdf-atlas.git@8f60419#subdirectory=agent_studio

@@ -94,9 +94,34 @@ def test_write_dispatches(monkeypatch):
     assert payload["named_op_kind"] == "write"
 
 
-def test_list_named_queries_has_playbook_labels():
+def test_write_dispatches_litigation_task(monkeypatch):
+    monkeypatch.setattr(
+        catalog.litigation_tasks,
+        "create_litigation_task",
+        lambda run_id, event_json, database=None: json.dumps(
+            {"ok": True, "run_id": run_id, "table": "litigation_task"}
+        ),
+    )
+    payload = json.loads(
+        catalog.run_named_write(
+            "create_litigation_task",
+            json.dumps(
+                {
+                    "run_id": "demo-402-e2e",
+                    "event_json": {
+                        "claim_id": "402",
+                        "task_type_code": "ESCALATE_DISCOVERY",
+                        "litigation_case_id": 9101,
+                    },
+                }
+            ),
+        )
+    )
+    assert payload["ok"] is True
+    assert payload["named_op"] == "create_litigation_task"
+    assert payload["named_op_kind"] == "write"
     listing = catalog.list_catalog()
     reads = {row["label"] for row in listing["reads"]}
     writes = {row["label"] for row in listing["writes"]}
     assert {"get_claim_spine", "get_litigation_view", "get_schema"} <= reads
-    assert {"write_audit_event", "promote_audit_run"} <= writes
+    assert {"write_audit_event", "promote_audit_run", "create_litigation_task"} <= writes

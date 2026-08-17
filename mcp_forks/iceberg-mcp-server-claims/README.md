@@ -31,7 +31,7 @@ Studio Action Input is **flat**. Prefer top-level `claim_id` / `run_id` over nes
 
 Read labels: `get_claim_spine`, `get_claim_routing_signals`, `get_litigation_view`, `get_bi_view`, `get_subrogation_view`, `get_schema`.
 
-Write labels: `write_audit_event`, `append_agent_audit_event`, `append_agent_audit_evidence`, `begin_agent_audit_run`, `promote_audit_run`, `promote_agent_audit_run`, `abandon_agent_audit_run`.
+Write labels: `write_audit_event`, `append_agent_audit_event`, `append_agent_audit_evidence`, `begin_agent_audit_run`, `promote_audit_run`, `promote_agent_audit_run`, `abandon_agent_audit_run`, `create_litigation_task`.
 
 Impala audit writes are table-append (no Iceberg WAP branch). `promote_audit_run` returns `mode=table_append`. Prerequisite: audit DDL from `ddl/hive_iceberg/` in the target database.
 
