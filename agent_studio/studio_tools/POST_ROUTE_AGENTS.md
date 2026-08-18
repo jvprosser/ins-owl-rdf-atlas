@@ -11,6 +11,8 @@ After `route_claim`, the decision’s `agent_role` + `allowed_tools` name the ne
 | `create_litigation_task` | `run_named_write` label `create_litigation_task` |
 | `get_bi_view` | `run_named_query` label `get_bi_view` |
 | `get_subrogation_view` | `run_named_query` label `get_subrogation_view` |
+| `get_pd_view` | `run_named_query` label `get_pd_view` |
+| `create_pd_task` | `run_named_write` label `create_pd_task` |
 | `write_audit_event` | `run_named_write` label `write_audit_event` |
 | `promote_audit_run` | `run_named_write` label `promote_audit_run` |
 | `save_claim_letter` | Studio custom tool: writes `SESSION_DIRECTORY/claim_{id}_letter.txt` |
@@ -36,9 +38,9 @@ NL front door; delegates structured claim intake, unstructured pre-route, and po
 | Litigation | `Litigation Agent` | `LitigationAgent` |
 | Subrogation | `Subrogation Agent` | `SubrogationAgent` |
 | BI | `BI Claims Agent` | `BiClaimsAgent` |
+| PD | `PD Claims Agent` | `PdClaimsAgent` |
 | Closeout | `Closeout Agent` | `CloseoutAgent` |
 | SIU | `SIU Agent` | `SiuAgent` |
-| PD | `PD Claims Agent` | `PdClaimsAgent` |
 | Settlement | `Settlement Agent` | `SettlementAgent` |
 | Data quality | `Data Quality Agent` | `DataQualityAgent` |
 | Human review | `Human Review Agent` | `HumanReviewAgent` |
@@ -92,6 +94,17 @@ Use when route returns `BiClaimsAgent` / `BiClaimsReview` / `CaptureInjuryDetail
 | Tools | `run_named_query` label `get_bi_view`; `run_named_write` `write_audit_event` |
 | Lake smoke | claim **402**, injuries **5501** / **5502** (direct specialist; e2e 402 is litigation-first) |
 
+### PD Claims Agent (MCP + `save_claim_letter` on RequestPoliceReport)
+**Paste-ready definition:** [`agents/pd_claims_agent.md`](agents/pd_claims_agent.md)
+
+Use when route returns `PdClaimsAgent` / `RequestPoliceReport` / `DetermineFault` / `PdClaimsReview`.
+
+| Field | Value |
+|---|---|
+| Name / Role (exact coworker) | `PD Claims Agent` |
+| Tools | `run_named_query` label `get_pd_view`; `run_named_write` `create_pd_task`; Studio `save_claim_letter` (`RequestPoliceReport` only) |
+| Lake smoke | claim **401** `PdClaimsReview` (direct specialist). Apply `pd_task` DDL before the write. |
+
 ### Closeout Agent (MCP only)
 **Paste-ready definition:** [`agents/closeout_agent.md`](agents/closeout_agent.md)
 
@@ -103,8 +116,8 @@ Use when route returns `CloseoutAgent` / `CloseoutAudit` (seed **403** is CLOSED
 | Tools | `run_named_write` `write_audit_event` then `run_named_write` `promote_audit_run` |
 | Lake smoke | claim **403**, `run_id` `demo-403-close` (Impala promote is `mode=table_append`) |
 
-### PD / Settlement / SIU / Human Review (MCP audit only)
-For roles whose playbook tools are only `write_audit_event`: attach MCP audit tools; prompt to append an event and return a short summary. Defer richer views until needed.
+### Settlement / SIU / Data Quality / Human Review (MCP audit only)
+For roles whose playbook tools are still only `write_audit_event`: attach MCP audit tools; prompt to append an event and return a short summary. Defer richer views until needed.
 
 ## End-to-end demo (claim 402)
 
@@ -117,7 +130,7 @@ Paste Orchestrator Goal + user prompt from [`agents/orchestrator_agent.md`](agen
 
 Specialists other than Litigation still need Studio pastes in the same Crew, or step 3 ends with coworker-not-found.
 
-Direct specialist smokes (skip intake): Subrogation **401** (`subrogation_agent.md`), BI **402** (`bi_claims_agent.md`), Closeout **403** (`closeout_agent.md`).
+Direct specialist smokes (skip intake): Subrogation **401** (`subrogation_agent.md`), BI **402** (`bi_claims_agent.md`), Closeout **403** (`closeout_agent.md`), PD **401** (`pd_claims_agent.md`).
 
 ## Unstructured front door
 

@@ -32,7 +32,7 @@ User
 2. Manager calls `run_named_query` for spine, then routing signals (catalog **labels**, not extra MCP tools).
 3. Manager passes those JSON payloads, unmodified, into `build_claim_graph` → `validate_claim_graph` → `route_claim`.
 4. Manager stops. Orchestrator maps `agent_role` → coworker **Role** and Delegates once.
-5. Specialist may run one view label, then the playbook write (`create_litigation_task` or `write_audit_event`; Closeout also `promote_audit_run`).
+5. Specialist may run one view label, then the playbook write (`create_litigation_task`, `create_pd_task`, or `write_audit_event`; Closeout also `promote_audit_run`). `RequestPoliceReport` also uses Studio `save_claim_letter`.
 
 Custom Studio tools **cannot** call MCP in-process. The agent is the only bridge: MCP result → tool argument → session artifact.
 
@@ -44,7 +44,7 @@ MCP V7 registers four tools: `get_server_info`, `list_named_queries`, `run_named
 
 The **catalog** is compiled into the MCP package (`READ_OPS` / `WRITE_OPS`). Each label has required/optional params and a Python handler that runs curated Impala. Agents discover labels via `list_named_queries` and via Goal text. Invented SQL or unknown labels fail closed.
 
-Claims labels (live lake): `get_claim_spine`, `get_claim_routing_signals`, specialist views (`get_litigation_view`, `get_bi_view`, `get_subrogation_view`), `get_schema`, audit writes (`write_audit_event`, `promote_audit_run`, …), and `create_litigation_task`.
+Claims labels (live lake): `get_claim_spine`, `get_claim_routing_signals`, specialist views (`get_litigation_view`, `get_bi_view`, `get_subrogation_view`, `get_pd_view`), `get_schema`, audit writes (`write_audit_event`, `promote_audit_run`, …), `create_litigation_task`, and `create_pd_task`.
 
 Audit lands in Iceberg (`agent_run_audit` / `agent_run_evidence`), partitioned by `run_id`. Impala mode is **table-append**; `promote_audit_run` is a no-op success (`mode=table_append`). Hive WAP branches are a later fork, not this path.
 
@@ -66,7 +66,26 @@ Mapping from lake JSON → case JSON is code (claims builder) or `pack.yaml` fie
 
 Probes bind field paths on the case document (`litigation_indicator`, `triangle`, …). Rules are reviewed as YAML, not as prompt text and not as Iceberg UI config.
 
-The playbook can name specialists that have no Studio paste yet (`PdClaimsAgent`, `SiuAgent`, …). Orchestrator must Final Answer the route JSON rather than invent a Role.
+The playbook can name specialists that have no Studio paste yet (`SiuAgent`, `SettlementAgent`, …). Orchestrator must Final Answer the route JSON rather than invent a Role.
+
+FNOL → payout is **not** one crew run. The claims platform (or BPA) writes Iceberg rows; this stack classifies the current snapshot. Re-invoke structured intake with the same `claim_id` after the lake changes. Pass `claim_id` (and `run_id`). Do not pass `next_step`.
+
+### Typical PD path (separate calls)
+
+Each row is a later snapshot. Earlier gaps are already filled so a higher probe does not preempt. Case JSON is what `route_claim` sees after `build_claim_graph` (spine + signals). If `subrogation_indicator` is true and `has_subrogation_case` is false, **R4.1** `OpenSubrogationCase` wins before offer, payment, or PD review. Litigation or SIU flags win before all PD money steps.
+
+| When the lake looks like | Case JSON input (discriminating fields) | First hit | `next_step` |
+|---|---|---|---|
+| Claim missing / case not built | `{"claim_exists": false}` | R0.1 | `FixDataQuality` |
+| Claim exists, triangle incomplete | `{"claim_exists": true, "triangle": false, "claim_status_code": "OPEN"}` | R0.4 | `FixDataQuality` |
+| No ADJUSTER role | `{"claim_exists": true, "triangle": true, "claim_status_code": "OPEN", "has_adjuster": false, "litigation_indicator": false, "has_siu_suspected": false, "subrogation_indicator": false, "coverage_type_codes": ["COLLISION"]}` | R2.3 | `AssignAdjuster` |
+| No police report | `{"claim_status_code": "OPEN", "has_adjuster": true, "has_police_report": false, "litigation_indicator": false, "has_siu_suspected": false, "subrogation_indicator": false}` | R2.1 | `RequestPoliceReport` |
+| No fault determination | `{"claim_status_code": "OPEN", "has_adjuster": true, "has_police_report": true, "has_fault_determination": false, "litigation_indicator": false, "has_siu_suspected": false, "subrogation_indicator": false}` | R2.2 | `DetermineFault` |
+| Offer EXTENDED | `{"claim_status_code": "OPEN", "has_adjuster": true, "has_police_report": true, "has_fault_determination": true, "has_extended_offer": true, "litigation_indicator": false, "has_siu_suspected": false, "subrogation_indicator": false}` | R3.2 | `FollowUpOffer` |
+| Offer ACCEPTED, no loss payment | `{"claim_status_code": "OPEN", "has_adjuster": true, "has_police_report": true, "has_fault_determination": true, "has_extended_offer": false, "has_accepted_offer": true, "has_loss_payment": false, "litigation_indicator": false, "has_siu_suspected": false, "subrogation_indicator": false}` | R3.4 | `IssuePayment` |
+| Status CLOSED | `{"claim_exists": true, "triangle": true, "claim_status_code": "CLOSED"}` | R1.1 | `CloseoutAudit` |
+
+PD steps (`RequestPoliceReport`, `DetermineFault`, `PdClaimsReview`) use `get_pd_view` then `create_pd_task`. `RequestPoliceReport` also writes a session letter via `save_claim_letter` (no mail send). Settlement steps on this path still `write_audit_event`. `IssuePayment` means settlement work is due; the payment row still has to land in `claim_payment` from the claims platform. A later intake can then hit R1.1.
 
 ## Pattern: two Studio filesystems
 
@@ -98,7 +117,7 @@ Claims today is the **default product**: walk-up to repo-root `ontology/` + `pla
 | Orchestrator | None | Sequence and handoff; user cannot skip it |
 | Manager | MCP + build/validate/route | Intake and one-shot catalog calls; stop after route |
 | Routing | `pre_route_text` only | Coarse NL label; not authoritative when an id is present |
-| Specialist | MCP only | One view (if mapped) + audit write |
+| Specialist | MCP (+ `save_claim_letter` when mapped) | One view (if mapped) + playbook write |
 
 CrewAI `Delegate` matches **Role**, not Name. Manager Role must be exactly `Manager agent`.
 
@@ -160,6 +179,7 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 | Hive WAP branches | Write-audit-publish on Iceberg branches. Later Hive fork; not this path. |
 | `write_audit_event` | Catalog write: `INSERT` one `agent_run_audit` row. |
 | `create_litigation_task` | Catalog write: `INSERT` one `litigation_task` row from `run_id` + `event_json`. |
+| `create_pd_task` | Catalog write: `INSERT` one `pd_task` row (`REQUEST_POLICE_REPORT` / `DETERMINE_FAULT` / `PD_REVIEW`). |
 | `promote_audit_run` | No-op success on Impala (rows already on main). |
 | Routing signals / `get_claim_routing_signals` | Named query for extra facts the graph and probes need (flags, related ids). |
 
@@ -201,7 +221,7 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 | Path | Role |
 |---|---|
 | `ontology/`, `playbook/` | Live claims schema JSON and router (402) |
-| `ddl/hive_iceberg/` | Audit table DDL |
+| `ddl/hive_iceberg/` | Iceberg DDL (claims, audit, `litigation_task`, `pd_task`) |
 | `mcp_forks/iceberg-mcp-server-claims/` | Impala MCP V7 + named catalog |
 | `agent_studio/src/ins_claims_agent/` | Shared build / validate / route / pack loader |
 | `agent_studio/studio_tools/` | Thin Studio tools + claims agent pastes |

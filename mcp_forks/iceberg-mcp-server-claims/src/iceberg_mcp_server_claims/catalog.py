@@ -11,6 +11,7 @@ from iceberg_mcp_server_claims.tools import (
     claim_tools,
     impala_tools,
     litigation_tasks,
+    pd_tasks,
     view_tools,
 )
 
@@ -55,6 +56,14 @@ READ_OPS: dict[str, dict[str, Any]] = {
         "optional": ("database",),
         "summary": "Subrogation case rows",
         "handler": lambda p: view_tools.get_subrogation_view(
+            str(p["claim_id"]), p.get("database")
+        ),
+    },
+    "get_pd_view": {
+        "required": ("claim_id",),
+        "optional": ("database",),
+        "summary": "Police report and fault determination rows",
+        "handler": lambda p: view_tools.get_pd_view(
             str(p["claim_id"]), p.get("database")
         ),
     },
@@ -136,6 +145,16 @@ WRITE_OPS: dict[str, dict[str, Any]] = {
         "optional": ("database",),
         "summary": "Insert one litigation_task row (COMPLETE_FILE | ESCALATE_DISCOVERY | DRAFT_HOLD)",
         "handler": lambda p: litigation_tasks.create_litigation_task(
+            str(p["run_id"]),
+            _as_json_string(p["event_json"]),
+            p.get("database"),
+        ),
+    },
+    "create_pd_task": {
+        "required": ("run_id", "event_json"),
+        "optional": ("database",),
+        "summary": "Insert one pd_task row (REQUEST_POLICE_REPORT | DETERMINE_FAULT | PD_REVIEW)",
+        "handler": lambda p: pd_tasks.create_pd_task(
             str(p["run_id"]),
             _as_json_string(p["event_json"]),
             p.get("database"),

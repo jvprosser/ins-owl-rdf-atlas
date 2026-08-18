@@ -1659,6 +1659,32 @@ TBLPROPERTIES (
 );
 
 
+CREATE TABLE IF NOT EXISTS car_insurance_claims.pd_task (
+  pd_task_id                BIGINT    COMMENT 'PK. Surrogate PD work-item id.',
+  claim_id                  BIGINT    COMMENT 'FK -> claim.claim_id.',
+  loss_event_id             BIGINT    COMMENT 'Optional FK -> loss_event.loss_event_id.',
+  task_type_code            STRING    COMMENT 'REQUEST_POLICE_REPORT | DETERMINE_FAULT | PD_REVIEW.',
+  task_status_code          STRING    COMMENT 'OPEN | DONE | CANCELLED.',
+  due_date                  DATE      COMMENT 'Optional due date.',
+  run_id                    STRING    COMMENT 'Agent run that created the task.',
+  created_at                TIMESTAMP COMMENT 'Row creation timestamp.'
+)
+COMMENT 'Work item opened by PdClaimsAgent from playbook next_step (police report request, fault, or PD review).'
+PARTITIONED BY SPEC (
+  task_status_code,
+  YEAR(created_at)
+)
+STORED BY ICEBERG
+TBLPROPERTIES (
+  'format-version' = '2',
+  'llm.domain' = 'personal_auto_pc_claims',
+  'llm.ontology_class' = 'PdTask',
+  'llm.primary_key' = 'pd_task_id',
+  'llm.foreign_keys' = 'claim_id->claim.claim_id;loss_event_id->loss_event.loss_event_id',
+  'llm.grain' = 'one work item on a property-damage claim'
+);
+
+
 CREATE EXTERNAL TABLE IF NOT EXISTS car_insurance_claims.fraud_assessment (
   fraud_assessment_id               BIGINT  COMMENT 'PK. Surrogate fraud/SIU assessment id.',
   claim_id                          BIGINT  COMMENT 'FK -> claim.claim_id.',

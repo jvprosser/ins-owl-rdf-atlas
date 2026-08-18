@@ -55,8 +55,12 @@ STRUCTURED CLAIM INTAKE (user gives a claim_id to intake/route):
      LitigationSupport → write_audit_event + save_claim_letter)
    SubrogationAgent → Subrogation Agent (view get_subrogation_view)
    BiClaimsAgent → BI Claims Agent (view get_bi_view)
+   PdClaimsAgent → PD Claims Agent (view get_pd_view;
+     RequestPoliceReport → create_pd_task REQUEST_POLICE_REPORT + save_claim_letter;
+     DetermineFault → create_pd_task DETERMINE_FAULT;
+     PdClaimsReview → create_pd_task PD_REVIEW)
    CloseoutAgent → Closeout Agent (no view; write then promote_audit_run)
-   If agent_role is not in this map (including SiuAgent, PdClaimsAgent,
+   If agent_role is not in this map (including SiuAgent,
    SettlementAgent, DataQualityAgent, HumanReviewAgent): Final Answer
    with the route JSON. STOP. Do not invent a Role.
 
@@ -72,6 +76,10 @@ STRUCTURED CLAIM INTAKE (user gives a claim_id to intake/route):
      event_json task_type_code ESCALATE_DISCOVERY.
    LitigationAgent LitigationSupport → write_audit_event then
      save_claim_letter (draft body from the view; do not invent).
+   PdClaimsAgent RequestPoliceReport → create_pd_task
+     event_json task_type_code REQUEST_POLICE_REPORT then save_claim_letter.
+   PdClaimsAgent DetermineFault → create_pd_task DETERMINE_FAULT.
+   PdClaimsAgent PdClaimsReview → create_pd_task PD_REVIEW.
    Other mapped specialists with a view: write_audit_event.
    If CloseoutAgent: run_named_write write_audit_event then
    run_named_write promote_audit_run.
@@ -110,9 +118,10 @@ Use the **coworker** column as the exact `Delegate` string. Specialists must be 
 | `LitigationAgent` | `Litigation Agent` | `run_named_query` label `get_litigation_view`, then `run_named_write` `create_litigation_task` (CompleteLitigationFile / EscalateDiscovery) or `write_audit_event` + Studio `save_claim_letter` (LitigationSupport) |
 | `SubrogationAgent` | `Subrogation Agent` | `run_named_query` label `get_subrogation_view`, then `run_named_write` `write_audit_event` |
 | `BiClaimsAgent` | `BI Claims Agent` | `run_named_query` label `get_bi_view`, then `run_named_write` `write_audit_event` |
+| `PdClaimsAgent` | `PD Claims Agent` | `run_named_query` label `get_pd_view`, then `run_named_write` `create_pd_task` (`REQUEST_POLICE_REPORT` + Studio `save_claim_letter` when `RequestPoliceReport`; `DETERMINE_FAULT` / `PD_REVIEW` otherwise) |
 | `CloseoutAgent` | `Closeout Agent` | `run_named_write` `write_audit_event`, then `run_named_write` `promote_audit_run` |
 
-Only these specialists have Studio pastes. Playbook may still emit `SiuAgent`, `PdClaimsAgent`, `SettlementAgent`, `DataQualityAgent`, or `HumanReviewAgent` — there is no coworker for those yet. Final Answer with the route JSON. Do not invent a Role.
+Only these specialists have Studio pastes. Playbook may still emit `SiuAgent`, `SettlementAgent`, `DataQualityAgent`, or `HumanReviewAgent` — there is no coworker for those yet. Final Answer with the route JSON. Do not invent a Role.
 
 If the coworker is not in the Crew: Final Answer with the route JSON (and Studio’s “must be one of” list).
 
@@ -140,8 +149,8 @@ You have no MCP tools. Do not skip the Orchestrator.
 ```
 
 Same prompt with another `claim_id` once that specialist exists in the Crew
-(Litigation, Subrogation, BI, or Closeout). Seed **401** may route
-`PdClaimsAgent` (no paste yet) → Final Answer with the route JSON.
+(Litigation, Subrogation, BI, PD, or Closeout). Seed **401** may route
+`PdClaimsAgent` (apply `pd_task` DDL before the write) or subrogation.
 Seed **403** is CLOSED → Closeout.
 
 ## User prompt (closeout e2e, claim 403)

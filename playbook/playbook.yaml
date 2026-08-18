@@ -220,14 +220,14 @@ actions:
       agent: PdClaimsAgent
       lane: PD
       needs_llm: true
-      tools: [write_audit_event]
+      tools: [get_pd_view, create_pd_task, save_claim_letter]
   R2.2:
     - when: ASK_TRUE
       step: DetermineFault
       agent: PdClaimsAgent
       lane: PD
       needs_llm: false
-      tools: [write_audit_event]
+      tools: [get_pd_view, create_pd_task]
   R2.5:
     - when: ASK_TRUE
       step: CaptureInjuryDetails
@@ -276,7 +276,7 @@ actions:
       agent: PdClaimsAgent
       lane: PD
       needs_llm: false
-      tools: [write_audit_event]
+      tools: [get_pd_view, create_pd_task]
 
 # Fallback: unhandled or ambiguous cases → HumanReviewAgent, GENERAL lane,
 # terminal: true.

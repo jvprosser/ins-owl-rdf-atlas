@@ -145,6 +145,25 @@ def test_route_missing_police_report():
     )
     decision = route_claim(case, 401)
     assert decision["next_step"] == "RequestPoliceReport"
+    assert "get_pd_view" in decision["allowed_tools"]
+    assert "create_pd_task" in decision["allowed_tools"]
+    assert "save_claim_letter" in decision["allowed_tools"]
+
+
+def test_route_determine_fault():
+    spine = _spine_401()
+    spine["subrogation_indicator"] = False
+    case = build_claim_graph(
+        401,
+        spine=spine,
+        signals={"has_police_report": True, "has_fault_determination": False},
+    )
+    decision = route_claim(case, 401)
+    assert decision["next_step"] == "DetermineFault"
+    assert decision["agent_role"] == "PdClaimsAgent"
+    assert "get_pd_view" in decision["allowed_tools"]
+    assert "create_pd_task" in decision["allowed_tools"]
+    assert "save_claim_letter" not in decision["allowed_tools"]
 
 
 def test_route_siu_suspected():
@@ -196,3 +215,5 @@ def test_route_pd_lane():
     decision = route_claim(case, 401)
     assert decision["next_step"] == "PdClaimsReview"
     assert decision["lane"] == "PD"
+    assert "get_pd_view" in decision["allowed_tools"]
+    assert "create_pd_task" in decision["allowed_tools"]

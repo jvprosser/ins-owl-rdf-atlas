@@ -4,7 +4,7 @@ One chat prompt per playbook **probe → action** pair. Chat the **Orchestrator*
 
 First-match-wins: a later probe only fires if every earlier action’s `when` failed. You cannot test `R1.4` on claim **402**; litigation (`R1.2b` discovery aging) wins first.
 
-Specialist Delegate after route only if that `agent_role` has a Studio paste. Otherwise Orchestrator Final Answers the route JSON (`SiuAgent`, `PdClaimsAgent`, `SettlementAgent`, `DataQualityAgent`, `HumanReviewAgent`).
+Specialist Delegate after route only if that `agent_role` has a Studio paste. Otherwise Orchestrator Final Answers the route JSON (`SiuAgent`, `SettlementAgent`, `DataQualityAgent`, `HumanReviewAgent`).
 
 `R6.1` (`context_probe`) is CONSTRUCT only. It has no action pair.
 
@@ -32,7 +32,7 @@ Offline (no Studio): `cd agent_studio && pytest tests/test_route_claim.py tests/
 
 ## Claims (`playbook/playbook.yaml`)
 
-Studio project: live Impala catalog, Workflow Data = repo `ontology/` + `probes/` + `playbook/`. Proven e2e: **402** (Litigation), **403** (Closeout). Seed **401** is lake-dependent (often PD or subro).
+Studio project: live Impala catalog, Workflow Data = repo `ontology/` + `playbook/`. Proven e2e: **402** (Litigation), **403** (Closeout). Seed **401** is lake-dependent (often PD or subro). Snapshot-by-snapshot PD path (case JSON → `next_step`): [architecture.md — typical PD path](architecture.md#typical-pd-path-separate-calls).
 
 | Probe | When | `next_step` / `agent_role` / lane | How to fire | Studio id |
 |---|---|---|---|---|
@@ -45,7 +45,7 @@ Studio project: live Impala catalog, Workflow Data = repo `ontology/` + `probes/
 | R5.1 | ASK_TRUE | `SiuInvestigation` / `SiuAgent` / SIU | SIU / fraud suspected | pytest `test_route_siu_suspected` |
 | R2.3 | ASK_TRUE | `AssignAdjuster` / `DataQualityAgent` / DATA_QUALITY | No ADJUSTER party role | none |
 | R2.1 | ASK_TRUE | `RequestPoliceReport` / `PdClaimsAgent` / PD | No police report; earlier probes miss | pytest `test_route_missing_police_report` |
-| R2.2 | ASK_TRUE | `DetermineFault` / `PdClaimsAgent` / PD | Police present, no fault determination | none |
+| R2.2 | ASK_TRUE | `DetermineFault` / `PdClaimsAgent` / PD | Police present, no fault determination | pytest `test_route_determine_fault` |
 | R2.5 | ASK_TRUE | `CaptureInjuryDetails` / `BiClaimsAgent` / BI | BI_LIABILITY coverage, no injury | none |
 | R3.2 | ASK_TRUE | `FollowUpOffer` / `SettlementAgent` / GENERAL | Unresolved (EXTENDED) offer | pytest `test_route_unresolved_offer` |
 | R3.4 | ASK_TRUE | `IssuePayment` / `SettlementAgent` / GENERAL | ACCEPTED offer, no payment | none |
@@ -213,10 +213,11 @@ Intake and route claim_id 999201. Do not skip the Orchestrator.
 Delegate ONCE to Manager: structured intake. STOP after route.
 Expect next_step=RequestPoliceReport, agent_role=PdClaimsAgent,
 reason_probe_ids includes R2.1.
-Final Answer the route JSON (no PdClaimsAgent paste).
+If PD Claims Agent is in the Crew, Delegate ONCE (get_pd_view then
+create_pd_task REQUEST_POLICE_REPORT then save_claim_letter).
 ```
 
-Offline: `pytest tests/test_route_claim.py::test_route_missing_police_report`.
+Offline: `pytest tests/test_route_claim.py::test_route_missing_police_report`. Apply `pd_task` DDL before the live write. Needs a claim with no `police_report` row (seed **401** already has one).
 
 ### R2.2 ASK_TRUE — DetermineFault
 
@@ -225,10 +226,11 @@ Intake and route claim_id 999202. Do not skip the Orchestrator.
 Delegate ONCE to Manager: structured intake. STOP after route.
 Expect next_step=DetermineFault, agent_role=PdClaimsAgent,
 reason_probe_ids includes R2.2.
-Final Answer the route JSON.
+If PD Claims Agent is in the Crew, Delegate ONCE (get_pd_view then
+create_pd_task DETERMINE_FAULT). Do not call save_claim_letter.
 ```
 
-Needs police report present, no fault determination, and no earlier hit.
+Needs police report present, no fault determination, and no earlier hit. Offline: `pytest tests/test_route_claim.py::test_route_determine_fault`.
 
 ### R2.5 ASK_TRUE — CaptureInjuryDetails
 
@@ -274,8 +276,8 @@ Delegate ONCE to Manager: structured intake for 401. STOP after route.
 If next_step=OpenSubrogationCase: expect agent_role=SubrogationAgent,
 reason_probe_ids includes R4.1. Delegate ONCE to Subrogation Agent
 (view get_subrogation_view then write), run_id=demo-401-sub.
-If agent_role is PdClaimsAgent: Final Answer the route JSON (R1.4 or a gap
-won on this seed). Do not invent a Role.
+If agent_role is PdClaimsAgent: Delegate ONCE to PD Claims Agent
+(view get_pd_view then create_pd_task PD_REVIEW), run_id=demo-401-pd.
 ```
 
 Injected pytest (police+fault, subro indicator, no case): `test_route_subrogation_gap`. Live **401** may already have a subro case and skip R4.1.
@@ -310,7 +312,8 @@ Needs injury or BI_LIABILITY, and no R2.5 (injury already present) or earlier hi
 Intake and route claim_id 401. Do not skip the Orchestrator.
 Delegate ONCE to Manager: structured intake for 401. STOP after route.
 If next_step=PdClaimsReview: expect agent_role=PdClaimsAgent,
-reason_probe_ids includes R1.4. Final Answer the route JSON (no PD paste).
+reason_probe_ids includes R1.4. Delegate ONCE to PD Claims Agent
+(get_pd_view then create_pd_task PD_REVIEW) if in the Crew.
 ```
 
 Offline: `pytest tests/test_route_claim.py::test_route_pd_lane`.

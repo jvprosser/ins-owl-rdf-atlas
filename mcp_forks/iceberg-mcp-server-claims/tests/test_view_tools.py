@@ -45,3 +45,19 @@ def test_get_subrogation_view_shapes():
 
     raw = view_tools.get_subrogation_view("401", query_rows=fake)
     assert json.loads(raw)["subrogation_cases"][0]["subrogation_case_id"] == 8801
+
+
+def test_get_pd_view_shapes():
+    def fake(sql: str):
+        if "police_report" in sql:
+            assert "401" in sql
+            return [{"police_report_id": 5301, "report_number": "PD-301"}]
+        if "fault_determination" in sql:
+            return [{"fault_determination_id": 5401, "insured_fault_percent": 20}]
+        raise AssertionError(sql)
+
+    raw = view_tools.get_pd_view("401", "car_insurance_claims", query_rows=fake)
+    payload = json.loads(raw)
+    assert payload["claim_id"] == 401
+    assert payload["police_reports"][0]["police_report_id"] == 5301
+    assert payload["fault_determinations"][0]["fault_determination_id"] == 5401

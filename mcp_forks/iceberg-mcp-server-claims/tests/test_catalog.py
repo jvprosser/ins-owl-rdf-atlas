@@ -123,5 +123,32 @@ def test_write_dispatches_litigation_task(monkeypatch):
     listing = catalog.list_catalog()
     reads = {row["label"] for row in listing["reads"]}
     writes = {row["label"] for row in listing["writes"]}
-    assert {"get_claim_spine", "get_litigation_view", "get_schema"} <= reads
-    assert {"write_audit_event", "promote_audit_run", "create_litigation_task"} <= writes
+    assert {"get_claim_spine", "get_litigation_view", "get_pd_view", "get_schema"} <= reads
+    assert {"write_audit_event", "promote_audit_run", "create_litigation_task", "create_pd_task"} <= writes
+
+
+def test_write_dispatches_pd_task(monkeypatch):
+    monkeypatch.setattr(
+        catalog.pd_tasks,
+        "create_pd_task",
+        lambda run_id, event_json, database=None: json.dumps(
+            {"ok": True, "run_id": run_id, "table": "pd_task"}
+        ),
+    )
+    payload = json.loads(
+        catalog.run_named_write(
+            "create_pd_task",
+            json.dumps(
+                {
+                    "run_id": "demo-401-pd",
+                    "event_json": {
+                        "claim_id": "401",
+                        "task_type_code": "PD_REVIEW",
+                    },
+                }
+            ),
+        )
+    )
+    assert payload["ok"] is True
+    assert payload["named_op"] == "create_pd_task"
+    assert payload["named_op_kind"] == "write"
