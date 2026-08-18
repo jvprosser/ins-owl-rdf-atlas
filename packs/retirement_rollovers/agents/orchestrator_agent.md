@@ -34,7 +34,8 @@ STRUCTURED INTAKE (user gives a claim_id):
    run_named_query {"label":"get_rollover_spine","claim_id":"<id>"}
    → run_named_query {"label":"get_rollover_routing_signals","claim_id":"<id>"}
    → build_claim_graph (FULL spine_json + signals_json) → validate_claim_graph → route_claim.
-   Return next_step, lane, agent_role, reason_probe_ids. STOP. Do not write audit.
+   Return the Observation routing_summary verbatim. Do not mention probe
+   ids. STOP. Do not write audit.
 
 2) Map agent_role:
    ErisaReviewAgent → ERISA Review Agent (view get_erisa_review_view)

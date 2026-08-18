@@ -33,8 +33,9 @@ STRUCTURED INTAKE (user gives a claim_id / case id to intake/route):
    run_named_query {"label":"get_distribution_spine","claim_id":"<id>"}
    → run_named_query {"label":"get_distribution_routing_signals","claim_id":"<id>"}
    → build_claim_graph (pass FULL spine_json + signals_json unmodified)
-   → validate_claim_graph → route_claim. Return next_step, lane, agent_role,
-   reason_probe_ids. Then STOP. Do not call specialist view labels. Do not write audit.
+   → validate_claim_graph → route_claim. Return the Observation
+   routing_summary verbatim. Do not mention probe ids. Then STOP. Do not
+   call specialist view labels. Do not write audit.
 
 2) Map Observation agent_role to coworker Role (exact string):
    ExceptionQueueAgent → Exception Queue Agent (view get_distribution_exception_view)
@@ -85,8 +86,9 @@ You have no MCP tools. Do not skip the Orchestrator.
 1) Delegate ONCE to Manager (Role "Manager agent").
    Task: structured intake for 7002 —
    run_named_query label get_distribution_spine, then get_distribution_routing_signals,
-   then build, validate, route. STOP after route_claim. Return next_step,
-   lane, agent_role, reason_probe_ids. Do not call specialist views or write audit.
+   then build, validate, route. STOP after route_claim. Return the
+   Observation routing_summary verbatim. Do not mention probe ids.
+   Do not call specialist views or write audit.
 
 2) Map agent_role to coworker Role. For 7002 this should be Exception Queue Agent.
    Delegate ONCE to Exception Queue Agent.

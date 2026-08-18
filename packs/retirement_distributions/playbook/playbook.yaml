@@ -24,32 +24,43 @@ priorities:
   - R2.3
 
 # Probe registry: YAML match on case JSON.
+# User-facing copy (router emits routing_reason + checks; LLM must not invent).
 probes:
-  # R0.1 ASK: case JSON built? ASK_FALSE → FixDataQuality.
   R0.1:
     form: ASK
+    title: Distribution request exists in the case file
+    when_true: Distribution request is present in the case file
+    when_false: Distribution request is missing from the case file
     match:
       path: case_exists
       equals: true
-  # R1.1 SELECT: request_status_code. SELECT_EQUALS CLOSED → CloseoutAudit.
   R1.1:
     form: SELECT
     path: request_status_code
-  # R2.1 ASK: hold_or_aml_flag. ASK_TRUE → HoldReview / ExceptionQueueAgent.
+    title: Request closed
+    when_equals: Request is closed
+    otherwise: Request is not closed (status {value})
   R2.1:
     form: ASK
+    title: Hold or AML flag
+    when_true: A hold or AML flag is set
+    when_false: No hold or AML flag is set
     match:
       path: hold_or_aml_flag
       equals: true
-  # R2.2 ASK: hardship_substantiation_missing (demo 7002).
   R2.2:
     form: ASK
+    title: Hardship substantiation
+    when_true: Hardship substantiation is missing
+    when_false: Hardship substantiation is not missing
     match:
       path: hardship_substantiation_missing
       equals: true
-  # R2.3 ASK: rmd_underpaid (demo 7003).
   R2.3:
     form: ASK
+    title: RMD amount
+    when_true: Required minimum distribution is underpaid
+    when_false: Required minimum distribution is not underpaid
     match:
       path: rmd_underpaid
       equals: true
@@ -101,6 +112,7 @@ actions:
 # Fallback: no exception/RMD hit → ProcessDistribution / DistributionOpsAgent
 # (demo 7001), terminal: true.
 default_action:
+  title: No earlier check assigned work
   step: ProcessDistribution
   agent: DistributionOpsAgent
   lane: DISTRIBUTION

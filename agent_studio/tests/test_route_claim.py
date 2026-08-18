@@ -102,6 +102,15 @@ def test_route_litigation_discovery_aging():
     assert decision["next_step"] == "EscalateDiscovery"
     assert decision["agent_role"] == "LitigationAgent"
     assert "R1.2b" in decision["reason_probe_ids"]
+    assert decision["routing_reason"] == (
+        "Discovery has been open more than 90 days → EscalateDiscovery."
+    )
+    assigned = [c for c in decision["checks"] if c["status"] == "assigned"]
+    assert len(assigned) == 1
+    assert assigned[0]["probe_id"] == "R1.2b"
+    assert assigned[0]["detail"] == "Discovery has been open more than 90 days"
+    assert decision["later_checks_not_run"] is True
+    assert decision["later_checks_note"] == "Later playbook checks were not run."
 
 
 def test_route_litigation_support_letter():
@@ -133,6 +142,11 @@ def test_route_closed_terminal():
     decision = route_claim(case, 403)
     assert decision["next_step"] == "CloseoutAudit"
     assert decision["terminal"] is True
+    assert decision["routing_reason"] == "Claim is closed → CloseoutAudit."
+    assert decision["checks"][-1]["status"] == "assigned"
+    assert decision["checks"][-1]["detail"] == "Claim is closed"
+    assert {c["status"] for c in decision["checks"][:-1]} == {"did_not_apply"}
+    assert decision["later_checks_not_run"] is True
 
 
 def test_route_missing_police_report():
@@ -148,6 +162,15 @@ def test_route_missing_police_report():
     assert "get_pd_view" in decision["allowed_tools"]
     assert "create_pd_task" in decision["allowed_tools"]
     assert "save_claim_letter" in decision["allowed_tools"]
+    assert decision["routing_reason"] == "No police report on file → RequestPoliceReport."
+    assert decision["checks"][-1]["probe_id"] == "R2.1"
+    assert decision["checks"][-1]["status"] == "assigned"
+    assert "not_checked" not in {c["status"] for c in decision["checks"]}
+    assert decision["later_checks_not_run"] is True
+    summary = decision["routing_summary"]
+    assert "Why this routing: No police report on file → RequestPoliceReport." in summary
+    assert "assigned this work" in summary
+    assert "R2.1" not in summary
 
 
 def test_route_determine_fault():
@@ -217,3 +240,9 @@ def test_route_pd_lane():
     assert decision["lane"] == "PD"
     assert "get_pd_view" in decision["allowed_tools"]
     assert "create_pd_task" in decision["allowed_tools"]
+    assert decision["routing_reason"] == (
+        "Collision or comprehensive coverage is present → PdClaimsReview."
+    )
+    assert decision["later_checks_not_run"] is False
+    assert decision["later_checks_note"] is None
+    assert decision["checks"][-1]["status"] == "assigned"

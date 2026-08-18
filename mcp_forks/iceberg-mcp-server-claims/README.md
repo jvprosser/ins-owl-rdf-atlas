@@ -245,7 +245,8 @@ You have no MCP tools. Do not skip the Orchestrator.
    Task: structured intake for 7002 —
    run_named_query label get_distribution_spine, then get_distribution_routing_signals,
    then build_claim_graph (FULL spine_json + signals_json), validate_claim_graph, route_claim.
-   STOP after route. Return next_step, lane, agent_role, reason_probe_ids.
+   STOP after route. Return next_step, lane, agent_role, routing_reason,
+   and the checks (Why this routing). Do not lead with probe ids.
    Do not call specialist views or write audit.
 
 2) Delegate ONCE to Exception Queue Agent.
@@ -260,7 +261,7 @@ You have no MCP tools. Do not skip the Orchestrator.
 | `next_step` | `RequestSubstantiation` |
 | `lane` | `EXCEPTION` |
 | `agent_role` | `ExceptionQueueAgent` |
-| `reason_probe_ids` | includes `R2.2` |
+| `routing_reason` | Hardship substantiation is missing → RequestSubstantiation. |
 | write | `fixture: true`, `run_id` = `demo-7002-exc` |
 
 **7001** — same prompt with `claim_id` 7001 / `run_id=demo-7001-ops`. Step 2: Distribution Ops Agent, write only (no view). Expect `ProcessDistribution` / `DistributionOpsAgent`.
@@ -378,7 +379,8 @@ You have no MCP tools. Do not skip the Orchestrator.
    Task: structured intake for 8001 —
    run_named_query label get_rollover_spine, then get_rollover_routing_signals,
    then build_claim_graph (FULL spine_json + signals_json), validate_claim_graph, route_claim.
-   STOP after route. Return next_step, lane, agent_role, reason_probe_ids.
+   STOP after route. Return next_step, lane, agent_role, routing_reason,
+   and the checks (Why this routing). Do not lead with probe ids.
 
 2) Delegate ONCE to ERISA Review Agent.
    Task: claim_id=8001 run_id=demo-8001-erisa.
@@ -392,7 +394,7 @@ You have no MCP tools. Do not skip the Orchestrator.
 | `next_step` | `ErisaReview` |
 | `lane` | `ERISA` |
 | `agent_role` | `ErisaReviewAgent` |
-| `reason_probe_ids` | includes `R2.1` |
+| `routing_reason` | Required spousal consent is missing → ErisaReview. |
 | write | `fixture: true`, `run_id` = `demo-8001-erisa` |
 
 **8002** — same prompt with `claim_id` 8002 / `run_id=demo-8002-ops`. Step 2: Rollover Ops Agent, write only. Expect `ProcessRollover` / `RolloverOpsAgent`.

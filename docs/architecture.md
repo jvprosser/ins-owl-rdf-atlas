@@ -72,6 +72,8 @@ FNOL → payout is **not** one crew run. The claims platform (or BPA) writes Ice
 
 ### Typical PD path (separate calls)
 
+Live Studio runbook (Impala reset + three Orchestrator chats on **401**): [pd-path-demo.md](pd-path-demo.md).
+
 Each row is a later snapshot. Earlier gaps are already filled so a higher probe does not preempt. Case JSON is what `route_claim` sees after `build_claim_graph` (spine + signals). If `subrogation_indicator` is true and `has_subrogation_case` is false, **R4.1** `OpenSubrogationCase` wins before offer, payment, or PD review. Litigation or SIU flags win before all PD money steps.
 
 | When the lake looks like | Case JSON input (discriminating fields) | First hit | `next_step` |
@@ -162,6 +164,10 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 | `next_step` | Action id the specialist should perform. |
 | `agent_role` | Specialist coworker to Delegate to. |
 | `lane` | Routing bucket (litigation, BI, closeout, …). |
+| `routing_reason` | One-sentence why this `next_step` (playbook copy, not LLM). |
+| `routing_summary` | Ready-to-paste block: next step, lane, why, checks. Studio Observation leads with this. |
+| `checks` | Evaluated probes as title + status (`assigned` / `did_not_apply`) + detail. Later playbook checks are omitted with `later_checks_not_run`. |
+| `reason_probe_ids` | Probe ids evaluated this snapshot (audit / tests). Do not lead the chat with these. |
 | `allowed_tools` | Catalog labels or Studio tools the specialist may call. |
 | `terminal` | Router says this run is done (no further specialist). |
 | Structured intake | User supplied a case/claim id. YAML probes win over cosine. |
@@ -222,6 +228,7 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 |---|---|
 | `ontology/`, `playbook/` | Live claims schema JSON and router (402) |
 | `ddl/hive_iceberg/` | Iceberg DDL (claims, audit, `litigation_task`, `pd_task`) |
+| `docs/pd-path-demo.md` | Repeatable PD demo on claim 401 (Impala + Orchestrator) |
 | `mcp_forks/iceberg-mcp-server-claims/` | Impala MCP V7 + named catalog |
 | `agent_studio/src/ins_claims_agent/` | Shared build / validate / route / pack loader |
 | `agent_studio/studio_tools/` | Thin Studio tools + claims agent pastes |

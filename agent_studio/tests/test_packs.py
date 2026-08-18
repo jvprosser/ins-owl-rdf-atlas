@@ -43,6 +43,11 @@ def test_distribution_7001_ops(monkeypatch):
     assert decision["next_step"] == "ProcessDistribution"
     assert decision["agent_role"] == "DistributionOpsAgent"
     assert decision["lane"] == "DISTRIBUTION"
+    assert decision["routing_reason"] == (
+        "No earlier check assigned work → ProcessDistribution."
+    )
+    assert decision["later_checks_not_run"] is False
+    assert {c["status"] for c in decision["checks"]} == {"did_not_apply"}
 
 
 def test_distribution_7002_exception(monkeypatch):
@@ -53,6 +58,12 @@ def test_distribution_7002_exception(monkeypatch):
     assert decision["next_step"] == "RequestSubstantiation"
     assert decision["agent_role"] == "ExceptionQueueAgent"
     assert "R2.2" in decision["reason_probe_ids"]
+    assert decision["routing_reason"] == (
+        "Hardship substantiation is missing → RequestSubstantiation."
+    )
+    assert decision["checks"][-1]["probe_id"] == "R2.2"
+    assert decision["checks"][-1]["status"] == "assigned"
+    assert decision["later_checks_not_run"] is True
 
 
 def test_distribution_7003_rmd(monkeypatch):
@@ -71,6 +82,9 @@ def test_rollover_8001_erisa(monkeypatch):
     assert decision["next_step"] == "ErisaReview"
     assert decision["agent_role"] == "ErisaReviewAgent"
     assert "R2.1" in decision["reason_probe_ids"]
+    assert decision["routing_reason"] == (
+        "Required spousal consent is missing → ErisaReview."
+    )
 
 
 def test_rollover_8002_ops(monkeypatch):

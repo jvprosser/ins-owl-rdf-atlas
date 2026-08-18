@@ -10,6 +10,9 @@ import yaml
 from ins_claims_agent.graph.yaml_rules import eval_match, get_path
 from ins_claims_agent.paths import default_playbook_path
 
+_LATER_NOTE = "Later playbook checks were not run."
+_DEFAULT_TITLE = "No earlier check assigned work"
+
 
 def route_claim(
     case: dict[str, Any],
@@ -21,22 +24,32 @@ def route_claim(
     if not isinstance(case, dict):
         raise TypeError("route_claim expects a case JSON dict")
     playbook = _load_playbook(playbook_path)
+    priorities = list(playbook.get("priorities") or [])
+    probes = playbook.get("probes") or {}
     matched: list[dict[str, Any]] = []
-    for probe_id in playbook.get("priorities", []):
-        probe_cfg = playbook["probes"][probe_id]
+    for idx, probe_id in enumerate(priorities):
+        probe_cfg = probes[probe_id]
         form = str(probe_cfg.get("form") or "ASK").upper()
         result = _exec_probe(case, probe_cfg, form)
-        matched.append({"probe_id": probe_id, "form": form, "result": result})
-
         action = _match_action(playbook, probe_id, form, result)
+        assigned = action is not None
+        matched.append(_trace_entry(probe_id, probe_cfg, form, result, assigned))
         if action is not None:
             return _decision(
-                claim_id, action, matched, terminal=bool(action.get("terminal"))
+                claim_id,
+                action,
+                matched,
+                remaining=priorities[idx + 1 :],
+                terminal=bool(action.get("terminal")),
             )
 
     default = playbook.get("default_action", {})
     return _decision(
-        claim_id, default, matched, terminal=bool(default.get("terminal", True))
+        claim_id,
+        default,
+        matched,
+        remaining=[],
+        terminal=bool(default.get("terminal", True)),
     )
 
 
@@ -75,21 +88,115 @@ def _match_action(
     return None
 
 
+def _select_value(result: Any) -> str:
+    if isinstance(result, list) and result and isinstance(result[0], dict):
+        value = result[0].get("value")
+        if value is not None:
+            return str(value)
+    return ""
+
+
+def _detail(
+    probe_id: str,
+    probe_cfg: dict[str, Any],
+    form: str,
+    result: Any,
+    *,
+    assigned: bool,
+) -> str:
+    title = str(probe_cfg.get("title") or probe_id)
+    if form == "ASK":
+        key = "when_true" if result is True else "when_false"
+        return str(probe_cfg.get(key) or title)
+    if form == "SELECT":
+        value = _select_value(result)
+        key = "when_equals" if assigned else "otherwise"
+        text = str(probe_cfg.get(key) or title)
+        return text.replace("{value}", value)
+    return title
+
+
+def _trace_entry(
+    probe_id: str,
+    probe_cfg: dict[str, Any],
+    form: str,
+    result: Any,
+    assigned: bool,
+) -> dict[str, Any]:
+    title = str(probe_cfg.get("title") or probe_id)
+    return {
+        "probe_id": probe_id,
+        "form": form,
+        "result": result,
+        "title": title,
+        "status": "assigned" if assigned else "did_not_apply",
+        "detail": _detail(probe_id, probe_cfg, form, result, assigned=assigned),
+    }
+
+
 def _decision(
     claim_id: int | str,
     action: dict[str, Any],
     probe_trace: list[dict[str, Any]],
     *,
+    remaining: list[str],
     terminal: bool,
 ) -> dict[str, Any]:
-    return {
+    step = action.get("step")
+    assigned = next((p for p in probe_trace if p.get("status") == "assigned"), None)
+    if assigned:
+        reason = f"{assigned['detail']} → {step}."
+    else:
+        fallback = str(action.get("title") or _DEFAULT_TITLE)
+        reason = f"{fallback} → {step}."
+    later = bool(remaining)
+    checks = [
+        {
+            "probe_id": p["probe_id"],
+            "title": p["title"],
+            "status": p["status"],
+            "detail": p["detail"],
+        }
+        for p in probe_trace
+    ]
+    decision = {
         "claim_id": str(claim_id),
         "lane": action.get("lane"),
-        "next_step": action.get("step"),
+        "next_step": step,
         "agent_role": action.get("agent"),
         "allowed_tools": list(action.get("tools") or []),
         "needs_llm": bool(action.get("needs_llm", False)),
         "terminal": terminal,
         "reason_probe_ids": [p["probe_id"] for p in probe_trace],
         "probe_trace": probe_trace,
+        "routing_reason": reason,
+        "checks": checks,
+        "later_checks_not_run": later,
+        "later_checks_note": _LATER_NOTE if later else None,
     }
+    decision["routing_summary"] = format_routing_summary(decision)
+    return decision
+
+
+def format_routing_summary(decision: dict[str, Any]) -> str:
+    """Plain-language block for Studio Observation / Final Answer (no probe ids)."""
+    lines = [
+        f"Next step: {decision.get('next_step')}",
+        f"Lane: {decision.get('lane')}",
+        f"Assigned agent: {decision.get('agent_role')}",
+        "",
+        f"Why this routing: {decision.get('routing_reason')}",
+        "",
+        "Checks on this snapshot:",
+    ]
+    for check in decision.get("checks") or []:
+        tag = (
+            "assigned this work"
+            if check.get("status") == "assigned"
+            else "did not apply"
+        )
+        lines.append(f"- {check.get('title')}: {check.get('detail')} ({tag})")
+    if decision.get("later_checks_not_run"):
+        lines.append("")
+        lines.append(str(decision.get("later_checks_note") or _LATER_NOTE))
+    return "\n".join(lines)

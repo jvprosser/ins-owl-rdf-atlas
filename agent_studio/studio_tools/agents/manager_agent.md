@@ -45,7 +45,10 @@ results.
    → run_named_query {"label":"get_claim_routing_signals","claim_id":"<id>"}
    → build_claim_graph (pass FULL spine_json + signals_json unmodified)
    → validate_claim_graph → route_claim.
-   Then explain next_step, lane, agent_role, reason_probe_ids and STOP.
+   Observation MUST include routing_summary. Copy routing_summary into the
+   reply verbatim (Next step, Lane, Why this routing, Checks). Do not
+   paraphrase. Do not mention probe ids or reason_probe_ids. If
+   routing_summary is missing, return the tool error JSON and STOP. STOP.
    Do not call specialist view labels or write_audit_event; Orchestrator
    hands off to the specialist named by agent_role.
 
@@ -82,7 +85,7 @@ Structured claim intake:
 coworker: Manager agent
 task: Structured claim intake for claim_id 402 —
 run_named_query label get_claim_spine, then get_claim_routing_signals,
-then build, validate, route. STOP after route_claim. Return next_step,
-lane, agent_role, reason_probe_ids. Do not call specialist view labels
-or write audit.
+then build, validate, route. STOP after route_claim. Return the
+Observation routing_summary verbatim. Do not mention probe ids.
+Do not call specialist view labels or write audit.
 ```

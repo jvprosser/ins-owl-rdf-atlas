@@ -24,26 +24,35 @@ priorities:
   - R2.2
 
 # Probe registry: YAML match on case JSON.
+# User-facing copy (router emits routing_reason + checks; LLM must not invent).
 probes:
-  # R0.1 ASK: case JSON built? ASK_FALSE → FixDataQuality.
   R0.1:
     form: ASK
+    title: Rollover request exists in the case file
+    when_true: Rollover request is present in the case file
+    when_false: Rollover request is missing from the case file
     match:
       path: case_exists
       equals: true
-  # R1.1 SELECT: request_status_code. SELECT_EQUALS CLOSED → CloseoutAudit.
   R1.1:
     form: SELECT
     path: request_status_code
-  # R2.1 ASK: missing_spousal_consent (demo 8001).
+    title: Request closed
+    when_equals: Request is closed
+    otherwise: Request is not closed (status {value})
   R2.1:
     form: ASK
+    title: Spousal consent
+    when_true: Required spousal consent is missing
+    when_false: Spousal consent is not missing
     match:
       path: missing_spousal_consent
       equals: true
-  # R2.2 ASK: missing_required_docs.
   R2.2:
     form: ASK
+    title: Required documents
+    when_true: Required documents are missing
+    when_false: Required documents are not missing
     match:
       path: missing_required_docs
       equals: true
@@ -88,6 +97,7 @@ actions:
 # Fallback: no ERISA/doc gap → ProcessRollover / RolloverOpsAgent
 # (demo 8002), terminal: true.
 default_action:
+  title: No earlier check assigned work
   step: ProcessRollover
   agent: RolloverOpsAgent
   lane: ROLLOVER

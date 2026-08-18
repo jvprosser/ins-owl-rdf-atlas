@@ -31,7 +31,8 @@ Never invent Observation results.
    → run_named_query {"label":"get_rollover_routing_signals","claim_id":"<id>"}
    → build_claim_graph (FULL spine_json + signals_json)
    → validate_claim_graph → route_claim.
-   Explain next_step, lane, agent_role, reason_probe_ids and STOP.
+   Then copy Observation routing_summary into the reply verbatim. Do not
+   mention probe ids. STOP.
    Do not call specialist views or write_audit_event.
 ```
 

@@ -1,13 +1,14 @@
 """
-CONTENT_ID: INS_CLAIMS_ROUTE_JSON_V1
+CONTENT_ID: INS_CLAIMS_ROUTE_JSON_V3
 REPO_REF: json-yaml-runtime
-UPDATED: 2026-08-16
+UPDATED: 2026-08-18
 FILE: agent_studio/studio_tools/route_claim/tool.py
 
 CUSTOM TOOL route_claim — structured claim intake.
 
 Reads claim_{id}_case.json from SESSION_DIRECTORY; playbook YAML from
-WORKFLOW_DATA_DIRECTORY. Returns next_step / lane / agent_role / reason_probe_ids.
+WORKFLOW_DATA_DIRECTORY. Observation leads with routing_summary (plain
+English). reason_probe_ids stay in the decision artifact only.
 """
 
 from __future__ import annotations
@@ -18,7 +19,14 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-TOOL_FINGERPRINT = "INS_CLAIMS_ROUTE_JSON_V1"
+TOOL_FINGERPRINT = "INS_CLAIMS_ROUTE_JSON_V3"
+
+_PIN_HINT = (
+    "route_claim returned no routing_reason. Studio is running an ins-claims-agent "
+    "pin older than the explanation router (PACKAGE_PIN 8f60419 does not emit "
+    "routing_reason). Re-upload route_claim/requirements.txt pinned to a commit "
+    "that includes routing_summary, then retry."
+)
 
 
 class UserParameters(BaseModel):
@@ -52,6 +60,8 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
 
     case = json.loads(case_path.read_text(encoding="utf-8"))
     decision = route_claim(case, claim_id)
+    if not decision.get("routing_reason") or not decision.get("routing_summary"):
+        raise RuntimeError(_PIN_HINT)
 
     summary = {
         "tool_fingerprint": TOOL_FINGERPRINT,
@@ -63,7 +73,11 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
         "allowed_tools": decision.get("allowed_tools"),
         "needs_llm": decision.get("needs_llm"),
         "terminal": decision.get("terminal"),
-        "reason_probe_ids": decision.get("reason_probe_ids"),
+        "routing_summary": decision.get("routing_summary"),
+        "routing_reason": decision.get("routing_reason"),
+        "checks": decision.get("checks"),
+        "later_checks_not_run": decision.get("later_checks_not_run"),
+        "later_checks_note": decision.get("later_checks_note"),
         "graph_artifact": str(case_path.resolve()),
         "workflow_data_directory": str(assets),
         "session_directory": str(studio_io.session_dir()),
@@ -79,7 +93,7 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
             {
                 "file_name": out_path.name,
                 "file_path": str(out_path.resolve()),
-                "description": "Full routing decision including probe_trace",
+                "description": "Full routing decision including routing_summary, checks, and probe_trace",
             }
         ],
     }

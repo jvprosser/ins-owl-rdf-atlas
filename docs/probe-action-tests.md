@@ -1,6 +1,6 @@
 # Probe / action test prompts
 
-One chat prompt per playbook **probe → action** pair. Chat the **Orchestrator** (not Manager). The LLM must not choose the lane. Pass = `route_claim` returns the expected `next_step`, `agent_role`, and `reason_probe_ids`.
+One chat prompt per playbook **probe → action** pair. Chat the **Orchestrator** (not Manager). The LLM must not choose the lane. Pass = `route_claim` returns the expected `next_step`, `agent_role`, `routing_reason`, and `checks`. Probe ids remain in the JSON for audit (`reason_probe_ids`); do not lead the chat with them.
 
 First-match-wins: a later probe only fires if every earlier action’s `when` failed. You cannot test `R1.4` on claim **402**; litigation (`R1.2b` discovery aging) wins first.
 
@@ -17,13 +17,14 @@ Intake and route claim_id <ID>. Do not skip the Orchestrator.
 
 1) Delegate ONCE to Manager. Task: structured intake for <ID> —
    run_named_query spine, then routing signals, then build, validate, route.
-   STOP after route_claim. Return next_step, lane, agent_role, reason_probe_ids.
+   STOP after route_claim. Return next_step, lane, agent_role, routing_reason,
+   and the checks (Why this routing). Do not lead with probe ids.
    Do not call specialist views or write_audit_event.
 
 2) Map agent_role to coworker Role from your Goal. If that Role is in the Crew,
    Delegate ONCE. If not, Final Answer the route JSON. Do not invent a Role.
 
-Expect: next_step=<STEP>, agent_role=<AGENT>, reason_probe_ids includes <PROBE>.
+Expect: next_step=<STEP>, agent_role=<AGENT>, routing_reason names the assigned check.
 ```
 
 Offline (no Studio): `cd agent_studio && pytest tests/test_route_claim.py tests/test_packs.py`.
@@ -32,7 +33,7 @@ Offline (no Studio): `cd agent_studio && pytest tests/test_route_claim.py tests/
 
 ## Claims (`playbook/playbook.yaml`)
 
-Studio project: live Impala catalog, Workflow Data = repo `ontology/` + `playbook/`. Proven e2e: **402** (Litigation), **403** (Closeout). Seed **401** is lake-dependent (often PD or subro). Snapshot-by-snapshot PD path (case JSON → `next_step`): [architecture.md — typical PD path](architecture.md#typical-pd-path-separate-calls).
+Studio project: live Impala catalog, Workflow Data = repo `ontology/` + `playbook/`. Proven e2e: **402** (Litigation), **403** (Closeout). Seed **401** is lake-dependent (often PD or subro). Repeatable PD demo (Impala reset + three chats): [pd-path-demo.md](pd-path-demo.md). Snapshot-by-snapshot PD path (case JSON → `next_step`): [architecture.md — typical PD path](architecture.md#typical-pd-path-separate-calls).
 
 | Probe | When | `next_step` / `agent_role` / lane | How to fire | Studio id |
 |---|---|---|---|---|

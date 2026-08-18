@@ -103,7 +103,7 @@ Use when route returns `PdClaimsAgent` / `RequestPoliceReport` / `DetermineFault
 |---|---|
 | Name / Role (exact coworker) | `PD Claims Agent` |
 | Tools | `run_named_query` label `get_pd_view`; `run_named_write` `create_pd_task`; Studio `save_claim_letter` (`RequestPoliceReport` only) |
-| Lake smoke | claim **401** `PdClaimsReview` (direct specialist). Apply `pd_task` DDL before the write. |
+| Lake smoke | claim **401** `PdClaimsReview` (direct specialist). Apply `pd_task` DDL before the write. Full three-snapshot runbook: [`docs/pd-path-demo.md`](../../docs/pd-path-demo.md). |
 
 ### Closeout Agent (MCP only)
 **Paste-ready definition:** [`agents/closeout_agent.md`](agents/closeout_agent.md)
