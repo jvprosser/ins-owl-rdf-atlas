@@ -11,6 +11,6 @@ To run the old session-graph stack for a customer that wants RDF+SPARQL:
 git checkout rdf-sparql-runtime
 ```
 
-That tree keeps `ontology/*.ttl`, `probes/*.rq`, `rdflib` build/validate/route, and session `claim_{id}_graph.ttl`. Do not mix Workflow Data: upload either JSON schema + playbook YAML, or Turtle + `.rq` files, not both as the live router.
+That tree keeps `ontology/*.ttl`, `probes/*.rq`, `rdflib` build/validate/route, and session `claim_{id}_graph.ttl` — including the finserv packs (`packs/*/ontology/*.ttl` and `packs/*/probes/*.rq`). Do not mix Workflow Data: upload either JSON schema + playbook YAML, or Turtle + `.rq` files, not both as the live router.
 
 MCP, Crew Delegate, and playbook **actions** (`next_step`, `agent_role`) are the same idea on both lines. Only the case document and probe language differ.

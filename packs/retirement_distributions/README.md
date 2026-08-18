@@ -23,7 +23,7 @@ Studio mounts this tree as `WORKFLOW_DATA_DIRECTORY` / `/workflow_data`. Upload 
 Do this in the **distributions** Agent Studio project (not the claims 402 project).
 
 1. Open the project → open **Workflow Data** (the project file tree for this workflow).
-2. If this project previously held claims files (`ontology/claims.json` or `claims_mvt.ttl`, claims `playbook/`), delete those first so the pack is the only tree.
+2. If this project previously held claims files (`ontology/claims.json`, `claims_mvt.ttl`, `probes/*.rq`, claims `playbook/`), delete those first so the pack is the only tree. Do not upload Turtle or SPARQL.
 3. At the **root** of Workflow Data, upload these two files from `packs/retirement_distributions/`:
    - `pack.yaml`
    - `exemplars.yaml`
@@ -40,6 +40,8 @@ Do this in the **distributions** Agent Studio project (not the claims 402 projec
   ontology/distributions.json
   playbook/playbook.yaml
 ```
+
+That is the JSON+YAML runtime (same as claims 402). Do **not** upload `ontology/*.ttl` or `probes/*.rq` — those exist only on `rdf-sparql-runtime`.
 
 **Do not** upload to Workflow Data: `agents/` (paste those into agent Name/Role/Backstory/Goal), `fixtures/`, `catalog_fixtures.json`, or `README.md`. Fixtures remain repo golden tests; the live catalog is compiled in the finserv MCP.
 

@@ -39,7 +39,7 @@ Claims is **not** a pack. It becomes one only when you need two live products in
 
 `packs/retirement_distributions/` and `packs/retirement_rollovers/`.
 
-Each has: `pack.yaml`, ontology TTL, probes, playbook, `exemplars.yaml`, `catalog_fixtures.json`, `fixtures/**/*.json`, agent pastes (Name / Role / Backstory / Goal / Tools table), README (Workflow Data upload + where `PACK_ROOT` was supposed to go).
+Each has: `pack.yaml`, schema JSON (`ontology/*.json`), YAML playbook with inlined path probes, `exemplars.yaml`, `catalog_fixtures.json`, `fixtures/**/*.json`, agent pastes, README. Turtle TBox + `probes/*.rq` live only on branch/tag `rdf-sparql-runtime`.
 
 | Case | Expected route |
 |---|---|
