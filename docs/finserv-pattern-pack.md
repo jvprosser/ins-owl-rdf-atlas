@@ -1,10 +1,10 @@
 # Finserv pattern packs
 
-Reuse the claims **control plane** for retirement operations. Do not clone the MCP server per product.
+Reuse the claims **control plane** for retirement operations. Same Orchestrator → Manager → YAML route → specialist flow. Studio tools stay `build_claim_graph` / `claim_id`.
 
-Control-plane architecture (Iceberg, session case JSON, playbook, Studio): [`architecture.md`](architecture.md).
+**Locked (2026-08-18):** live distributions demo uses a **separate** MCP, `iceberg-mcp-server-finserv`, with a compiled catalog for **distributions only**. Claims MCP stays claims-only (**402** unchanged). Rollovers stay parked on fixtures until distributions is proven on Impala.
 
-**Parked 2026-08-14.** Full status, Studio blocker, and resume plan: [`finserv-pattern-pack-status.md`](finserv-pattern-pack-status.md).
+Control-plane architecture: [`architecture.md`](architecture.md). Resume / status: [`finserv-pattern-pack-status.md`](finserv-pattern-pack-status.md).
 
 ## What stays the same
 
@@ -28,7 +28,7 @@ Studio tool names stay `build_claim_graph` / `validate_claim_graph` / `route_cla
 
 ## Demo packs
 
-See [`packs/README.md`](../packs/README.md). Agent Studio workflow + test steps per pack: [`mcp_forks/iceberg-mcp-server-claims/README.md`](../mcp_forks/iceberg-mcp-server-claims/README.md).
+See [`packs/README.md`](../packs/README.md). Live distributions MCP: [`mcp_forks/iceberg-mcp-server-finserv/README.md`](../mcp_forks/iceberg-mcp-server-finserv/README.md). Rollover fixture steps remain in [`mcp_forks/iceberg-mcp-server-claims/README.md`](../mcp_forks/iceberg-mcp-server-claims/README.md).
 
 - **Distributions** — classification and exceptions (hardship substantiation, RMD, hold/AML).
 - **Rollovers** — ERISA / document completeness (spousal consent).
@@ -39,8 +39,9 @@ Car-insurance claim **402** remains on repo-root `ontology/` + `playbook/`. Do n
 
 | Variable | Role |
 |---|---|
-| `PACK_ROOT` | MCP server **Environment variables** only (Studio **MCP → iceberg-mcp-server-claims**). Path on the MCP host to the pack dir with `catalog_fixtures.json`. |
-| `WORKFLOW_DATA_DIRECTORY` | Set by Studio from **Workflow Data** (`/workflow_data`). Not where you type `PACK_ROOT`. |
+| Claims MCP `IMPALA_*` | Live `car_insurance_claims` catalog. Do **not** set `PACK_ROOT` on this server. |
+| Finserv MCP `IMPALA_*` | Live distributions catalog (`iceberg-mcp-server-finserv`). Distributions labels only. |
+| `WORKFLOW_DATA_DIRECTORY` | Set by Studio from **Workflow Data** (`/workflow_data`). Pack ontology / playbook / `pack.yaml`. |
 | `INS_CLAIMS_REPO_ROOT` | Set automatically by `configure_workflow_assets` |
 
-Unset `PACK_ROOT` for the live claims lake catalog (Impala).
+Rollovers may still use `PACK_ROOT` fixtures until that pack is promoted. Do not load rollover labels into the finserv MCP.

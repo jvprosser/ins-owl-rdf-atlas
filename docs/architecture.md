@@ -83,13 +83,13 @@ MCP is a **separate** `uvx` stdio process started by the workflow engine. It inh
 
 ## Pattern: domain packs (same control plane)
 
-A **pack** swaps schema JSON, playbook, cosine exemplars, and (for demos) fixture payloads. It does not clone MCP and does not rename Studio tools. Tool param remains `claim_id`.
+A **pack** swaps schema JSON, playbook, cosine exemplars, and (for offline tests) fixture payloads. Studio tools stay `build_claim_graph` / `claim_id`. Claims MCP stays claims-only.
 
 Claims today is the **default product**: walk-up to repo-root `ontology/` + `playbook/`. Do not move those trees until 402 has been proven from a pointer pack.
 
-Finserv demo packs (`packs/retirement_distributions`, `packs/retirement_rollovers`) add a generic graph builder and JSON **fixtures** — canned `run_named_query` bodies so there is no distributions/rollovers Impala schema yet. Fixtures are lake-shaped payloads, not routing rules.
+**Distributions (live):** Impala database `retirement_distributions` + MCP `iceberg-mcp-server-finserv` (`INS_FINSERV_MCP_V1`). Compiled labels only — no `PACK_ROOT`. Pack fixture JSON remains golden for `agent_studio/tests/test_packs.py`.
 
-Studio tools can load a pack from Workflow Data (`pack.yaml`). MCP fixture merge was designed around a host path (`PACK_ROOT`). That path is not available on the Studio MCP host, and a live `list_named_queries` stayed on the claims catalog. Resume plan: ship fixtures inside the MCP package and select with `PACK_ID`. Details: [finserv-pattern-pack-status.md](finserv-pattern-pack-status.md).
+**Rollovers:** still fixture / `PACK_ROOT` on the claims MCP until distributions e2e is proven. Details: [finserv-pattern-pack-status.md](finserv-pattern-pack-status.md).
 
 ## Pattern: agents as a thin control plane
 
@@ -181,9 +181,9 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 
 | Term | Meaning |
 |---|---|
-| Pack | Directory that swaps schema JSON, playbook, exemplars, and (for demos) fixtures. Same MCP and Studio tool names. |
-| `PACK_ROOT` | Host path on the MCP process to a pack with `catalog_fixtures.json`. Not the tool sandbox. |
-| `PACK_ID` | Planned string to select fixtures baked into the MCP package (`unset` = live claims Impala). |
+| Pack | Directory that swaps schema JSON, playbook, exemplars, and (for offline tests) fixtures. Studio tool names stay the same. |
+| `PACK_ROOT` | Host path on the **claims** MCP for rollover (and legacy) fixtures. Do not set on `iceberg-mcp-server-finserv`. |
+| `PACK_ID` | Rejected for the live distributions demo. Finserv MCP is a compiled catalog, not a fixture bake-in. |
 | Fixture | Canned JSON for a named query. Lake-shaped payload, not a routing rule. |
 | Pointer pack | `pack.yaml` that points at existing claims trees without moving them. |
 | 402 | Proven live auto-claims seed (Litigation e2e). Not a version number. |

@@ -11,7 +11,10 @@ Do **not** move `ontology/` / `playbook/` at the repo root. Claim **402** still 
 
 ## Studio setup (one pack at a time)
 
-Upload steps for Workflow Data are in each pack README (**Upload workflow data**). Full MCP / crew / test prompts: [`mcp_forks/iceberg-mcp-server-claims/README.md`](../mcp_forks/iceberg-mcp-server-claims/README.md).
+Upload steps for Workflow Data are in each pack README (**Upload workflow data**).
+
+- **Distributions (live):** register [`iceberg-mcp-server-finserv`](../mcp_forks/iceberg-mcp-server-finserv/README.md). Impala database `retirement_distributions`. No `PACK_ROOT`.
+- **Rollovers (fixtures):** still the claims MCP + `PACK_ROOT` path in [`iceberg-mcp-server-claims/README.md`](../mcp_forks/iceberg-mcp-server-claims/README.md).
 
 Primary customer prompt: intake **7002**. Probe/action chat prompts (claims + both packs): [`docs/probe-action-tests.md`](../docs/probe-action-tests.md).
 
@@ -44,7 +47,7 @@ packs/<id>/
 
 **Workflow Data (Studio tools)** needs: `pack.yaml`, `exemplars.yaml`, `ontology/`, `playbook/`.  
 **Do not** upload `agents/` (paste those).  
-**MCP fixtures** (`catalog_fixtures.json` + `fixtures/`) are the canned lake answers. They are **not** schema or routing rules. As of 2026-08-14 MCP in Studio cannot see Workflow Data; see [`docs/finserv-pattern-pack-status.md`](../docs/finserv-pattern-pack-status.md).
+**MCP:** distributions labels are compiled in `iceberg-mcp-server-finserv` (live Impala). `catalog_fixtures.json` + `fixtures/` remain golden JSON for offline tests. Rollovers still use claims MCP `PACK_ROOT` fixtures. See [`docs/finserv-pattern-pack-status.md`](../docs/finserv-pattern-pack-status.md).
 
 ### `pack.yaml` fields (short)
 
@@ -55,7 +58,7 @@ packs/<id>/
 | `graph.builder` | `generic` → `build_case_graph`; claims 402 uses the triangle builder instead |
 | `graph.case_class` | Label on the case JSON (`DistributionRequest`, `RolloverRequest`) |
 | `graph.literals` / `booleans` | Spine/signal JSON keys copied onto the case document |
-| `catalog` | Documentation of fixture labels; MCP actually reads `catalog_fixtures.json` |
+| `catalog` | Label notes. Distributions: live MCP `iceberg-mcp-server-finserv`. Fixture dirs remain golden for tests. |
 
 ### Fixture folders
 

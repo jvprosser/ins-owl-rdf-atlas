@@ -2,6 +2,8 @@
 
 Classification and exception handling for plan distributions. Deterministic probes — not an LLM policy engine.
 
+Live lake + MCP: `ddl/hive_iceberg/retirement_distributions_*.sql` and [`mcp_forks/iceberg-mcp-server-finserv`](../../mcp_forks/iceberg-mcp-server-finserv/README.md). Fixture JSON in this pack stays golden for `agent_studio/tests/test_packs.py`.
+
 | Case | Story | Route |
 |---|---|---|
 | **7001** | Termination, documents complete | `ProcessDistribution` / `DistributionOpsAgent` |
@@ -10,7 +12,9 @@ Classification and exception handling for plan distributions. Deterministic prob
 
 ## Agent Studio workflow + tests
 
-Full Cloudera Agent Studio setup (MCP `PACK_ROOT`, crew, e2e prompts): [`mcp_forks/iceberg-mcp-server-claims/README.md`](../../mcp_forks/iceberg-mcp-server-claims/README.md#pack-retirement_distributions).
+Register **`iceberg-mcp-server-finserv`**, not the claims MCP. Identity: `INS_FINSERV_MCP_V1`. Do **not** set `PACK_ROOT`.
+
+Setup (MCP `uvx`, crew, e2e prompts): [`mcp_forks/iceberg-mcp-server-finserv/README.md`](../../mcp_forks/iceberg-mcp-server-finserv/README.md).
 
 ## Upload workflow data (Studio)
 
@@ -37,42 +41,54 @@ Do this in the **distributions** Agent Studio project (not the claims 402 projec
   playbook/playbook.yaml
 ```
 
-**Do not** upload to Workflow Data: `agents/` (paste those into agent Name/Role/Backstory/Goal), `fixtures/`, `catalog_fixtures.json`, or `README.md`. Those last two are for MCP `PACK_ROOT` only.
+**Do not** upload to Workflow Data: `agents/` (paste those into agent Name/Role/Backstory/Goal), `fixtures/`, `catalog_fixtures.json`, or `README.md`. Fixtures remain repo golden tests; the live catalog is compiled in the finserv MCP.
 
 If Studio offers “upload folder”, select `ontology` and `playbook` individually. Do not upload the parent `retirement_distributions` folder as a single nest.
 
-## Where to set `PACK_ROOT`
+## MCP registration
 
-**Only on the MCP server.** In Cloudera Agent Studio that is the **Environment variables** list on the `iceberg-mcp-server-claims` registration — the same place claims uses `IMPALA_HOST`. It is not Workflow Data, not an agent Goal, and not a custom-tool parameter.
+In the **distributions** Agent Studio project, register **`iceberg-mcp-server-finserv`** only. Do not register `iceberg-mcp-server-claims`.
 
-| Place | Set `PACK_ROOT`? |
+| Place | Set |
 |---|---|
-| Studio **MCP** → this server → **Environment variables** | **Yes** |
-| Workflow Data (`/workflow_data`) | No — that is `WORKFLOW_DATA_DIRECTORY` for graph/playbook only |
-| Agent Name / Role / Backstory / Goal | No |
-| Custom tool `UserParameters` | No |
+| Studio **MCP** → finserv server → **Environment variables** | `IMPALA_HOST`, `IMPALA_DATABASE=retirement_distributions`, user/password |
+| `PACK_ROOT` | **Do not set** |
+| Workflow Data (`/workflow_data`) | Ontology / playbook / `pack.yaml` only |
+| Agent Name / Role / Backstory / Goal | No Impala env |
 
-Steps:
+Paste this as the MCP registration (same `IMPALA_*` keys as claims, different database). Do **not** add `PACK_ROOT`.
 
-1. Open the **distributions** Agent Studio project.
-2. Open **MCP** (sometimes **Tools → MCP servers**). Do not open Workflow Data.
-3. Select **`iceberg-mcp-server-claims`** (the V7 server with `get_server_info` / `run_named_query`).
-4. Under **Environment variables**, add one row:
-   - **Name:** `PACK_ROOT`
-   - **Value:** absolute path **on the machine that runs MCP** to the pack directory that contains `catalog_fixtures.json` and `fixtures/`. Example if that host has this repo cloned:
-
-```text
-/ABS/PATH/ins-owl-rdf-atlas/packs/retirement_distributions
+```json
+{
+  "mcpServers": {
+    "iceberg-mcp-server-finserv": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/jvprosser/ins-owl-rdf-atlas.git@main#subdirectory=mcp_forks/iceberg-mcp-server-finserv",
+        "run-server"
+      ],
+      "env": {
+        "IMPALA_HOST": "<coordinator-host>",
+        "IMPALA_PORT": "443",
+        "IMPALA_USER": "<user>",
+        "IMPALA_PASSWORD": "<password>",
+        "IMPALA_DATABASE": "retirement_distributions"
+      }
+    }
+  }
+}
 ```
 
-5. Save. Restart or reconnect the MCP server (catalog merge runs at process start).
-6. Check: Delegate Manager to call `list_named_queries`. The reads list must include `get_distribution_spine`. If you only see `get_claim_spine`, `PACK_ROOT` is unset, the path is wrong, or MCP was not restarted.
+## Catalog labels
 
-`uvx` from git does **not** include `packs/`. Clone or copy `packs/retirement_distributions` onto the MCP host, then point `PACK_ROOT` at that copy. Impala variables are optional for this fixture demo.
+Read: `get_distribution_spine`, `get_distribution_routing_signals`, `get_distribution_exception_view`, `get_rmd_view`, `get_schema`.
 
-Do **not** set `PACK_ROOT` on the claims 402 MCP.
+Write: `write_audit_event`, `promote_audit_run`, `begin_agent_audit_run`, `append_agent_audit_event`, `append_agent_audit_evidence`, `abandon_agent_audit_run`.
 
-`run_named_query` labels: `get_distribution_spine`, `get_distribution_routing_signals`, `get_distribution_exception_view`, `get_rmd_view`. Writes are fixture stubs (`write_audit_event`, `promote_audit_run`).
+Studio `claim_id` is `distribution_request.distribution_request_id` (seed **7001**, **7002**, **7003**).
+
+Check: Delegate Manager `get_server_info` → `content_id=INS_FINSERV_MCP_V1`. Then `list_named_queries` must include `get_distribution_spine` and must **not** include `get_claim_spine`.
 
 ## Studio prompt (lead with 7002)
 

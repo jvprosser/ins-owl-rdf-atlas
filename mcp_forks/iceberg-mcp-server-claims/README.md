@@ -123,11 +123,15 @@ Routing Agent (optional): `pre_route_text` only; Role exactly `Routing Agent`.
 
 ### Pack: `retirement_distributions`
 
+**Live path (2026-08-18):** register [`iceberg-mcp-server-finserv`](../iceberg-mcp-server-finserv/README.md) in a separate Studio project. Identity `INS_FINSERV_MCP_V1`. Impala database `retirement_distributions`. Do **not** set `PACK_ROOT`. Do **not** register this claims MCP in the distributions project.
+
+The `PACK_ROOT` steps below are the **legacy fixture path** (still used by `tests/test_pack_fixtures.py`). Do not use them for the customer demo.
+
 Repo path: `packs/retirement_distributions/`  
 Agent pastes: `packs/retirement_distributions/agents/`  
 Lead demo case: **7002** (hardship substantiation missing).
 
-#### Where to set `PACK_ROOT`
+#### Where to set `PACK_ROOT` (legacy fixtures only)
 
 In Agent Studio: **MCP → `iceberg-mcp-server-claims` → Environment variables**. Add `PACK_ROOT` (not Workflow Data). Value = directory that contains `pack.yaml` and `catalog_fixtures.json` on the MCP host. Restart MCP after save.
 

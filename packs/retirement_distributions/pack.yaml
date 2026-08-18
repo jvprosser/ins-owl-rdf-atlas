@@ -20,7 +20,10 @@ graph:
     - hold_or_aml_flag
     - rmd_underpaid
 catalog:
-  fixture_writes: true
+  mcp: iceberg-mcp-server-finserv
+  database: retirement_distributions
+  fixture_writes: false
+  notes: Labels compiled in iceberg-mcp-server-finserv. fixtures/ remain golden for agent_studio/tests/test_packs.py.
   reads:
     get_distribution_spine:
       required: [claim_id]
