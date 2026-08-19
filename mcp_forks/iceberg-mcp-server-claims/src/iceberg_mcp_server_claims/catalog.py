@@ -38,7 +38,7 @@ READ_OPS: dict[str, dict[str, Any]] = {
     "get_litigation_view": {
         "required": ("claim_id",),
         "optional": ("database",),
-        "summary": "Litigation case rows (docket, counsel, dates, demand)",
+        "summary": "Litigation case business columns (no PK/FK)",
         "handler": lambda p: view_tools.get_litigation_view(
             str(p["claim_id"]), p.get("database")
         ),
@@ -46,7 +46,7 @@ READ_OPS: dict[str, dict[str, Any]] = {
     "get_bi_view": {
         "required": ("claim_id",),
         "optional": ("database",),
-        "summary": "Injury rows",
+        "summary": "Injury business columns (no PK/FK)",
         "handler": lambda p: view_tools.get_bi_view(
             str(p["claim_id"]), p.get("database")
         ),
@@ -54,7 +54,7 @@ READ_OPS: dict[str, dict[str, Any]] = {
     "get_subrogation_view": {
         "required": ("claim_id",),
         "optional": ("database",),
-        "summary": "Subrogation case rows",
+        "summary": "Subrogation case business columns (no PK/FK)",
         "handler": lambda p: view_tools.get_subrogation_view(
             str(p["claim_id"]), p.get("database")
         ),
@@ -62,7 +62,7 @@ READ_OPS: dict[str, dict[str, Any]] = {
     "get_pd_view": {
         "required": ("claim_id",),
         "optional": ("database",),
-        "summary": "Police report and fault determination rows",
+        "summary": "Police report and fault business columns (no PK/FK)",
         "handler": lambda p: view_tools.get_pd_view(
             str(p["claim_id"]), p.get("database")
         ),

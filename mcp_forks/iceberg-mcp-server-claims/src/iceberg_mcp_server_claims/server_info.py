@@ -8,7 +8,7 @@ from typing import Any
 
 # Bump CONTENT_ID whenever shipped MCP behavior/tools change.
 CONTENT_ID = "INS_CLAIMS_MCP_V7"
-UPDATED = "2026-08-18"
+UPDATED = "2026-08-19"
 
 # Keep in sync with @mcp.tool registrations in server.py
 REGISTERED_TOOLS = (

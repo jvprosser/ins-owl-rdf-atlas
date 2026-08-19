@@ -72,7 +72,7 @@ STRUCTURED CLAIM INTAKE (user gives a claim_id to intake/route):
    {"label":"<view>","claim_id":"<id>"}.
    Then run_named_write once:
    LitigationAgent CompleteLitigationFile → create_litigation_task
-     event_json task_type_code COMPLETE_FILE (optional litigation_case_id).
+     event_json task_type_code COMPLETE_FILE.
    LitigationAgent EscalateDiscovery → create_litigation_task
      event_json task_type_code ESCALATE_DISCOVERY.
    LitigationAgent LitigationSupport → write_audit_event then

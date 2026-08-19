@@ -20,9 +20,9 @@ Coworker Role must be exactly `PD Claims Agent`. Playbook `agent_role` is `PdCla
 
 Skip if already done this session.
 
-1. Claims MCP on **0.3.4** or later (`INS_CLAIMS_MCP_V7`). Studio `uvx` from GitHub `main` only sees `get_pd_view` / `create_pd_task` after that commit is on the remote.
+1. Claims MCP on **0.3.5** or later (`INS_CLAIMS_MCP_V7`). Studio `uvx` from GitHub `main` only sees `get_pd_view` / `create_pd_task` after that commit is on the remote.
 2. Restart `iceberg-mcp-server-claims`.
-3. Chat Orchestrator: `Call get_server_info once and stop.` Expect `INS_CLAIMS_MCP_V7` / **`0.3.4`** or newer.
+3. Chat Orchestrator: `Call get_server_info once and stop.` Expect `INS_CLAIMS_MCP_V7` / **`0.3.5`** or newer.
 4. `Call list_named_queries once and stop.` Must include `get_pd_view` and `create_pd_task`.
 5. Workflow Data includes the playbook whose PD actions list `get_pd_view` / `create_pd_task` (and `save_claim_letter` on `RequestPoliceReport`).
 6. Same Crew, Roles **exactly**: `Manager agent`, `PD Claims Agent`. Re-paste Orchestrator Goal from [`agent_studio/studio_tools/agents/orchestrator_agent.md`](../agent_studio/studio_tools/agents/orchestrator_agent.md) so the PD handoff is in it. Paste [`pd_claims_agent.md`](../agent_studio/studio_tools/agents/pd_claims_agent.md). Attach MCP + Studio `save_claim_letter` on the PD agent.

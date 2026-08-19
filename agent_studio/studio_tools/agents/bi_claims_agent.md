@@ -43,12 +43,13 @@ Given claim_id and run_id (default claim_id=402, run_id=demo-402-bi if omitted):
 2) Call run_named_write ONCE:
    Action Input (flat):
    {"label":"write_audit_event","run_id":"<run_id>",
-    "event_json":"{\"event_type\":\"<next_step or BiClaimsReview>\",\"claim_id\":\"<claim_id>\",\"next_step\":\"<next_step or BiClaimsReview>\",\"agent_role\":\"BiClaimsAgent\",\"claim_injury_id\":<id>,\"injury_severity_code\":\"<severity>\",\"body_region_code\":\"<region>\"}"}
-   Use only fields from the view Observation. Do not invent ids. If multiple
-   injuries, include the first row's ids and mention the count in the summary.
+    "event_json":"{\"event_type\":\"<next_step or BiClaimsReview>\",\"claim_id\":\"<claim_id>\",\"next_step\":\"<next_step or BiClaimsReview>\",\"agent_role\":\"BiClaimsAgent\",\"injury_severity_code\":\"<severity>\",\"body_region_code\":\"<region>\"}"}
+   Use only fields from the view Observation. Do not invent ids. The view has
+   business columns only (no PK/FK). If multiple injuries, mention the count
+   and use the first row's severity/region.
 
-3) Final Answer: short markdown (severity, body region, injury count) plus the
-   exact write Observation JSON. Then STOP.
+3) Final Answer: short markdown (severity, body region, injury_description,
+   injury count) plus the exact write Observation JSON. Then STOP.
    Do not run structured claim intake. Do not call a third tool.
 ```
 

@@ -43,25 +43,25 @@ Given claim_id, run_id, and next_step from Orchestrator
 
    CompleteLitigationFile → create_litigation_task, task_type_code COMPLETE_FILE:
    {"label":"create_litigation_task","run_id":"<run_id>",
-    "event_json":"{\"claim_id\":\"<claim_id>\",\"task_type_code\":\"COMPLETE_FILE\",\"litigation_case_id\":<id>}"}
+    "event_json":"{\"claim_id\":\"<claim_id>\",\"task_type_code\":\"COMPLETE_FILE\"}"}
 
    EscalateDiscovery → create_litigation_task, task_type_code ESCALATE_DISCOVERY:
    {"label":"create_litigation_task","run_id":"<run_id>",
-    "event_json":"{\"claim_id\":\"<claim_id>\",\"task_type_code\":\"ESCALATE_DISCOVERY\",\"litigation_case_id\":<id>}"}
+    "event_json":"{\"claim_id\":\"<claim_id>\",\"task_type_code\":\"ESCALATE_DISCOVERY\"}"}
 
    LitigationSupport → write_audit_event, then save_claim_letter (this step
    needs_llm). Draft a short hold/status email from the view only.
    Do not create a litigation_task.
    {"label":"write_audit_event","run_id":"<run_id>",
-    "event_json":"{\"event_type\":\"LitigationSupport\",\"claim_id\":\"<claim_id>\",\"next_step\":\"LitigationSupport\",\"agent_role\":\"LitigationAgent\",\"litigation_case_id\":<id>,\"litigation_status_code\":\"<status>\",\"docket_number\":\"<docket>\",\"demand_amount\":<amount>}"}
+    "event_json":"{\"event_type\":\"LitigationSupport\",\"claim_id\":\"<claim_id>\",\"next_step\":\"LitigationSupport\",\"agent_role\":\"LitigationAgent\",\"litigation_status_code\":\"<status>\",\"docket_number\":\"<docket>\",\"demand_amount\":<amount>}"}
    Then save_claim_letter once:
    {"claim_id":"<claim_id>","run_id":"<run_id>","next_step":"LitigationSupport",
     "body":"Subject: Claim <claim_id> litigation hold/status\\n\\n<note from view fields>"}
 
    Use only fields from the view Observation. Do not invent ids or amounts.
-   Omit litigation_case_id from event_json if the view has no case row.
+   The view has business columns only (no PK/FK).
 
-3) Final Answer: short markdown (status, docket, venue, counsel, dates, demand)
+3) Final Answer: short markdown (status, docket, venue, dates, demand)
    plus the exact write Observation JSON and the letter file_path. Then STOP.
    Do not run structured claim intake. Do not call extra tools.
 ```

@@ -43,8 +43,9 @@ Given claim_id and run_id (default claim_id=401, run_id=demo-401-sub if omitted)
 2) Call run_named_write ONCE:
    Action Input (flat):
    {"label":"write_audit_event","run_id":"<run_id>",
-    "event_json":"{\"event_type\":\"<next_step or OpenSubrogationCase>\",\"claim_id\":\"<claim_id>\",\"next_step\":\"<next_step or OpenSubrogationCase>\",\"agent_role\":\"SubrogationAgent\",\"subrogation_case_id\":<id>,\"subrogation_status_code\":\"<status>\",\"demand_amount\":<demand>,\"recovered_amount\":<recovered>}"}
+    "event_json":"{\"event_type\":\"<next_step or OpenSubrogationCase>\",\"claim_id\":\"<claim_id>\",\"next_step\":\"<next_step or OpenSubrogationCase>\",\"agent_role\":\"SubrogationAgent\",\"subrogation_status_code\":\"<status>\",\"demand_amount\":<demand>,\"recovered_amount\":<recovered>}"}
    Use only fields from the view Observation. Do not invent ids or amounts.
+   The view has business columns only (no PK/FK).
 
 3) Final Answer: short markdown (status, demand, recovered) plus the
    exact write Observation JSON. Then STOP.

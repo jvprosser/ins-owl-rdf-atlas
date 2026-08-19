@@ -47,30 +47,31 @@ Given claim_id, run_id, and next_step from Orchestrator
 
    RequestPoliceReport → create_pd_task REQUEST_POLICE_REPORT, then
    save_claim_letter (this step needs_llm). Draft a short police-report
-   request from the view only (note missing report_number if police_reports
-   is empty).
+   request from the view only (use narrative_summary when present; note
+   missing report_number if police_reports is empty).
    {"label":"create_pd_task","run_id":"<run_id>",
-    "event_json":"{\"claim_id\":\"<claim_id>\",\"task_type_code\":\"REQUEST_POLICE_REPORT\",\"loss_event_id\":<id or omit>}"}
+    "event_json":"{\"claim_id\":\"<claim_id>\",\"task_type_code\":\"REQUEST_POLICE_REPORT\"}"}
    Then save_claim_letter once:
    {"claim_id":"<claim_id>","run_id":"<run_id>","next_step":"RequestPoliceReport",
     "body":"Subject: Claim <claim_id> police report request\\n\\n<note from view fields>"}
 
    DetermineFault → create_pd_task DETERMINE_FAULT:
    {"label":"create_pd_task","run_id":"<run_id>",
-    "event_json":"{\"claim_id\":\"<claim_id>\",\"task_type_code\":\"DETERMINE_FAULT\",\"loss_event_id\":<id or omit>}"}
+    "event_json":"{\"claim_id\":\"<claim_id>\",\"task_type_code\":\"DETERMINE_FAULT\"}"}
    Do not call save_claim_letter.
 
    PdClaimsReview → create_pd_task PD_REVIEW:
    {"label":"create_pd_task","run_id":"<run_id>",
-    "event_json":"{\"claim_id\":\"<claim_id>\",\"task_type_code\":\"PD_REVIEW\",\"loss_event_id\":<id or omit>}"}
+    "event_json":"{\"claim_id\":\"<claim_id>\",\"task_type_code\":\"PD_REVIEW\"}"}
    Do not call save_claim_letter.
 
-   Use only fields from the view Observation. Omit loss_event_id if neither
-   police_reports nor fault_determinations has one.
+   Use only fields from the view Observation. The view has business columns
+   only (no PK/FK). Do not invent ids.
 
-3) Final Answer: short markdown (report_number / agency, fault percents if
-   present) plus the exact write Observation JSON and letter file_path when
-   RequestPoliceReport. Then STOP. Do not run structured claim intake.
+3) Final Answer: short markdown (report_number / agency / narrative_summary,
+   fault percents and notes if present) plus the exact write Observation JSON
+   and letter file_path when RequestPoliceReport. Then STOP. Do not run
+   structured claim intake.
 ```
 
 ## Tools

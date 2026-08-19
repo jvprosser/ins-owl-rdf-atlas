@@ -1,4 +1,8 @@
-"""Playbook-aligned specialist views (curated SQL; no free-form joins)."""
+"""Playbook-aligned specialist views (curated SQL; no free-form joins).
+
+Select business columns only: omit the table PK and FK columns. ``claim_id``
+stays on the JSON envelope and in WHERE.
+"""
 
 from __future__ import annotations
 
@@ -32,11 +36,9 @@ def get_litigation_view(
     db = validate_ident(_default_database(database), "database")
     cid = str(int(claim_id))
     sql = f"""
-SELECT litigation_case_id, litigation_status_code, docket_number,
-       venue_name, venue_country_subdivision_code,
-       plaintiff_party_id, defendant_party_id,
-       plaintiff_counsel_party_id, defense_counsel_party_id,
-       filed_date, served_date, closed_date, demand_amount, currency_code
+SELECT litigation_status_code, docket_number, venue_name,
+       venue_country_subdivision_code, filed_date, served_date, closed_date,
+       demand_amount, currency_code, created_at
 FROM {db}.litigation_case
 WHERE claim_id = {cid}
 """.strip()
@@ -61,8 +63,9 @@ def get_bi_view(
     db = validate_ident(_default_database(database), "database")
     cid = str(int(claim_id))
     sql = f"""
-SELECT claim_injury_id, injured_party_id, injury_severity_code,
-       body_region_code, medical_provider_party_id
+SELECT injury_severity_code, body_region_code, injury_description,
+       treatment_start_date, treatment_end_date, ambulance_used_indicator,
+       hospitalization_indicator, created_at
 FROM {db}.claim_injury
 WHERE claim_id = {cid}
 """.strip()
@@ -87,8 +90,8 @@ def get_subrogation_view(
     db = validate_ident(_default_database(database), "database")
     cid = str(int(claim_id))
     sql = f"""
-SELECT subrogation_case_id, subrogation_status_code, demand_amount,
-       recovered_amount, adverse_party_id, adverse_carrier_party_id
+SELECT subrogation_status_code, demand_amount, recovered_amount, currency_code,
+       opened_date, closed_date, statute_limitations_date, created_at
 FROM {db}.subrogation_case
 WHERE claim_id = {cid}
 """.strip()
@@ -113,15 +116,14 @@ def get_pd_view(
     db = validate_ident(_default_database(database), "database")
     cid = str(int(claim_id))
     police_sql = f"""
-SELECT police_report_id, loss_event_id, report_number, agency_name,
-       report_date, citation_issued_indicator
+SELECT report_number, agency_name, report_datetime, report_date,
+       citation_issued_indicator, narrative_summary, created_at
 FROM {db}.police_report
 WHERE claim_id = {cid}
 """.strip()
     fault_sql = f"""
-SELECT fault_determination_id, loss_event_id, at_fault_driver_id,
-       insured_fault_percent, adverse_fault_percent, fault_basis_code,
-       determination_status_code
+SELECT insured_fault_percent, adverse_fault_percent, fault_basis_code,
+       determination_status_code, determination_datetime, notes, created_at
 FROM {db}.fault_determination
 WHERE claim_id = {cid}
 """.strip()

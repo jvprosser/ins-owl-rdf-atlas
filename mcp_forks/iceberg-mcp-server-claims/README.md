@@ -17,7 +17,7 @@ Claims fork of Cloudera’s Impala Iceberg MCP for the car-insurance claims agen
 
 | Tool | Notes |
 |---|---|
-| `get_server_info()` | One-shot identity. Expect **`INS_CLAIMS_MCP_V7`** / **`0.3.4`**. Prompt: “Call get_server_info once and stop.” |
+| `get_server_info()` | One-shot identity. Expect **`INS_CLAIMS_MCP_V7`** / **`0.3.5`**. Prompt: “Call get_server_info once and stop.” |
 
 ### Named catalog (only lake I/O)
 
