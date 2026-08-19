@@ -24,6 +24,11 @@ def test_claim_routing_signals_sql_uses_cte_not_scalar_count_gt():
     assert "missing_docket_or_counsel" in sql
     assert "discovery_aging" in sql
     assert "DATEDIFF" in sql
+    assert "insured_operator_cited" in sql
+    assert "unlawful_operation_exclusion" in sql
+    assert "excluded_operator_exclusion" in sql
+    assert "policy_not_in_force_on_loss" in sql
+    assert "INSURED_OPERATOR" in sql
 
 
 def test_get_claim_spine_shapes_payload():

@@ -32,7 +32,7 @@ User
 2. Manager calls `run_named_query` for spine, then routing signals (catalog **labels**, not extra MCP tools).
 3. Manager passes those JSON payloads, unmodified, into `build_claim_graph` → `validate_claim_graph` → `route_claim`.
 4. Manager stops. Orchestrator maps `agent_role` → coworker **Role** and Delegates once.
-5. Specialist may run one view label, then the playbook write (`create_litigation_task`, `create_pd_task`, or `write_audit_event`; Closeout also `promote_audit_run`). `LitigationSupport` and `RequestPoliceReport` mark a letter as recommended (`letter_on_request`); Studio `save_claim_letter` runs only when the user asks to write it.
+5. Specialist may run one view label, then the playbook write (`create_litigation_task`, `create_pd_task`, `deny_claim`, or `write_audit_event`; Closeout and `DenyAudit` also `promote_audit_run`). `LitigationSupport`, `RequestPoliceReport`, and Deny steps mark a letter as recommended (`letter_on_request`); Studio `save_claim_letter` runs only when the user asks to write it.
 
 Custom Studio tools **cannot** call MCP in-process. The agent is the only bridge: MCP result → tool argument → session artifact.
 
@@ -44,7 +44,7 @@ MCP V7 registers four tools: `get_server_info`, `list_named_queries`, `run_named
 
 The **catalog** is compiled into the MCP package (`READ_OPS` / `WRITE_OPS`). Each label has required/optional params and a Python handler that runs curated Impala. Agents discover labels via `list_named_queries` and via Goal text. Invented SQL or unknown labels fail closed.
 
-Claims labels (live lake): `get_claim_spine`, `get_claim_routing_signals`, specialist views (`get_litigation_view`, `get_bi_view`, `get_subrogation_view`, `get_pd_view`), `get_schema`, audit writes (`write_audit_event`, `promote_audit_run`, …), `create_litigation_task`, and `create_pd_task`.
+Claims labels (live lake): `get_claim_spine`, `get_claim_routing_signals`, specialist views (`get_litigation_view`, `get_bi_view`, `get_subrogation_view`, `get_pd_view`, `get_deny_view`), `get_schema`, audit writes (`write_audit_event`, `promote_audit_run`, …), `create_litigation_task`, `create_pd_task`, and `deny_claim`.
 
 Audit lands in Iceberg (`agent_run_audit` / `agent_run_evidence`), partitioned by `run_id`. Impala mode is **table-append**; `promote_audit_run` is a no-op success (`mode=table_append`). Hive WAP branches are a later fork, not this path.
 
@@ -66,7 +66,7 @@ Mapping from lake JSON → case JSON is code (claims builder) or `pack.yaml` fie
 
 Probes bind field paths on the case document (`litigation_indicator`, `triangle`, …). Rules are reviewed as YAML, not as prompt text and not as Iceberg UI config.
 
-The playbook can name specialists that have no Studio paste yet (`SiuAgent`, `SettlementAgent`, …). Orchestrator must Final Answer the route JSON rather than invent a Role.
+The playbook can name specialists that have no Studio paste yet (`SiuAgent`, `SettlementAgent`, `DataQualityAgent`). Orchestrator must Final Answer the route JSON rather than invent a Role. `DenyAgent` and `HumanCitationReview` now have pastes.
 
 FNOL → payout is **not** one crew run. The claims platform (or BPA) writes Iceberg rows; this stack classifies the current snapshot. Re-invoke structured intake with the same `claim_id` after the lake changes. Pass `claim_id` (and `run_id`). Do not pass `next_step`.
 
@@ -74,7 +74,7 @@ FNOL → payout is **not** one crew run. The claims platform (or BPA) writes Ice
 
 Live Studio runbook (Impala reset + three Orchestrator chats on **401**): [pd-path-demo.md](pd-path-demo.md).
 
-Each row is a later snapshot. Earlier gaps are already filled so a higher probe does not preempt. Case JSON is what `route_claim` sees after `build_claim_graph` (spine + signals). If `subrogation_indicator` is true and `has_subrogation_case` is false, **R4.1** `OpenSubrogationCase` wins before offer, payment, or PD review. Litigation or SIU flags win before all PD money steps.
+Each row is a later snapshot. Earlier gaps are already filled so a higher probe does not preempt. Case JSON is what `route_claim` sees after `build_claim_graph` (spine + signals). CLOSED, DENIED, insured citation, and coded exclusions (R1.1 / R1.1d / R5.2 / R6.*) win before litigation, SIU, PD gaps, and money. If `subrogation_indicator` is true and `has_subrogation_case` is false, **R4.1** `OpenSubrogationCase` wins before offer, payment, or PD review.
 
 | When the lake looks like | Case JSON input (discriminating fields) | First hit | `next_step` |
 |---|---|---|---|
@@ -86,8 +86,15 @@ Each row is a later snapshot. Earlier gaps are already filled so a higher probe 
 | Offer EXTENDED | `{"claim_status_code": "OPEN", "has_adjuster": true, "has_police_report": true, "has_fault_determination": true, "has_extended_offer": true, "litigation_indicator": false, "has_siu_suspected": false, "subrogation_indicator": false}` | R3.2 | `FollowUpOffer` |
 | Offer ACCEPTED, no loss payment | `{"claim_status_code": "OPEN", "has_adjuster": true, "has_police_report": true, "has_fault_determination": true, "has_extended_offer": false, "has_accepted_offer": true, "has_loss_payment": false, "litigation_indicator": false, "has_siu_suspected": false, "subrogation_indicator": false}` | R3.4 | `IssuePayment` |
 | Status CLOSED | `{"claim_exists": true, "triangle": true, "claim_status_code": "CLOSED"}` | R1.1 | `CloseoutAudit` |
+| Status DENIED | `{"claim_exists": true, "triangle": true, "claim_status_code": "DENIED"}` | R1.1d | `DenyAudit` |
+| Insured operator cited | `{"claim_status_code": "OPEN", "insured_operator_cited": true}` | R5.2 | `HumanCitationReview` |
+| Unlawful-operation exclusion | `{"claim_status_code": "OPEN", "unlawful_operation_exclusion": true}` | R6.1 | `DenyUnlawfulOperation` |
+| Excluded/unlisted operator | `{"claim_status_code": "OPEN", "excluded_operator_exclusion": true}` | R6.2 | `DenyExcludedDriver` |
+| Policy not in force on loss | `{"claim_status_code": "OPEN", "policy_not_in_force_on_loss": true}` | R6.3 | `DenyLapsedPolicy` |
 
 PD steps (`RequestPoliceReport`, `DetermineFault`, `PdClaimsReview`) use `get_pd_view` then `create_pd_task` (work item in `pd_task` plus an `agent_run_audit` receipt). `RequestPoliceReport` sets `letter_on_request`; a session letter via `save_claim_letter` is drafted only if the user asks (no mail send). Settlement steps on this path still `write_audit_event`. `IssuePayment` means settlement work is due; the payment row still has to land in `claim_payment` from the claims platform. A later intake can then hit R1.1.
+
+Denial: CLOSED stays **approved** (Closeout). DENIED is the other terminal status. R5.2 (`insured_operator_cited`) is Human Review — view + audit, no `deny_claim`. R6.* coded exclusions (`unlawful_operation_exclusion`, `excluded_operator_exclusion`, `policy_not_in_force_on_loss`) go to Deny Agent, which `UPDATE`s `claim_status_code` to `DENIED`. Live smokes flip **401** only and restore afterward.
 
 ## Pattern: two Studio filesystems
 
@@ -123,7 +130,7 @@ Claims today is the **default product**: walk-up to repo-root `ontology/` + `pla
 
 CrewAI `Delegate` matches **Role**, not Name. Manager Role must be exactly `Manager agent`.
 
-The LLM is justified for NL ops and unstructured text. Hardship, RMD, ERISA, litigation, and closeout are probe results.
+The LLM is justified for NL ops and unstructured text. Hardship, RMD, ERISA, litigation, closeout, and coded denial are probe results.
 
 ## Governance (not on the runtime path)
 
@@ -186,6 +193,8 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 | `write_audit_event` | Catalog write: `INSERT` one `agent_run_audit` row. |
 | `create_litigation_task` | Catalog write: `INSERT` one `litigation_task` row from `run_id` + `event_json`. |
 | `create_pd_task` | Catalog write: `INSERT` one `pd_task` row (`REQUEST_POLICE_REPORT` / `DETERMINE_FAULT` / `PD_REVIEW`) and one `agent_run_audit` receipt. |
+| `get_deny_view` | Catalog read: operator / policy / police business columns for deny and citation review (no PK/FK). |
+| `deny_claim` | Catalog write: `UPDATE claim` to `DENIED` (refuses CLOSED and already-DENIED) plus an `agent_run_audit` receipt. Not used on `DenyAudit`. |
 | `promote_audit_run` | No-op success on Impala (rows already on main). |
 | Routing signals / `get_claim_routing_signals` | Named query for extra facts the graph and probes need (flags, related ids). |
 

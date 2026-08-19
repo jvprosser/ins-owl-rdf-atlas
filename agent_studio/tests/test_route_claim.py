@@ -152,6 +152,129 @@ def test_route_closed_terminal():
     assert decision["later_checks_not_run"] is True
 
 
+def test_route_denied_terminal():
+    spine = _spine_401()
+    spine["claim_status_code"] = "DENIED"
+    spine["subrogation_indicator"] = False
+    case = build_claim_graph(401, spine=spine, signals={"insured_operator_cited": True})
+    decision = route_claim(case, 401)
+    assert decision["next_step"] == "DenyAudit"
+    assert decision["agent_role"] == "DenyAgent"
+    assert decision["lane"] == "DENY"
+    assert decision["terminal"] is True
+    assert decision["letter_on_request"] is True
+    assert "get_deny_view" in decision["allowed_tools"]
+    assert "deny_claim" not in decision["allowed_tools"]
+    assert "save_claim_letter" in decision["allowed_tools"]
+    assert "promote_audit_run" in decision["allowed_tools"]
+    assert decision["routing_reason"] == "Claim is denied → DenyAudit."
+    assert "will not be drafted unless you ask" in decision["routing_summary"]
+    assert "R1.1d" in decision["reason_probe_ids"]
+
+
+def test_route_closed_beats_denied_and_exclusions():
+    spine = _spine_401()
+    spine["claim_status_code"] = "CLOSED"
+    spine["subrogation_indicator"] = False
+    case = build_claim_graph(
+        403,
+        spine=spine,
+        signals={
+            "insured_operator_cited": True,
+            "unlawful_operation_exclusion": True,
+        },
+    )
+    decision = route_claim(case, 403)
+    assert decision["next_step"] == "CloseoutAudit"
+    assert decision["agent_role"] == "CloseoutAgent"
+    assert "deny_claim" not in decision["allowed_tools"]
+
+
+def test_route_insured_cited_human_review():
+    spine = _spine_401()
+    spine["subrogation_indicator"] = False
+    case = build_claim_graph(
+        401,
+        spine=spine,
+        signals={
+            "insured_operator_cited": True,
+            "unlawful_operation_exclusion": True,
+            "has_police_report": True,
+            "has_fault_determination": True,
+        },
+    )
+    decision = route_claim(case, 401)
+    assert case["insured_operator_cited"] is True
+    assert decision["next_step"] == "HumanCitationReview"
+    assert decision["agent_role"] == "HumanReviewAgent"
+    assert decision["terminal"] is True
+    assert decision["letter_on_request"] is False
+    assert "get_deny_view" in decision["allowed_tools"]
+    assert "write_audit_event" in decision["allowed_tools"]
+    assert "deny_claim" not in decision["allowed_tools"]
+    assert "save_claim_letter" not in decision["allowed_tools"]
+    assert decision["routing_reason"] == (
+        "Insured operator was cited → HumanCitationReview."
+    )
+    assert "R5.2" in decision["reason_probe_ids"]
+
+
+def test_route_unlawful_operation_deny():
+    spine = _spine_401()
+    spine["subrogation_indicator"] = False
+    case = build_claim_graph(
+        401,
+        spine=spine,
+        signals={"unlawful_operation_exclusion": True},
+    )
+    decision = route_claim(case, 401)
+    assert decision["next_step"] == "DenyUnlawfulOperation"
+    assert decision["agent_role"] == "DenyAgent"
+    assert decision["lane"] == "DENY"
+    assert decision["terminal"] is True
+    assert decision["letter_on_request"] is True
+    assert "deny_claim" in decision["allowed_tools"]
+    assert "get_deny_view" in decision["allowed_tools"]
+    assert "save_claim_letter" in decision["allowed_tools"]
+    assert decision["routing_reason"] == (
+        "Insured operator has an unlawful-operation exclusion → DenyUnlawfulOperation."
+    )
+    assert "R6.1" in decision["reason_probe_ids"]
+
+
+def test_route_excluded_operator_deny():
+    spine = _spine_401()
+    spine["subrogation_indicator"] = False
+    case = build_claim_graph(
+        401,
+        spine=spine,
+        signals={"excluded_operator_exclusion": True},
+    )
+    decision = route_claim(case, 401)
+    assert decision["next_step"] == "DenyExcludedDriver"
+    assert decision["agent_role"] == "DenyAgent"
+    assert "deny_claim" in decision["allowed_tools"]
+    assert "R6.2" in decision["reason_probe_ids"]
+
+
+def test_route_lapsed_policy_deny():
+    spine = _spine_401()
+    spine["subrogation_indicator"] = False
+    case = build_claim_graph(
+        401,
+        spine=spine,
+        signals={"policy_not_in_force_on_loss": True},
+    )
+    decision = route_claim(case, 401)
+    assert decision["next_step"] == "DenyLapsedPolicy"
+    assert decision["agent_role"] == "DenyAgent"
+    assert "deny_claim" in decision["allowed_tools"]
+    assert decision["routing_reason"] == (
+        "Policy was not in force on the loss date → DenyLapsedPolicy."
+    )
+    assert "R6.3" in decision["reason_probe_ids"]
+
+
 def test_route_missing_police_report():
     spine = _spine_401()
     spine["subrogation_indicator"] = False

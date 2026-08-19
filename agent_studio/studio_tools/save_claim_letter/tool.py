@@ -7,8 +7,8 @@ FILE: agent_studio/studio_tools/save_claim_letter/tool.py
 CUSTOM TOOL save_claim_letter — persist drafted hold/status or police-report letter.
 
 Call only when the user asks to write the letter. Playbook
-`letter_on_request` (LitigationSupport / RequestPoliceReport) marks the
-letter as recommended next work; intake and status must not auto-draft.
+`letter_on_request` (LitigationSupport / RequestPoliceReport / deny steps)
+marks the letter as recommended next work; intake and status must not auto-draft.
 Does not send mail and does not call MCP.
 """
 

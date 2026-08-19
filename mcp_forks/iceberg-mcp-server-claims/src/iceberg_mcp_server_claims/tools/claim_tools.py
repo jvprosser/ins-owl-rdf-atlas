@@ -128,6 +128,10 @@ def get_claim_routing_signals(
         "has_document",
         "missing_docket_or_counsel",
         "discovery_aging",
+        "insured_operator_cited",
+        "unlawful_operation_exclusion",
+        "excluded_operator_exclusion",
+        "policy_not_in_force_on_loss",
     ]
 
     try:

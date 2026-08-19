@@ -146,6 +146,16 @@ def build_claim_case(
         "subrogation_status_code": signals.get("subrogation_status_code"),
         "fraud_outcome_code": fraud_code,
         "has_siu_suspected": fraud_code in ("SUSPECTED", "PENDING"),
+        "insured_operator_cited": _as_bool(signals.get("insured_operator_cited")),
+        "unlawful_operation_exclusion": _as_bool(
+            signals.get("unlawful_operation_exclusion")
+        ),
+        "excluded_operator_exclusion": _as_bool(
+            signals.get("excluded_operator_exclusion")
+        ),
+        "policy_not_in_force_on_loss": _as_bool(
+            signals.get("policy_not_in_force_on_loss")
+        ),
         "spine": spine,
         "signals": signals,
     }

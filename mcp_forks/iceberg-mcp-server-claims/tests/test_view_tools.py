@@ -89,3 +89,61 @@ def test_get_pd_view_shapes():
     assert payload["claim_id"] == 401
     assert payload["police_reports"][0]["narrative_summary"] == "Rear-end collision."
     assert payload["fault_determinations"][0]["notes"] == "Adverse primarily at fault."
+
+
+def test_get_deny_view_shapes():
+    def fake(sql: str):
+        select = _select_list(sql)
+        if "loss_driver" in sql:
+            assert "401" in sql
+            assert "driver_role_code" in select
+            assert "was_cited_indicator" in select
+            assert "impairment_suspected_indicator" in select
+            assert "license_status_code" in select
+            assert "listed_on_policy" in select
+            assert "is_excluded_driver" in select
+            assert "loss_driver_id" not in select
+            assert "driver_id" not in select
+            assert "policy_id" not in select
+            assert "claim_id" not in select
+            return [
+                {
+                    "driver_role_code": "INSURED_OPERATOR",
+                    "was_cited_indicator": False,
+                    "impairment_suspected_indicator": True,
+                    "license_status_code": "SUSPENDED",
+                    "listed_on_policy": True,
+                    "is_excluded_driver": False,
+                }
+            ]
+        if "insurance_policy" in sql:
+            assert "policy_status_code" in select
+            assert "effective_date" in select
+            assert "expiration_date" in select
+            assert "cancellation_date" in select
+            assert "loss_date" in select
+            assert "policy_id" not in select
+            assert "loss_event_id" not in select
+            return [
+                {
+                    "claim_status_code": "OPEN",
+                    "claim_number": "CLM-2025-000401",
+                    "policy_number": "PA-1001",
+                    "policy_status_code": "ACTIVE",
+                    "loss_date": "2025-06-15",
+                }
+            ]
+        if "police_report" in sql:
+            assert "narrative_summary" in select
+            assert "report_number" in select
+            assert "police_report_id" not in select
+            assert "loss_event_id" not in select
+            return [{"report_number": "PD-301", "narrative_summary": "Rear-end collision."}]
+        raise AssertionError(sql)
+
+    raw = view_tools.get_deny_view("401", "car_insurance_claims", query_rows=fake)
+    payload = json.loads(raw)
+    assert payload["claim_id"] == 401
+    assert payload["operators"][0]["impairment_suspected_indicator"] is True
+    assert payload["policy"]["policy_status_code"] == "ACTIVE"
+    assert payload["police_reports"][0]["narrative_summary"] == "Rear-end collision."

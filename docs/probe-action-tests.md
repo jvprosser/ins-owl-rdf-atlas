@@ -4,9 +4,9 @@ One chat prompt per playbook **probe → action** pair. Chat the **Orchestrator*
 
 First-match-wins: a later probe only fires if every earlier action’s `when` failed. You cannot test `R1.4` on claim **402**; litigation (`R1.2b` discovery aging) wins first.
 
-Specialist Delegate after route only if that `agent_role` has a Studio paste. Otherwise Orchestrator Final Answers the route JSON (`SiuAgent`, `SettlementAgent`, `DataQualityAgent`, `HumanReviewAgent`).
+Specialist Delegate after route only if that `agent_role` has a Studio paste. Otherwise Orchestrator Final Answers the route JSON (`SiuAgent`, `SettlementAgent`, `DataQualityAgent`, and `HumanReviewOrWait`). `HumanCitationReview` maps to Human Review Agent; deny steps map to Deny Agent.
 
-`R6.1` (`context_probe`) is CONSTRUCT only. It has no action pair.
+Citation is **not** auto-deny. Narrative is **not** a YAML probe. `R6.1` is the coded unlawful-operation exclusion (impairment or license `SUSPENDED`/`REVOKED`/`UNLICENSED`).
 
 ## Shared intake prompt
 
@@ -40,6 +40,11 @@ Studio project: live Impala catalog, Workflow Data = repo `ontology/` + `playboo
 | R0.1 | ASK_FALSE | `FixDataQuality` / `DataQualityAgent` / DATA_QUALITY | Graph has no `AutoClaim` at the claim IRI (builder usually prevents this) | none |
 | R0.4 | ASK_FALSE | `FixDataQuality` / `DataQualityAgent` / DATA_QUALITY | Claim exists but triangle broken (no policy↔vehicle) | none |
 | R1.1 | SELECT_EQUALS CLOSED | `CloseoutAudit` / `CloseoutAgent` / CLOSEOUT | Status CLOSED | **403** |
+| R1.1d | SELECT_EQUALS DENIED | `DenyAudit` / `DenyAgent` / DENY | Status DENIED; letter on request; no `deny_claim` | pytest `test_route_denied_terminal`; live **401** after a deny write |
+| R5.2 | ASK_TRUE | `HumanCitationReview` / `HumanReviewAgent` / GENERAL | Insured operator `was_cited_indicator`; do not use police `citation_issued_indicator` | pytest `test_route_insured_cited_human_review`; live **401** flip only |
+| R6.1 | ASK_TRUE | `DenyUnlawfulOperation` / `DenyAgent` / DENY | Insured impairment or license SUSPENDED/REVOKED/UNLICENSED | pytest `test_route_unlawful_operation_deny`; live **401** flip only |
+| R6.2 | ASK_TRUE | `DenyExcludedDriver` / `DenyAgent` / DENY | Insured operator excluded or unlisted (skip PERMISSIVE_USER) | pytest `test_route_excluded_operator_deny`; live **401** flip only |
+| R6.3 | ASK_TRUE | `DenyLapsedPolicy` / `DenyAgent` / DENY | Policy LAPSED/CANCELLED/EXPIRED, loss outside term, or cancellation ≤ loss | pytest `test_route_lapsed_policy_deny`; live **401** flip only |
 | R1.2a | ASK_TRUE | `CompleteLitigationFile` / `LitigationAgent` / LITIGATION | Litigated claim missing docket or both counsel ids | pytest `test_route_litigation` |
 | R1.2b | ASK_TRUE | `EscalateDiscovery` / `LitigationAgent` / LITIGATION | IN_DISCOVERY, closed_date null, filed_date > 90 days | **402** |
 | R1.2 | ASK_TRUE | `LitigationSupport` / `LitigationAgent` / LITIGATION | Remaining litigation (file complete, not aging); `letter_on_request`; draft via `save_claim_letter` only when the user asks | pytest `test_route_litigation_support_letter`; email smoke **402** (skip intake, ask to write) |
@@ -92,6 +97,97 @@ Do not skip the Orchestrator.
 
 3) Final Answer: route + exact write JSON + exact promote JSON. STOP.
 ```
+
+### R1.1d SELECT_EQUALS DENIED — DenyAudit
+
+Offline: `pytest tests/test_route_claim.py::test_route_denied_terminal`.
+
+Live: after an R6.* `deny_claim` on **401**, re-intake. Expect `DenyAudit` / `DenyAgent`. View `get_deny_view`, then `write_audit_event` + `promote_audit_run`. Do **not** call `deny_claim`. Restore **401** to OPEN afterward.
+
+```text
+Intake and route claim_id 401, then complete the post-route specialist work.
+Do not skip the Orchestrator.
+
+1) Delegate ONCE to Manager: structured intake for 401. STOP after route_claim.
+   Expect next_step=DenyAudit, agent_role=DenyAgent, reason_probe_ids includes R1.1d.
+
+2) Delegate ONCE to Deny Agent.
+   Task: claim_id=401 run_id=demo-401-deny-audit next_step=DenyAudit.
+   run_named_query get_deny_view, then write_audit_event, then promote_audit_run.
+   Do not deny_claim. Do not save_claim_letter unless asked to write the letter.
+
+3) Final Answer: route + exact JSON. STOP.
+```
+
+### R5.2 ASK_TRUE — HumanCitationReview (401 smoke)
+
+Insured `loss_driver.was_cited_indicator` only. Do **not** set police `citation_issued_indicator` (seed 401 is already true for adverse speeding).
+
+```sql
+-- 401 only. Restore after.
+UPDATE car_insurance_claims.loss_driver
+SET was_cited_indicator = TRUE
+WHERE claim_id = 401 AND driver_role_code = 'INSURED_OPERATOR';
+```
+
+```text
+Intake and route claim_id 401, then complete the post-route specialist work.
+Do not skip the Orchestrator.
+
+1) Delegate ONCE to Manager: structured intake for 401. STOP after route_claim.
+   Expect next_step=HumanCitationReview, agent_role=HumanReviewAgent,
+   reason_probe_ids includes R5.2. Claim status stays OPEN.
+
+2) Delegate ONCE to Human Review Agent.
+   Task: claim_id=401 run_id=demo-401-cite next_step=HumanCitationReview.
+   run_named_query get_deny_view, then write_audit_event.
+   Do not deny_claim. Do not save_claim_letter.
+
+3) Final Answer: who was cited, narrative, license/impairment, plus write JSON. STOP.
+```
+
+Restore: `was_cited_indicator = FALSE` for that 401 insured operator row.
+
+### R6.1 ASK_TRUE — DenyUnlawfulOperation (401 smoke)
+
+```sql
+-- 401 only. Restore after. Do not flip 402/403.
+UPDATE car_insurance_claims.loss_driver
+SET impairment_suspected_indicator = TRUE
+WHERE claim_id = 401 AND driver_role_code = 'INSURED_OPERATOR';
+```
+
+```text
+Intake and route claim_id 401, then complete the post-route specialist work.
+Do not skip the Orchestrator.
+
+1) Delegate ONCE to Manager: structured intake for 401. STOP after route_claim.
+   Expect next_step=DenyUnlawfulOperation, agent_role=DenyAgent,
+   reason_probe_ids includes R6.1.
+
+2) Delegate ONCE to Deny Agent.
+   Task: claim_id=401 run_id=demo-401-deny next_step=DenyUnlawfulOperation.
+   run_named_query get_deny_view, then run_named_write deny_claim.
+   Do not save_claim_letter unless asked to write the denial letter.
+
+3) Final Answer: route + exact deny_claim JSON (claim_status_code=DENIED). STOP.
+```
+
+Optional: `Write the recommended letter for claim_id 401.` → Deny Agent `save_claim_letter` only.
+
+Restore 401: `impairment_suspected_indicator = FALSE` and `claim_status_code = 'OPEN'`.
+
+### R6.2 ASK_TRUE — DenyExcludedDriver
+
+Offline: `pytest tests/test_route_claim.py::test_route_excluded_operator_deny`.
+
+Live **401**: set current `policy_driver.is_excluded_driver = TRUE` for the insured operator (or expire/remove that listing). Same Orchestrator prompt as R6.1 with expect `DenyExcludedDriver`. Restore listing and OPEN.
+
+### R6.3 ASK_TRUE — DenyLapsedPolicy
+
+Offline: `pytest tests/test_route_claim.py::test_route_lapsed_policy_deny`.
+
+Live **401**: set policy `policy_status_code = 'LAPSED'` (or `cancellation_date` ≤ loss date). Same Orchestrator prompt with expect `DenyLapsedPolicy`. Restore `ACTIVE` and OPEN.
 
 ### R1.2a ASK_TRUE — CompleteLitigationFile
 

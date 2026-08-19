@@ -13,6 +13,8 @@ After `route_claim`, the decision’s `agent_role` + `allowed_tools` name the ne
 | `get_subrogation_view` | `run_named_query` label `get_subrogation_view` |
 | `get_pd_view` | `run_named_query` label `get_pd_view` |
 | `create_pd_task` | `run_named_write` label `create_pd_task` |
+| `get_deny_view` | `run_named_query` label `get_deny_view` |
+| `deny_claim` | `run_named_write` label `deny_claim` |
 | `write_audit_event` | `run_named_write` label `write_audit_event` |
 | `promote_audit_run` | `run_named_write` label `promote_audit_run` |
 | `save_claim_letter` | Studio custom tool: writes `SESSION_DIRECTORY/claim_{id}_letter.txt` |
@@ -40,10 +42,11 @@ NL front door; delegates structured claim intake, unstructured pre-route, and po
 | BI | `BI Claims Agent` | `BiClaimsAgent` |
 | PD | `PD Claims Agent` | `PdClaimsAgent` |
 | Closeout | `Closeout Agent` | `CloseoutAgent` |
+| Deny | `Deny Agent` | `DenyAgent` |
+| Human review | `Human Review Agent` | `HumanReviewAgent` |
 | SIU | `SIU Agent` | `SiuAgent` |
 | Settlement | `Settlement Agent` | `SettlementAgent` |
 | Data quality | `Data Quality Agent` | `DataQualityAgent` |
-| Human review | `Human Review Agent` | `HumanReviewAgent` |
 
 If Manager Role is still the long sentence Studio generated, Orchestrator must paste that **entire** Role as `coworker` — or rename Manager Role to `Manager agent` and retry.
 
@@ -116,7 +119,29 @@ Use when route returns `CloseoutAgent` / `CloseoutAudit` (seed **403** is CLOSED
 | Tools | `run_named_write` `write_audit_event` then `run_named_write` `promote_audit_run` |
 | Lake smoke | claim **403**, `run_id` `demo-403-close` (Impala promote is `mode=table_append`) |
 
-### Settlement / SIU / Data Quality / Human Review (MCP audit only)
+### Deny Agent (MCP + `save_claim_letter` on request)
+**Paste-ready definition:** [`agents/deny_agent.md`](agents/deny_agent.md)
+
+Use when route returns `DenyAgent` / `DenyUnlawfulOperation` / `DenyExcludedDriver` / `DenyLapsedPolicy` / `DenyAudit`. Closeout stays CLOSED-only.
+
+| Field | Value |
+|---|---|
+| Name / Role (exact coworker) | `Deny Agent` |
+| Tools | `run_named_query` label `get_deny_view`; R6.* `run_named_write` `deny_claim`; `DenyAudit` `write_audit_event` then `promote_audit_run`. Studio `save_claim_letter` only when the user asks |
+| Lake smoke | Flip **401** only (impairment / excluded / lapsed). Restore afterward. Re-intake after deny → `DenyAudit`. |
+
+### Human Review Agent (citation analysis; MCP audit only)
+**Paste-ready definition:** [`agents/human_review_agent.md`](agents/human_review_agent.md)
+
+Use when route returns `HumanReviewAgent` / `HumanCitationReview` (insured operator cited). Orchestrator still Final Answers the route JSON for `HumanReviewOrWait`.
+
+| Field | Value |
+|---|---|
+| Name / Role (exact coworker) | `Human Review Agent` |
+| Tools | `run_named_query` label `get_deny_view`; `run_named_write` `write_audit_event`. Never `deny_claim`. No letter |
+| Lake smoke | Flip **401** insured `was_cited_indicator` true. Status stays OPEN. Restore afterward. |
+
+### Settlement / SIU / Data Quality (MCP audit only)
 For roles whose playbook tools are still only `write_audit_event`: attach MCP audit tools; prompt to append an event and return a short summary. Defer richer views until needed.
 
 ## End-to-end demo (claim 402)
@@ -130,7 +155,7 @@ Paste Orchestrator Goal + user prompt from [`agents/orchestrator_agent.md`](agen
 
 Specialists other than Litigation still need Studio pastes in the same Crew, or step 3 ends with coworker-not-found.
 
-Direct specialist smokes (skip intake): Subrogation **401** (`subrogation_agent.md`), BI **402** (`bi_claims_agent.md`), Closeout **403** (`closeout_agent.md`), PD **401** (`pd_claims_agent.md`).
+Direct specialist smokes (skip intake): Subrogation **401** (`subrogation_agent.md`), BI **402** (`bi_claims_agent.md`), Closeout **403** (`closeout_agent.md`), PD **401** (`pd_claims_agent.md`), Deny **401** (`deny_agent.md`), Human Review **401** (`human_review_agent.md`).
 
 ## Unstructured front door
 
@@ -143,4 +168,4 @@ Paste Orchestrator Goal from [`agents/orchestrator_agent.md`](agents/orchestrato
 
 ## Restart note
 
-Restart `iceberg-mcp-server-claims` after pulling main so identity is **`INS_CLAIMS_MCP_V7`** (catalog-only tools).
+Restart `iceberg-mcp-server-claims` after pulling main so identity is **`INS_CLAIMS_MCP_V7`** / **`0.3.7`** (catalog includes `get_deny_view` / `deny_claim`).

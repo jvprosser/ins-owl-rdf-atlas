@@ -29,6 +29,10 @@
     "has_recovery": { "type": "boolean" },
     "has_subrogation_case": { "type": "boolean" },
     "subrogation_status_code": { "type": "string" },
-    "has_siu_suspected": { "type": "boolean" }
+    "has_siu_suspected": { "type": "boolean" },
+    "insured_operator_cited": { "type": "boolean", "comment": "INSURED_OPERATOR loss_driver was_cited_indicator" },
+    "unlawful_operation_exclusion": { "type": "boolean", "comment": "insured operator impaired or license SUSPENDED/REVOKED/UNLICENSED" },
+    "excluded_operator_exclusion": { "type": "boolean", "comment": "insured operator excluded or unlisted on policy" },
+    "policy_not_in_force_on_loss": { "type": "boolean", "comment": "policy lapsed/cancelled/expired or loss_date outside term" }
   }
 }

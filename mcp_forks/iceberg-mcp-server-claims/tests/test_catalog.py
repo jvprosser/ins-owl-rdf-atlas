@@ -11,6 +11,7 @@ def test_unknown_read_label():
     payload = json.loads(catalog.run_named_query("invent_sql", "{}"))
     assert payload["error"] is True
     assert "get_litigation_view" in payload["known_labels"]
+    assert "get_deny_view" in payload["known_labels"]
 
 
 def test_write_label_rejected_on_query():
@@ -123,8 +124,20 @@ def test_write_dispatches_litigation_task(monkeypatch):
     listing = catalog.list_catalog()
     reads = {row["label"] for row in listing["reads"]}
     writes = {row["label"] for row in listing["writes"]}
-    assert {"get_claim_spine", "get_litigation_view", "get_pd_view", "get_schema"} <= reads
-    assert {"write_audit_event", "promote_audit_run", "create_litigation_task", "create_pd_task"} <= writes
+    assert {
+        "get_claim_spine",
+        "get_litigation_view",
+        "get_pd_view",
+        "get_deny_view",
+        "get_schema",
+    } <= reads
+    assert {
+        "write_audit_event",
+        "promote_audit_run",
+        "create_litigation_task",
+        "create_pd_task",
+        "deny_claim",
+    } <= writes
 
 
 def test_write_dispatches_pd_task(monkeypatch):
@@ -152,3 +165,31 @@ def test_write_dispatches_pd_task(monkeypatch):
     assert payload["ok"] is True
     assert payload["named_op"] == "create_pd_task"
     assert payload["named_op_kind"] == "write"
+
+
+def test_write_dispatches_deny_claim(monkeypatch):
+    monkeypatch.setattr(
+        catalog.deny_claim,
+        "deny_claim",
+        lambda run_id, event_json, database=None: json.dumps(
+            {"ok": True, "run_id": run_id, "table": "claim", "claim_status_code": "DENIED"}
+        ),
+    )
+    payload = json.loads(
+        catalog.run_named_write(
+            "deny_claim",
+            json.dumps(
+                {
+                    "run_id": "demo-401-deny",
+                    "event_json": {
+                        "claim_id": "401",
+                        "next_step": "DenyUnlawfulOperation",
+                    },
+                }
+            ),
+        )
+    )
+    assert payload["ok"] is True
+    assert payload["named_op"] == "deny_claim"
+    assert payload["named_op_kind"] == "write"
+    assert payload["claim_status_code"] == "DENIED"

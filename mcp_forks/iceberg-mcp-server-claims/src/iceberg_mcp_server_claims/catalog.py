@@ -9,6 +9,7 @@ from iceberg_mcp_server_claims.pack_fixtures import merge_pack_catalog
 from iceberg_mcp_server_claims.tools import (
     audit_tools,
     claim_tools,
+    deny_claim,
     impala_tools,
     litigation_tasks,
     pd_tasks,
@@ -64,6 +65,14 @@ READ_OPS: dict[str, dict[str, Any]] = {
         "optional": ("database",),
         "summary": "Police report and fault business columns (no PK/FK)",
         "handler": lambda p: view_tools.get_pd_view(
+            str(p["claim_id"]), p.get("database")
+        ),
+    },
+    "get_deny_view": {
+        "required": ("claim_id",),
+        "optional": ("database",),
+        "summary": "Operator, policy, and police facts for deny/citation review (no PK/FK)",
+        "handler": lambda p: view_tools.get_deny_view(
             str(p["claim_id"]), p.get("database")
         ),
     },
@@ -155,6 +164,16 @@ WRITE_OPS: dict[str, dict[str, Any]] = {
         "optional": ("database",),
         "summary": "Insert one pd_task row and one agent_run_audit receipt",
         "handler": lambda p: pd_tasks.create_pd_task(
+            str(p["run_id"]),
+            _as_json_string(p["event_json"]),
+            p.get("database"),
+        ),
+    },
+    "deny_claim": {
+        "required": ("run_id", "event_json"),
+        "optional": ("database",),
+        "summary": "Set claim_status_code DENIED and insert an agent_run_audit receipt",
+        "handler": lambda p: deny_claim.deny_claim(
             str(p["run_id"]),
             _as_json_string(p["event_json"]),
             p.get("database"),

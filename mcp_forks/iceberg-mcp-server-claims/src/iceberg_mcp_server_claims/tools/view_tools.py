@@ -141,3 +141,62 @@ WHERE claim_id = {cid}
         },
         default=str,
     )
+
+
+def get_deny_view(
+    claim_id: str,
+    database: str | None = None,
+    *,
+    query_rows: QueryFn | None = None,
+) -> str:
+    """Operator, policy, and police facts for Deny Agent / Human Review.
+
+    Business columns only (no PK/FK). Envelope still has ``claim_id``.
+    """
+    qr = query_rows or _qr()
+    db = validate_ident(_default_database(database), "database")
+    cid = str(int(claim_id))
+    operators_sql = f"""
+SELECT ld.driver_role_code, ld.was_cited_indicator,
+       ld.impairment_suspected_indicator, d.license_status_code,
+       (pd.is_excluded_driver IS NOT NULL) AS listed_on_policy,
+       COALESCE(pd.is_excluded_driver, FALSE) AS is_excluded_driver
+FROM {db}.loss_driver ld
+LEFT JOIN {db}.driver d ON d.driver_id = ld.driver_id
+INNER JOIN {db}.claim c ON c.claim_id = ld.claim_id
+LEFT JOIN {db}.policy_driver pd
+  ON pd.policy_id = c.policy_id
+ AND pd.driver_id = ld.driver_id
+ AND pd.expiration_date IS NULL
+WHERE ld.claim_id = {cid}
+""".strip()
+    policy_sql = f"""
+SELECT c.claim_status_code, c.claim_number, p.policy_number,
+       p.policy_status_code, p.effective_date, p.expiration_date,
+       p.cancellation_date, le.loss_date
+FROM {db}.claim c
+INNER JOIN {db}.insurance_policy p ON p.policy_id = c.policy_id
+INNER JOIN {db}.loss_event le ON le.loss_event_id = c.loss_event_id
+WHERE c.claim_id = {cid}
+""".strip()
+    police_sql = f"""
+SELECT report_number, agency_name, narrative_summary
+FROM {db}.police_report
+WHERE claim_id = {cid}
+""".strip()
+    try:
+        operators = qr(operators_sql)
+        policy_rows = qr(policy_sql)
+        police_reports = qr(police_sql)
+    except Exception as exc:
+        return json.dumps({"error": str(exc), "claim_id": cid, "database": db})
+    return json.dumps(
+        {
+            "claim_id": int(cid),
+            "database": db,
+            "operators": operators,
+            "policy": policy_rows[0] if policy_rows else None,
+            "police_reports": police_reports,
+        },
+        default=str,
+    )

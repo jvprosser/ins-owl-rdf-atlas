@@ -17,7 +17,7 @@ Claims fork of Cloudera’s Impala Iceberg MCP for the car-insurance claims agen
 
 | Tool | Notes |
 |---|---|
-| `get_server_info()` | One-shot identity. Expect **`INS_CLAIMS_MCP_V7`** / **`0.3.6`**. Prompt: “Call get_server_info once and stop.” |
+| `get_server_info()` | One-shot identity. Expect **`INS_CLAIMS_MCP_V7`** / **`0.3.7`**. Prompt: “Call get_server_info once and stop.” |
 
 ### Named catalog (only lake I/O)
 
@@ -29,11 +29,11 @@ Studio Action Input is **flat**. Prefer top-level `claim_id` / `run_id` over nes
 | `run_named_query(label, claim_id?, database?, params_json?)` | Curated **reads**. Example: `{"label":"get_litigation_view","claim_id":"402"}` |
 | `run_named_write(label, run_id?, event_json?, …)` | Curated **writes**. Example: `{"label":"write_audit_event","run_id":"demo-402","event_json":"{...}"}` |
 
-Read labels: `get_claim_spine`, `get_claim_routing_signals`, `get_litigation_view`, `get_bi_view`, `get_subrogation_view`, `get_pd_view`, `get_schema`.
+Read labels: `get_claim_spine`, `get_claim_routing_signals`, `get_litigation_view`, `get_bi_view`, `get_subrogation_view`, `get_pd_view`, `get_deny_view`, `get_schema`.
 
-Write labels: `write_audit_event`, `append_agent_audit_event`, `append_agent_audit_evidence`, `begin_agent_audit_run`, `promote_audit_run`, `promote_agent_audit_run`, `abandon_agent_audit_run`, `create_litigation_task`, `create_pd_task`.
+Write labels: `write_audit_event`, `append_agent_audit_event`, `append_agent_audit_evidence`, `begin_agent_audit_run`, `promote_audit_run`, `promote_agent_audit_run`, `abandon_agent_audit_run`, `create_litigation_task`, `create_pd_task`, `deny_claim`.
 
-Impala audit writes are table-append (no Iceberg WAP branch). `promote_audit_run` returns `mode=table_append`. `create_pd_task` also inserts one `agent_run_audit` receipt. Prerequisite: audit DDL plus `litigation_task` / `pd_task` from `ddl/hive_iceberg/` in the target database.
+Impala audit writes are table-append (no Iceberg WAP branch). `promote_audit_run` returns `mode=table_append`. `create_pd_task` also inserts one `agent_run_audit` receipt. `deny_claim` updates `claim.claim_status_code` to `DENIED` (refuses CLOSED and already-DENIED) and inserts one `agent_run_audit` receipt. Prerequisite: audit DDL plus `litigation_task` / `pd_task` from `ddl/hive_iceberg/` in the target database.
 
 ## Agent Studio registration
 

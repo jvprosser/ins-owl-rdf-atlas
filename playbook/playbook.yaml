@@ -13,9 +13,10 @@ schema_relpath: ontology/claims.json
 
 # Priority evaluation order (first-match-wins):
 #   Data integrity:     R0.1 claim exists, R0.4 validation triangle complete
-#   Fast-path lanes:    R1.1 closed audit, R1.2a missing docket/counsel,
-#                       R1.2b discovery aging, R1.2 remaining litigation,
-#                       R5.1 SIU / fraud
+#   Fast-path lanes:    R1.1 closed (approved) audit, R1.1d denied audit,
+#                       R5.2 insured citation review, R6.* coverage exclusions,
+#                       R1.2a missing docket/counsel, R1.2b discovery aging,
+#                       R1.2 remaining litigation, R5.1 SIU / fraud
 #   Data gaps:          R2.3 missing adjuster, R2.1 missing police report,
 #                       R2.2 missing fault, R2.5 injury details missing
 #   Financials & subro: R3.2 / R3.4 offers/payments, R4.1 / R4.3 subrogation
@@ -24,6 +25,11 @@ priorities:
   - R0.1
   - R0.4
   - R1.1
+  - R1.1d
+  - R5.2
+  - R6.1
+  - R6.2
+  - R6.3
   - R1.2a
   - R1.2b
   - R1.2
@@ -67,6 +73,44 @@ probes:
     title: Claim closed
     when_equals: Claim is closed
     otherwise: Claim is not closed (status {value})
+  R1.1d:
+    form: SELECT
+    path: claim_status_code
+    title: Claim denied
+    when_equals: Claim is denied
+    otherwise: Claim is not denied (status {value})
+  R5.2:
+    form: ASK
+    title: Insured operator cited
+    when_true: Insured operator was cited
+    when_false: Insured operator was not cited
+    match:
+      path: insured_operator_cited
+      equals: true
+  R6.1:
+    form: ASK
+    title: Unlawful operation exclusion
+    when_true: Insured operator has an unlawful-operation exclusion
+    when_false: No unlawful-operation exclusion
+    match:
+      path: unlawful_operation_exclusion
+      equals: true
+  R6.2:
+    form: ASK
+    title: Excluded or unlisted operator
+    when_true: Insured operator is excluded or unlisted
+    when_false: Insured operator is listed and not excluded
+    match:
+      path: excluded_operator_exclusion
+      equals: true
+  R6.3:
+    form: ASK
+    title: Policy in force on loss date
+    when_true: Policy was not in force on the loss date
+    when_false: Policy was in force on the loss date
+    match:
+      path: policy_not_in_force_on_loss
+      equals: true
   R1.2a:
     form: ASK
     title: Litigation file complete
@@ -214,6 +258,50 @@ actions:
       agent: CloseoutAgent
       lane: CLOSEOUT
       tools: [write_audit_event, promote_audit_run]
+      terminal: true
+  R1.1d:
+    - when: SELECT_EQUALS
+      match_value: DENIED
+      step: DenyAudit
+      agent: DenyAgent
+      lane: DENY
+      letter_on_request: true
+      letter_note: A denial letter is recommended. It will not be drafted unless you ask.
+      tools: [get_deny_view, write_audit_event, promote_audit_run, save_claim_letter]
+      terminal: true
+  R5.2:
+    - when: ASK_TRUE
+      step: HumanCitationReview
+      agent: HumanReviewAgent
+      lane: GENERAL
+      tools: [get_deny_view, write_audit_event]
+      terminal: true
+  R6.1:
+    - when: ASK_TRUE
+      step: DenyUnlawfulOperation
+      agent: DenyAgent
+      lane: DENY
+      letter_on_request: true
+      letter_note: A denial letter is recommended. It will not be drafted unless you ask.
+      tools: [get_deny_view, deny_claim, save_claim_letter]
+      terminal: true
+  R6.2:
+    - when: ASK_TRUE
+      step: DenyExcludedDriver
+      agent: DenyAgent
+      lane: DENY
+      letter_on_request: true
+      letter_note: A denial letter is recommended. It will not be drafted unless you ask.
+      tools: [get_deny_view, deny_claim, save_claim_letter]
+      terminal: true
+  R6.3:
+    - when: ASK_TRUE
+      step: DenyLapsedPolicy
+      agent: DenyAgent
+      lane: DENY
+      letter_on_request: true
+      letter_note: A denial letter is recommended. It will not be drafted unless you ask.
+      tools: [get_deny_view, deny_claim, save_claim_letter]
       terminal: true
   R1.2a:
     - when: ASK_TRUE

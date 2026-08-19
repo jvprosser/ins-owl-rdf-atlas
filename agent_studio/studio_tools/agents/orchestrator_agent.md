@@ -57,12 +57,14 @@ recommended and will not be drafted unless they ask. Do not Delegate to
 a specialist. Do not save_claim_letter.
 
 WRITE LETTER (user asks to write, draft, or generate a letter, email,
-hold/status letter, or police-report request):
+hold/status letter, police-report request, or denial letter):
 Delegate ONCE to the specialist for that claim (Litigation Agent for
-LitigationSupport; PD Claims Agent for RequestPoliceReport). Task: view
-once, then save_claim_letter once from the view. Do not send mail. Do not
-create a letter unless they asked. If the route did not recommend a letter
-(letter_on_request false), Final Answer that no letter is the next step.
+LitigationSupport; PD Claims Agent for RequestPoliceReport; Deny Agent
+for DenyUnlawfulOperation / DenyExcludedDriver / DenyLapsedPolicy /
+DenyAudit). Task: view once, then save_claim_letter once from the view.
+Do not send mail. Do not create a letter unless they asked. If the route
+did not recommend a letter (letter_on_request false), Final Answer that
+no letter is the next step.
 
 COMPLETE POST-ROUTE WORK (user asked to complete specialist work):
 2) Map Observation agent_role to coworker Role (exact string, do not invent):
@@ -77,9 +79,15 @@ COMPLETE POST-ROUTE WORK (user asked to complete specialist work):
      PdClaimsReview → create_pd_task PD_REVIEW;
      do not save_claim_letter)
    CloseoutAgent → Closeout Agent (no view; write then promote_audit_run)
+   DenyAgent → Deny Agent (view get_deny_view;
+     DenyUnlawfulOperation / DenyExcludedDriver / DenyLapsedPolicy → deny_claim;
+     DenyAudit → write_audit_event then promote_audit_run; do not deny_claim;
+     do not save_claim_letter)
+   HumanReviewAgent → Human Review Agent only when next_step=HumanCitationReview
+     (view get_deny_view then write_audit_event; do not deny_claim)
    If agent_role is not in this map (including SiuAgent,
-   SettlementAgent, DataQualityAgent, HumanReviewAgent): Final Answer
-   with the route JSON. STOP. Do not invent a Role.
+   SettlementAgent, DataQualityAgent) or next_step is HumanReviewOrWait:
+   Final Answer with the route JSON. STOP. Do not invent a Role.
 
 3) Delegate ONCE to that coworker.
    Task: claim_id=<id> run_id=demo-<id>-e2e next_step=<next_step>
@@ -96,6 +104,11 @@ COMPLETE POST-ROUTE WORK (user asked to complete specialist work):
      event_json task_type_code REQUEST_POLICE_REPORT.
    PdClaimsAgent DetermineFault → create_pd_task DETERMINE_FAULT.
    PdClaimsAgent PdClaimsReview → create_pd_task PD_REVIEW.
+   DenyAgent R6 steps → deny_claim event_json next_step as routed.
+   DenyAgent DenyAudit → write_audit_event then promote_audit_run;
+     do not deny_claim.
+   HumanReviewAgent HumanCitationReview → write_audit_event only;
+     do not deny_claim.
    Other mapped specialists with a view: write_audit_event.
    If CloseoutAgent: run_named_write write_audit_event then
    run_named_write promote_audit_run.
@@ -141,8 +154,10 @@ Use the **coworker** column as the exact `Delegate` string. Specialists must be 
 | `BiClaimsAgent` | `BI Claims Agent` | `run_named_query` label `get_bi_view`, then `run_named_write` `write_audit_event` |
 | `PdClaimsAgent` | `PD Claims Agent` | `run_named_query` label `get_pd_view`, then `run_named_write` `create_pd_task`. Studio `save_claim_letter` only when the user asks to write a `RequestPoliceReport` letter |
 | `CloseoutAgent` | `Closeout Agent` | `run_named_write` `write_audit_event`, then `run_named_write` `promote_audit_run` |
+| `DenyAgent` | `Deny Agent` | `run_named_query` label `get_deny_view`; R6.* → `deny_claim`; `DenyAudit` → `write_audit_event` then `promote_audit_run`. Studio `save_claim_letter` only when the user asks to write the denial letter |
+| `HumanReviewAgent` | `Human Review Agent` | Only for `HumanCitationReview`: `get_deny_view` then `write_audit_event`. Never `deny_claim`. `HumanReviewOrWait` stays route-JSON-only |
 
-Only these specialists have Studio pastes. Playbook may still emit `SiuAgent`, `SettlementAgent`, `DataQualityAgent`, or `HumanReviewAgent` — there is no coworker for those yet. Final Answer with the route JSON. Do not invent a Role.
+Only these specialists have Studio pastes. Playbook may still emit `SiuAgent`, `SettlementAgent`, or `DataQualityAgent` — there is no coworker for those yet. Final Answer with the route JSON. Do not invent a Role.
 
 If the coworker is not in the Crew: Final Answer with the route JSON (and Studio’s “must be one of” list).
 
@@ -172,9 +187,9 @@ You have no MCP tools. Do not skip the Orchestrator.
 ```
 
 Same e2e prompt with another `claim_id` once that specialist exists in the Crew
-(Litigation, Subrogation, BI, PD, or Closeout). Seed **401** may route
-`PdClaimsAgent` (apply `pd_task` DDL before the write) or subrogation.
-Seed **403** is CLOSED → Closeout.
+(Litigation, Subrogation, BI, PD, Closeout, Deny, or Human Review). Seed **401**
+may route `PdClaimsAgent` (apply `pd_task` DDL before the write) or subrogation
+unless denial/citation flags are set. Seed **403** is CLOSED → Closeout.
 
 Status only (no specialist write, no letter):
 
@@ -183,8 +198,8 @@ What is the status of claim_id 402? Intake and route only.
 Do not complete post-route specialist work. Do not write a letter.
 ```
 
-Write a letter after a route that set `letter_on_request` (LitigationSupport or
-RequestPoliceReport):
+Write a letter after a route that set `letter_on_request` (LitigationSupport,
+RequestPoliceReport, or a Deny Agent step):
 
 ```text
 Write the recommended letter for claim_id 402.
@@ -213,6 +228,38 @@ You have no MCP tools. Do not skip the Orchestrator.
 
 3) Final Answer: route decision + exact write JSON + exact promote JSON.
    Then STOP. Do not Delegate a third time.
+```
+
+## User prompt (deny / citation, claim 401 only)
+
+Flip **401** only in Impala for the smoke. Restore OPEN / listed / unimpaired /
+ACTIVE / `was_cited_indicator` false afterward. Leave **402** / **403** alone.
+
+Coded exclusion (expect `DenyAgent` and `deny_claim`):
+
+```text
+Intake and route claim_id 401, then complete the post-route specialist work.
+
+You have no MCP tools. Do not skip the Orchestrator.
+
+1) Delegate ONCE to Manager. Structured intake for 401. STOP after route_claim.
+   Expect next_step one of DenyUnlawfulOperation / DenyExcludedDriver /
+   DenyLapsedPolicy, agent_role DenyAgent.
+
+2) Delegate ONCE to Deny Agent.
+   Task: claim_id=401 run_id=demo-401-deny next_step=<next_step>.
+   run_named_query get_deny_view, then run_named_write deny_claim.
+   Do not save_claim_letter unless asked to write the letter.
+
+3) Final Answer: route + exact write JSON. STOP.
+```
+
+Citation review (insured `was_cited_indicator` true; status stays OPEN):
+
+```text
+Intake and route claim_id 401, then complete the post-route specialist work.
+Delegate ONCE to Human Review Agent when next_step=HumanCitationReview.
+View get_deny_view, then write_audit_event. Do not deny_claim. Do not write a letter.
 ```
 
 Direct specialist (skip intake):

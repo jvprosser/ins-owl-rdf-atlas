@@ -14,7 +14,7 @@ def test_content_id_and_version():
     assert payload["done"] is True
     assert payload["content_id"] == "INS_CLAIMS_MCP_V7"
     assert payload["server"] == "iceberg-mcp-server-claims"
-    assert payload["version"] == "0.3.6"
+    assert payload["version"] == "0.3.7"
     assert "catalog_only_mcp_surface" in payload["features"]
     assert payload["registered_tools"] == [
         "get_server_info",

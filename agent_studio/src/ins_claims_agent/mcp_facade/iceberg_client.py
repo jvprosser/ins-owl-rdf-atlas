@@ -236,6 +236,18 @@ class IcebergFacade(McpToolCaller):
             "fraud_assessment_id": row.get("fraud_assessment_id"),
             "fraud_outcome_code": row.get("fraud_outcome_code"),
             "has_document": bool(sql.coerce_bool(row.get("has_document"))),
+            "insured_operator_cited": bool(
+                sql.coerce_bool(row.get("insured_operator_cited"))
+            ),
+            "unlawful_operation_exclusion": bool(
+                sql.coerce_bool(row.get("unlawful_operation_exclusion"))
+            ),
+            "excluded_operator_exclusion": bool(
+                sql.coerce_bool(row.get("excluded_operator_exclusion"))
+            ),
+            "policy_not_in_force_on_loss": bool(
+                sql.coerce_bool(row.get("policy_not_in_force_on_loss"))
+            ),
             "_source": "execute_query_fallback",
         }
 
