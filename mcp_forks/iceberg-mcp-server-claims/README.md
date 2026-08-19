@@ -17,7 +17,7 @@ Claims fork of Cloudera’s Impala Iceberg MCP for the car-insurance claims agen
 
 | Tool | Notes |
 |---|---|
-| `get_server_info()` | One-shot identity. Expect **`INS_CLAIMS_MCP_V7`** / **`0.3.5`**. Prompt: “Call get_server_info once and stop.” |
+| `get_server_info()` | One-shot identity. Expect **`INS_CLAIMS_MCP_V7`** / **`0.3.6`**. Prompt: “Call get_server_info once and stop.” |
 
 ### Named catalog (only lake I/O)
 
@@ -33,7 +33,7 @@ Read labels: `get_claim_spine`, `get_claim_routing_signals`, `get_litigation_vie
 
 Write labels: `write_audit_event`, `append_agent_audit_event`, `append_agent_audit_evidence`, `begin_agent_audit_run`, `promote_audit_run`, `promote_agent_audit_run`, `abandon_agent_audit_run`, `create_litigation_task`, `create_pd_task`.
 
-Impala audit writes are table-append (no Iceberg WAP branch). `promote_audit_run` returns `mode=table_append`. Prerequisite: audit DDL plus `litigation_task` / `pd_task` from `ddl/hive_iceberg/` in the target database.
+Impala audit writes are table-append (no Iceberg WAP branch). `promote_audit_run` returns `mode=table_append`. `create_pd_task` also inserts one `agent_run_audit` receipt. Prerequisite: audit DDL plus `litigation_task` / `pd_task` from `ddl/hive_iceberg/` in the target database.
 
 ## Agent Studio registration
 

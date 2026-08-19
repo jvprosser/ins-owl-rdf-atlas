@@ -87,7 +87,7 @@ Each row is a later snapshot. Earlier gaps are already filled so a higher probe 
 | Offer ACCEPTED, no loss payment | `{"claim_status_code": "OPEN", "has_adjuster": true, "has_police_report": true, "has_fault_determination": true, "has_extended_offer": false, "has_accepted_offer": true, "has_loss_payment": false, "litigation_indicator": false, "has_siu_suspected": false, "subrogation_indicator": false}` | R3.4 | `IssuePayment` |
 | Status CLOSED | `{"claim_exists": true, "triangle": true, "claim_status_code": "CLOSED"}` | R1.1 | `CloseoutAudit` |
 
-PD steps (`RequestPoliceReport`, `DetermineFault`, `PdClaimsReview`) use `get_pd_view` then `create_pd_task`. `RequestPoliceReport` sets `letter_on_request`; a session letter via `save_claim_letter` is drafted only if the user asks (no mail send). Settlement steps on this path still `write_audit_event`. `IssuePayment` means settlement work is due; the payment row still has to land in `claim_payment` from the claims platform. A later intake can then hit R1.1.
+PD steps (`RequestPoliceReport`, `DetermineFault`, `PdClaimsReview`) use `get_pd_view` then `create_pd_task` (work item in `pd_task` plus an `agent_run_audit` receipt). `RequestPoliceReport` sets `letter_on_request`; a session letter via `save_claim_letter` is drafted only if the user asks (no mail send). Settlement steps on this path still `write_audit_event`. `IssuePayment` means settlement work is due; the payment row still has to land in `claim_payment` from the claims platform. A later intake can then hit R1.1.
 
 ## Pattern: two Studio filesystems
 
@@ -185,7 +185,7 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 | Hive WAP branches | Write-audit-publish on Iceberg branches. Later Hive fork; not this path. |
 | `write_audit_event` | Catalog write: `INSERT` one `agent_run_audit` row. |
 | `create_litigation_task` | Catalog write: `INSERT` one `litigation_task` row from `run_id` + `event_json`. |
-| `create_pd_task` | Catalog write: `INSERT` one `pd_task` row (`REQUEST_POLICE_REPORT` / `DETERMINE_FAULT` / `PD_REVIEW`). |
+| `create_pd_task` | Catalog write: `INSERT` one `pd_task` row (`REQUEST_POLICE_REPORT` / `DETERMINE_FAULT` / `PD_REVIEW`) and one `agent_run_audit` receipt. |
 | `promote_audit_run` | No-op success on Impala (rows already on main). |
 | Routing signals / `get_claim_routing_signals` | Named query for extra facts the graph and probes need (flags, related ids). |
 

@@ -53,7 +53,37 @@ def test_create_pd_task_ok(monkeypatch):
     assert payload["task_type_code"] == "DETERMINE_FAULT"
     assert payload["claim_id"] == 401
     assert payload["table"] == "pd_task"
+    assert payload["audit_table"] == "agent_run_audit"
+    assert payload["next_step"] == "DetermineFault"
+    assert len(captured) == 2
     assert "INSERT INTO car_insurance_claims.pd_task" in captured[0]
+    assert "INSERT INTO car_insurance_claims.agent_run_audit" in captured[1]
+    assert "DetermineFault" in captured[1]
+
+
+def test_create_pd_task_reports_audit_failure(monkeypatch):
+    captured: list[str] = []
+
+    def fake_dml(sql: str):
+        captured.append(sql)
+        if "agent_run_audit" in sql:
+            return "Error: audit table missing"
+        return "OK"
+
+    monkeypatch.setattr(
+        "iceberg_mcp_server_claims.tools.impala_tools.execute_dml",
+        fake_dml,
+    )
+    raw = pd_tasks.create_pd_task(
+        "demo-401-pd",
+        json.dumps({"claim_id": "401", "task_type_code": "PD_REVIEW"}),
+        "car_insurance_claims",
+    )
+    payload = json.loads(raw)
+    assert payload["ok"] is False
+    assert payload["audit_written"] is False
+    assert payload["table"] == "pd_task"
+    assert "audit table missing" in payload["error"]
 
 
 def test_create_pd_task_rejects_bad_type():

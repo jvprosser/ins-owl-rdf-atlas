@@ -153,7 +153,7 @@ WRITE_OPS: dict[str, dict[str, Any]] = {
     "create_pd_task": {
         "required": ("run_id", "event_json"),
         "optional": ("database",),
-        "summary": "Insert one pd_task row (REQUEST_POLICE_REPORT | DETERMINE_FAULT | PD_REVIEW)",
+        "summary": "Insert one pd_task row and one agent_run_audit receipt",
         "handler": lambda p: pd_tasks.create_pd_task(
             str(p["run_id"]),
             _as_json_string(p["event_json"]),

@@ -7,10 +7,19 @@ import json
 import os
 from typing import Any
 
-from iceberg_mcp_server_claims.tools.audit_tools import _parse_json_arg, validate_run_id
+from iceberg_mcp_server_claims.tools.audit_tools import (
+    _parse_json_arg,
+    insert_audit_event_sql,
+    validate_run_id,
+)
 from iceberg_mcp_server_claims.tools.claim_sql import sql_quote, validate_ident
 
 _TASK_TYPES = frozenset({"REQUEST_POLICE_REPORT", "DETERMINE_FAULT", "PD_REVIEW"})
+_TASK_TO_STEP = {
+    "REQUEST_POLICE_REPORT": "RequestPoliceReport",
+    "DETERMINE_FAULT": "DetermineFault",
+    "PD_REVIEW": "PdClaimsReview",
+}
 
 
 def _default_database(database: str | None) -> str:
@@ -79,15 +88,47 @@ def create_pd_task(
     result = execute_dml(sql)
     if isinstance(result, str) and result.startswith("Error:"):
         return json.dumps({"error": result, "run_id": rid, "database": db})
+
+    step = _TASK_TO_STEP[task_type]
+    audit_event = {
+        "run_id": rid,
+        "claim_id": str(claim_id),
+        "event_type": step,
+        "next_step": step,
+        "agent_role": "PdClaimsAgent",
+        "lane": "PD",
+        "terminal": False,
+        "payload_json": {
+            "pd_task_id": row["pd_task_id"],
+            "task_type_code": task_type,
+            "task_status_code": "OPEN",
+        },
+    }
+    audit_sql = insert_audit_event_sql(db, audit_event)
+    audit_result = execute_dml(audit_sql)
+    if isinstance(audit_result, str) and audit_result.startswith("Error:"):
+        return json.dumps(
+            {
+                "ok": False,
+                "error": audit_result,
+                "run_id": rid,
+                "database": db,
+                "table": "pd_task",
+                "pd_task_id": row["pd_task_id"],
+                "audit_written": False,
+            }
+        )
     return json.dumps(
         {
             "ok": True,
             "run_id": rid,
             "database": db,
             "table": "pd_task",
+            "audit_table": "agent_run_audit",
             "pd_task_id": row["pd_task_id"],
             "claim_id": row["claim_id"],
             "task_type_code": task_type,
             "task_status_code": "OPEN",
+            "next_step": step,
         }
     )
