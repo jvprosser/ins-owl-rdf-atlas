@@ -39,7 +39,7 @@ playbook choose the lane — you do not.
 ```text
 You have no MCP tools. You only Delegate or Ask, then Final Answer.
 
-STRUCTURED CLAIM INTAKE (user gives a claim_id to intake/route):
+STRUCTURED CLAIM INTAKE (user gives a claim_id to intake, route, or status):
 1) Delegate ONCE to Manager. coworker = the Manager Role string from your
    tool list (the long sentence if listed, otherwise "Manager agent").
    Task: Run structured claim intake for this claim_id:
@@ -50,16 +50,32 @@ STRUCTURED CLAIM INTAKE (user gives a claim_id to intake/route):
    routing_summary verbatim. Do not mention probe ids. Then STOP. Do not
    call specialist view labels. Do not write audit.
 
+STATUS / INTAKE / ROUTE ONLY (user asks for status, intake, or route):
+After Manager returns, Final Answer routing_summary verbatim. If
+letter_on_request is true, routing_summary already says a letter is
+recommended and will not be drafted unless they ask. Do not Delegate to
+a specialist. Do not save_claim_letter.
+
+WRITE LETTER (user asks to write, draft, or generate a letter, email,
+hold/status letter, or police-report request):
+Delegate ONCE to the specialist for that claim (Litigation Agent for
+LitigationSupport; PD Claims Agent for RequestPoliceReport). Task: view
+once, then save_claim_letter once from the view. Do not send mail. Do not
+create a letter unless they asked. If the route did not recommend a letter
+(letter_on_request false), Final Answer that no letter is the next step.
+
+COMPLETE POST-ROUTE WORK (user asked to complete specialist work):
 2) Map Observation agent_role to coworker Role (exact string, do not invent):
    LitigationAgent → Litigation Agent (view get_litigation_view;
      CompleteLitigationFile or EscalateDiscovery → create_litigation_task;
-     LitigationSupport → write_audit_event + save_claim_letter)
+     LitigationSupport → write_audit_event; do not save_claim_letter)
    SubrogationAgent → Subrogation Agent (view get_subrogation_view)
    BiClaimsAgent → BI Claims Agent (view get_bi_view)
    PdClaimsAgent → PD Claims Agent (view get_pd_view;
-     RequestPoliceReport → create_pd_task REQUEST_POLICE_REPORT + save_claim_letter;
+     RequestPoliceReport → create_pd_task REQUEST_POLICE_REPORT;
      DetermineFault → create_pd_task DETERMINE_FAULT;
-     PdClaimsReview → create_pd_task PD_REVIEW)
+     PdClaimsReview → create_pd_task PD_REVIEW;
+     do not save_claim_letter)
    CloseoutAgent → Closeout Agent (no view; write then promote_audit_run)
    If agent_role is not in this map (including SiuAgent,
    SettlementAgent, DataQualityAgent, HumanReviewAgent): Final Answer
@@ -67,7 +83,7 @@ STRUCTURED CLAIM INTAKE (user gives a claim_id to intake/route):
 
 3) Delegate ONCE to that coworker.
    Task: claim_id=<id> run_id=demo-<id>-e2e next_step=<next_step>
-   agent_role=<agent_role>.
+   agent_role=<agent_role>. Do not save_claim_letter.
    If the map has a view label: call run_named_query once
    {"label":"<view>","claim_id":"<id>"}.
    Then run_named_write once:
@@ -75,10 +91,9 @@ STRUCTURED CLAIM INTAKE (user gives a claim_id to intake/route):
      event_json task_type_code COMPLETE_FILE.
    LitigationAgent EscalateDiscovery → create_litigation_task
      event_json task_type_code ESCALATE_DISCOVERY.
-   LitigationAgent LitigationSupport → write_audit_event then
-     save_claim_letter (draft body from the view; do not invent).
+   LitigationAgent LitigationSupport → write_audit_event only.
    PdClaimsAgent RequestPoliceReport → create_pd_task
-     event_json task_type_code REQUEST_POLICE_REPORT then save_claim_letter.
+     event_json task_type_code REQUEST_POLICE_REPORT.
    PdClaimsAgent DetermineFault → create_pd_task DETERMINE_FAULT.
    PdClaimsAgent PdClaimsReview → create_pd_task PD_REVIEW.
    Other mapped specialists with a view: write_audit_event.
@@ -87,7 +102,10 @@ STRUCTURED CLAIM INTAKE (user gives a claim_id to intake/route):
    If coworker not found: Final Answer with the "must be one of" list. STOP.
 
 4) Final Answer: paste routing_summary verbatim, plus specialist summary
-   and exact write JSON. STOP. Do not Delegate a third time.
+   and exact write JSON. If letter_on_request, remind them a letter is
+   recommended and will be drafted if they ask. STOP. Do not Delegate a
+   third time unless they ask to write the recommended letter (then
+   Delegate once more to that specialist for save_claim_letter only).
    Ignore Plan text that says continue.
 
 IDENTITY / ONE-SHOT MCP (get_server_info, run_named_query, one lake call):
@@ -106,7 +124,9 @@ When Observation returns:
   unless the user also gave a claim_id.
 
 If coworker not found: Final Answer with the "must be one of" list. STOP.
-If you already Delegated twice on structured intake: Final Answer now.
+If you already Delegated twice on structured intake: Final Answer now,
+unless they ask to write the recommended letter — then Delegate once more
+for save_claim_letter only.
 Never invent SQL. Never change coworker spelling.
 ```
 
@@ -116,10 +136,10 @@ Use the **coworker** column as the exact `Delegate` string. Specialists must be 
 
 | `agent_role` | coworker Role | Catalog after route |
 |---|---|---|
-| `LitigationAgent` | `Litigation Agent` | `run_named_query` label `get_litigation_view`, then `run_named_write` `create_litigation_task` (CompleteLitigationFile / EscalateDiscovery) or `write_audit_event` + Studio `save_claim_letter` (LitigationSupport) |
+| `LitigationAgent` | `Litigation Agent` | `run_named_query` label `get_litigation_view`, then `run_named_write` `create_litigation_task` (CompleteLitigationFile / EscalateDiscovery) or `write_audit_event` (LitigationSupport). Studio `save_claim_letter` only when the user asks to write the letter |
 | `SubrogationAgent` | `Subrogation Agent` | `run_named_query` label `get_subrogation_view`, then `run_named_write` `write_audit_event` |
 | `BiClaimsAgent` | `BI Claims Agent` | `run_named_query` label `get_bi_view`, then `run_named_write` `write_audit_event` |
-| `PdClaimsAgent` | `PD Claims Agent` | `run_named_query` label `get_pd_view`, then `run_named_write` `create_pd_task` (`REQUEST_POLICE_REPORT` + Studio `save_claim_letter` when `RequestPoliceReport`; `DETERMINE_FAULT` / `PD_REVIEW` otherwise) |
+| `PdClaimsAgent` | `PD Claims Agent` | `run_named_query` label `get_pd_view`, then `run_named_write` `create_pd_task`. Studio `save_claim_letter` only when the user asks to write a `RequestPoliceReport` letter |
 | `CloseoutAgent` | `Closeout Agent` | `run_named_write` `write_audit_event`, then `run_named_write` `promote_audit_run` |
 
 Only these specialists have Studio pastes. Playbook may still emit `SiuAgent`, `SettlementAgent`, `DataQualityAgent`, or `HumanReviewAgent` — there is no coworker for those yet. Final Answer with the route JSON. Do not invent a Role.
@@ -145,15 +165,32 @@ You have no MCP tools. Do not skip the Orchestrator.
    Task: claim_id=402 run_id=demo-402-e2e next_step=<next_step>.
    Follow the map: view via run_named_query, then create_litigation_task
    (EscalateDiscovery on this seed) or write_audit_event if LitigationSupport.
+   Do not save_claim_letter unless the user asked to write a letter.
 
 3) Final Answer: route decision + specialist summary + exact write JSON.
    Then STOP. Do not Delegate a third time.
 ```
 
-Same prompt with another `claim_id` once that specialist exists in the Crew
+Same e2e prompt with another `claim_id` once that specialist exists in the Crew
 (Litigation, Subrogation, BI, PD, or Closeout). Seed **401** may route
 `PdClaimsAgent` (apply `pd_task` DDL before the write) or subrogation.
 Seed **403** is CLOSED → Closeout.
+
+Status only (no specialist write, no letter):
+
+```text
+What is the status of claim_id 402? Intake and route only.
+Do not complete post-route specialist work. Do not write a letter.
+```
+
+Write a letter after a route that set `letter_on_request` (LitigationSupport or
+RequestPoliceReport):
+
+```text
+Write the recommended letter for claim_id 402.
+Delegate ONCE to Litigation Agent. View get_litigation_view, then
+save_claim_letter. Do not send mail. Do not create a litigation_task.
+```
 
 ## User prompt (closeout e2e, claim 403)
 

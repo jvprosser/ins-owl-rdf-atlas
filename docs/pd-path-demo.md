@@ -24,8 +24,8 @@ Skip if already done this session.
 2. Restart `iceberg-mcp-server-claims`.
 3. Chat Orchestrator: `Call get_server_info once and stop.` Expect `INS_CLAIMS_MCP_V7` / **`0.3.5`** or newer.
 4. `Call list_named_queries once and stop.` Must include `get_pd_view` and `create_pd_task`.
-5. Workflow Data includes the playbook whose PD actions list `get_pd_view` / `create_pd_task` (and `save_claim_letter` on `RequestPoliceReport`).
-6. Same Crew, Roles **exactly**: `Manager agent`, `PD Claims Agent`. Re-paste Orchestrator Goal from [`agent_studio/studio_tools/agents/orchestrator_agent.md`](../agent_studio/studio_tools/agents/orchestrator_agent.md) so the PD handoff is in it. Paste [`pd_claims_agent.md`](../agent_studio/studio_tools/agents/pd_claims_agent.md). Attach MCP + Studio `save_claim_letter` on the PD agent.
+5. Workflow Data includes the playbook whose PD actions list `get_pd_view` / `create_pd_task` (and `save_claim_letter` on `RequestPoliceReport`, drafted only when the user asks).
+6. Same Crew, Roles **exactly**: `Manager agent`, `PD Claims Agent`. Re-paste Orchestrator Goal from [`agent_studio/studio_tools/agents/orchestrator_agent.md`](../agent_studio/studio_tools/agents/orchestrator_agent.md) so the PD handoff is in it. Paste [`pd_claims_agent.md`](../agent_studio/studio_tools/agents/pd_claims_agent.md). Attach MCP + Studio `save_claim_letter` on the PD agent (used only when the user asks to write the letter).
 7. In Impala, create `pd_task` if it does not exist. Source of truth: `ddl/hive_iceberg/car_insurance_claims_iceberg.sql`. Impala accepted `litigation_task` with COMMENT **after** `PARTITIONED BY SPEC` and no `STORED AS PARQUET`. If the file’s `pd_task` block fails, use this shape:
 
 ```sql
@@ -101,14 +101,22 @@ You have no MCP tools. Do not skip the Orchestrator.
    Task: claim_id=401 run_id=demo-401-r21 next_step=<next_step from route>.
    run_named_query {"label":"get_pd_view","claim_id":"401"}
    then run_named_write create_pd_task
-   event_json task_type_code REQUEST_POLICE_REPORT
-   then save_claim_letter (do not send mail).
+   event_json task_type_code REQUEST_POLICE_REPORT.
+   Do not save_claim_letter unless asked to write the letter.
 
-3) Final Answer: route + specialist summary + exact write JSON + letter file_path.
+3) Final Answer: route + specialist summary + exact write JSON.
    STOP. Do not Delegate a third time.
 ```
 
-**Pass:** `next_step=RequestPoliceReport`, `agent_role=PdClaimsAgent`, probe **R2.1**, `police_reports` empty, `create_pd_task` `REQUEST_POLICE_REPORT`, letter file under the session dir.
+**Pass:** `next_step=RequestPoliceReport`, `agent_role=PdClaimsAgent`, probe **R2.1**, `police_reports` empty, `create_pd_task` `REQUEST_POLICE_REPORT`. `routing_summary` says a police-report request letter is recommended and will not be drafted unless you ask. No `claim_*_letter.txt` unless you asked to write it.
+
+Optional, same or new Orchestrator chat — only if you want the `.txt` draft:
+
+```text
+Write the recommended police-report request letter for claim_id 401.
+Delegate ONCE to PD Claims Agent. View get_pd_view, then save_claim_letter.
+Do not send mail.
+```
 
 ```sql
 SELECT pd_task_id, task_type_code, run_id, task_status_code

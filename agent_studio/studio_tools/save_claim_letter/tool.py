@@ -4,11 +4,12 @@ REPO_REF: json-yaml-runtime
 UPDATED: 2026-08-17
 FILE: agent_studio/studio_tools/save_claim_letter/tool.py
 
-CUSTOM TOOL save_claim_letter — persist drafted hold/status letter.
+CUSTOM TOOL save_claim_letter — persist drafted hold/status or police-report letter.
 
-LitigationAgent (R1.2 LitigationSupport, needs_llm) drafts the body from
-get_litigation_view, then passes it here. Writes claim_{id}_letter.txt to
-SESSION_DIRECTORY. Does not send mail and does not call MCP.
+Call only when the user asks to write the letter. Playbook
+`letter_on_request` (LitigationSupport / RequestPoliceReport) marks the
+letter as recommended next work; intake and status must not auto-draft.
+Does not send mail and does not call MCP.
 """
 
 from __future__ import annotations

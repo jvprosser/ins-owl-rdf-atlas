@@ -150,6 +150,13 @@ def _decision(
         fallback = str(action.get("title") or _DEFAULT_TITLE)
         reason = f"{fallback} → {step}."
     later = bool(remaining)
+    letter_on_request = bool(action.get("letter_on_request", False))
+    letter_note = str(action.get("letter_note") or "").strip() or None
+    if letter_on_request and not letter_note:
+        letter_note = (
+            "A letter is recommended as the next step. "
+            "It will not be drafted unless you ask."
+        )
     checks = [
         {
             "probe_id": p["probe_id"],
@@ -165,7 +172,8 @@ def _decision(
         "next_step": step,
         "agent_role": action.get("agent"),
         "allowed_tools": list(action.get("tools") or []),
-        "needs_llm": bool(action.get("needs_llm", False)),
+        "letter_on_request": letter_on_request,
+        "letter_note": letter_note,
         "terminal": terminal,
         "reason_probe_ids": [p["probe_id"] for p in probe_trace],
         "probe_trace": probe_trace,
@@ -186,9 +194,15 @@ def format_routing_summary(decision: dict[str, Any]) -> str:
         f"Assigned agent: {decision.get('agent_role')}",
         "",
         f"Why this routing: {decision.get('routing_reason')}",
-        "",
-        "Checks on this snapshot:",
     ]
+    if decision.get("letter_note"):
+        lines.extend(["", str(decision["letter_note"])])
+    lines.extend(
+        [
+            "",
+            "Checks on this snapshot:",
+        ]
+    )
     for check in decision.get("checks") or []:
         tag = (
             "assigned this work"

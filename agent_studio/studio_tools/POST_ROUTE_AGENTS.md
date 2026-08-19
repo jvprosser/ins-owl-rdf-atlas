@@ -1,7 +1,7 @@
 # Post-route agents
 
 After `route_claim`, the decision’s `agent_role` + `allowed_tools` name the next worker.
-**Lake I/O stays on MCP.** The R1.2 letter is a Studio file write (`save_claim_letter`), not mail send.
+**Lake I/O stays on MCP.** Letters are Studio file writes (`save_claim_letter`), not mail send. Playbook `letter_on_request` marks a letter as recommended next work; agents draft it only when the user asks.
 
 ## Playbook tool → MCP tool
 
@@ -61,7 +61,7 @@ NL first-touch triage. Cosine vs a small `LITIGATION` / `GENERAL_CLAIMS` catalog
 **Tools:** MCP `get_server_info` / `run_named_query` / `run_named_write`; Studio `build` / `validate` / `route`.  
 **Job:** Structured claim intake when asked to intake/route; **if asked for one MCP tool by name, call it once and stop**. After `route_claim`, STOP — Orchestrator hands off to the specialist named by `agent_role`.
 
-### Litigation Agent (MCP + `save_claim_letter`)
+### Litigation Agent (MCP + `save_claim_letter` on request)
 **Finished paste-ready definition:** [`agents/litigation_agent.md`](agents/litigation_agent.md)
 
 Use when route returns `LitigationAgent` / `CompleteLitigationFile` / `EscalateDiscovery` / `LitigationSupport`.
@@ -69,7 +69,7 @@ Use when route returns `LitigationAgent` / `CompleteLitigationFile` / `EscalateD
 | Field | Value |
 |---|---|
 | Name / Role (exact coworker) | `Litigation Agent` |
-| Tools | MCP `run_named_query` / `run_named_write`; Studio `save_claim_letter` (R1.2 letter only) |
+| Tools | MCP `run_named_query` / `run_named_write`; Studio `save_claim_letter` (LitigationSupport letter only when the user asks) |
 | Backstory / Goal | Copy from `agents/litigation_agent.md` |
 
 ### Subrogation Agent (MCP only)
@@ -94,7 +94,7 @@ Use when route returns `BiClaimsAgent` / `BiClaimsReview` / `CaptureInjuryDetail
 | Tools | `run_named_query` label `get_bi_view`; `run_named_write` `write_audit_event` |
 | Lake smoke | claim **402**, injuries **5501** / **5502** (direct specialist; e2e 402 is litigation-first) |
 
-### PD Claims Agent (MCP + `save_claim_letter` on RequestPoliceReport)
+### PD Claims Agent (MCP + `save_claim_letter` on request)
 **Paste-ready definition:** [`agents/pd_claims_agent.md`](agents/pd_claims_agent.md)
 
 Use when route returns `PdClaimsAgent` / `RequestPoliceReport` / `DetermineFault` / `PdClaimsReview`.
@@ -102,7 +102,7 @@ Use when route returns `PdClaimsAgent` / `RequestPoliceReport` / `DetermineFault
 | Field | Value |
 |---|---|
 | Name / Role (exact coworker) | `PD Claims Agent` |
-| Tools | `run_named_query` label `get_pd_view`; `run_named_write` `create_pd_task`; Studio `save_claim_letter` (`RequestPoliceReport` only) |
+| Tools | `run_named_query` label `get_pd_view`; `run_named_write` `create_pd_task`; Studio `save_claim_letter` (`RequestPoliceReport` letter only when the user asks) |
 | Lake smoke | claim **401** `PdClaimsReview` (direct specialist). Apply `pd_task` DDL before the write. Full three-snapshot runbook: [`docs/pd-path-demo.md`](../../docs/pd-path-demo.md). |
 
 ### Closeout Agent (MCP only)

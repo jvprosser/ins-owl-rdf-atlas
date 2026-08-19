@@ -32,7 +32,7 @@ User
 2. Manager calls `run_named_query` for spine, then routing signals (catalog **labels**, not extra MCP tools).
 3. Manager passes those JSON payloads, unmodified, into `build_claim_graph` → `validate_claim_graph` → `route_claim`.
 4. Manager stops. Orchestrator maps `agent_role` → coworker **Role** and Delegates once.
-5. Specialist may run one view label, then the playbook write (`create_litigation_task`, `create_pd_task`, or `write_audit_event`; Closeout also `promote_audit_run`). `RequestPoliceReport` also uses Studio `save_claim_letter`.
+5. Specialist may run one view label, then the playbook write (`create_litigation_task`, `create_pd_task`, or `write_audit_event`; Closeout also `promote_audit_run`). `LitigationSupport` and `RequestPoliceReport` mark a letter as recommended (`letter_on_request`); Studio `save_claim_letter` runs only when the user asks to write it.
 
 Custom Studio tools **cannot** call MCP in-process. The agent is the only bridge: MCP result → tool argument → session artifact.
 
@@ -87,7 +87,7 @@ Each row is a later snapshot. Earlier gaps are already filled so a higher probe 
 | Offer ACCEPTED, no loss payment | `{"claim_status_code": "OPEN", "has_adjuster": true, "has_police_report": true, "has_fault_determination": true, "has_extended_offer": false, "has_accepted_offer": true, "has_loss_payment": false, "litigation_indicator": false, "has_siu_suspected": false, "subrogation_indicator": false}` | R3.4 | `IssuePayment` |
 | Status CLOSED | `{"claim_exists": true, "triangle": true, "claim_status_code": "CLOSED"}` | R1.1 | `CloseoutAudit` |
 
-PD steps (`RequestPoliceReport`, `DetermineFault`, `PdClaimsReview`) use `get_pd_view` then `create_pd_task`. `RequestPoliceReport` also writes a session letter via `save_claim_letter` (no mail send). Settlement steps on this path still `write_audit_event`. `IssuePayment` means settlement work is due; the payment row still has to land in `claim_payment` from the claims platform. A later intake can then hit R1.1.
+PD steps (`RequestPoliceReport`, `DetermineFault`, `PdClaimsReview`) use `get_pd_view` then `create_pd_task`. `RequestPoliceReport` sets `letter_on_request`; a session letter via `save_claim_letter` is drafted only if the user asks (no mail send). Settlement steps on this path still `write_audit_event`. `IssuePayment` means settlement work is due; the payment row still has to land in `claim_payment` from the claims platform. A later intake can then hit R1.1.
 
 ## Pattern: two Studio filesystems
 
@@ -201,7 +201,7 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 | `WORKFLOW_DATA_DIRECTORY` | Env for the Workflow Data mount (`/workflow_data`). |
 | `SESSION_DIRECTORY` | Env for per-run artifacts (`/workspace`). |
 | Exemplars | Labeled NL snippets for cosine `pre_route_text`. |
-| `save_claim_letter` | Studio tool: write `claim_{id}_letter.txt` to the session folder (R1.2). Does not send mail. |
+| `save_claim_letter` | Studio tool: write `claim_{id}_letter.txt` to the session folder when the user asks. Does not send mail. Playbook `letter_on_request` marks the letter as recommended next work. |
 
 **Packs / demo**
 

@@ -22,7 +22,7 @@ FILE: agent_studio/studio_tools/...
 | `build_claim_graph/` | `claim_id` + MCP `spine_json` / `signals_json` | `claim_{id}_case.json` |
 | `validate_claim_graph/` | `claim_id` | `claim_{id}_validation.json` |
 | `route_claim/` | `claim_id` | `claim_{id}_route.json` |
-| `save_claim_letter/` | `claim_id` + drafted `body` | `claim_{id}_letter.txt` |
+| `save_claim_letter/` | `claim_id` + drafted `body` | `claim_{id}_letter.txt` — only when the user asks; playbook `letter_on_request` marks the letter as recommended |
 | `pre_route_text/` | unstructured `text` (+ optional `claim_id`) | `pre_route_{id}.json` — cosine label/score; `needs_llm` if below threshold |
 
 **After route:** playbook `allowed_tools` map to MCP (views + audit aliases) — see [`POST_ROUTE_AGENTS.md`](POST_ROUTE_AGENTS.md).

@@ -42,7 +42,7 @@ Studio project: live Impala catalog, Workflow Data = repo `ontology/` + `playboo
 | R1.1 | SELECT_EQUALS CLOSED | `CloseoutAudit` / `CloseoutAgent` / CLOSEOUT | Status CLOSED | **403** |
 | R1.2a | ASK_TRUE | `CompleteLitigationFile` / `LitigationAgent` / LITIGATION | Litigated claim missing docket or both counsel ids | pytest `test_route_litigation` |
 | R1.2b | ASK_TRUE | `EscalateDiscovery` / `LitigationAgent` / LITIGATION | IN_DISCOVERY, closed_date null, filed_date > 90 days | **402** |
-| R1.2 | ASK_TRUE | `LitigationSupport` / `LitigationAgent` / LITIGATION | Remaining litigation (file complete, not aging); `needs_llm`; letter via `save_claim_letter` | pytest `test_route_litigation_support_letter`; email smoke **402** (skip intake) |
+| R1.2 | ASK_TRUE | `LitigationSupport` / `LitigationAgent` / LITIGATION | Remaining litigation (file complete, not aging); `letter_on_request`; draft via `save_claim_letter` only when the user asks | pytest `test_route_litigation_support_letter`; email smoke **402** (skip intake, ask to write) |
 | R5.1 | ASK_TRUE | `SiuInvestigation` / `SiuAgent` / SIU | SIU / fraud suspected | pytest `test_route_siu_suspected` |
 | R2.3 | ASK_TRUE | `AssignAdjuster` / `DataQualityAgent` / DATA_QUALITY | No ADJUSTER party role | none |
 | R2.1 | ASK_TRUE | `RequestPoliceReport` / `PdClaimsAgent` / PD | No police report; earlier probes miss | pytest `test_route_missing_police_report` |
@@ -127,29 +127,35 @@ Do not skip the Orchestrator.
 
 Offline: `pytest tests/test_route_claim.py::test_route_litigation_discovery_aging`.
 
-### R1.2 ASK_TRUE — LitigationSupport (letter)
+### R1.2 ASK_TRUE — LitigationSupport (letter on request)
 
-No live seed today. Seed **402** is R1.2b (`EscalateDiscovery`), not this probe. To fire R1.2 you need a litigated claim with docket + counsel and discovery **not** aging (not `IN_DISCOVERY` with `filed_date` older than 90 days and `closed_date` null).
+No live seed today. Seed **402** is R1.2b (`EscalateDiscovery`), not this probe. To fire R1.2 you need a litigated claim with docket + counsel and discovery **not** aging (not `IN_DISCOVERY` with `filed_date` older than 90 days and `closed_date` null). Intake reports that a letter is recommended. It does **not** draft the letter unless you ask.
 
 ```text
 Intake and route claim_id <ID>, then complete the post-route specialist work.
-Do not skip the Orchestrator.
+Do not skip the Orchestrator. Do not write a letter.
 
 1) Delegate ONCE to Manager: structured intake for <ID>. STOP after route_claim.
-   Expect next_step=LitigationSupport, agent_role=LitigationAgent, needs_llm true,
-   reason_probe_ids includes R1.2.
+   Expect next_step=LitigationSupport, agent_role=LitigationAgent,
+   letter_on_request true, reason_probe_ids includes R1.2.
+   routing_summary says a hold/status letter is recommended and will not be
+   drafted unless you ask.
 
 2) Delegate ONCE to Litigation Agent.
    Task: claim_id=<ID> run_id=demo-<ID>-letter next_step=LitigationSupport.
    run_named_query {"label":"get_litigation_view","claim_id":"<ID>"}
    then run_named_write write_audit_event.
-   Draft a short hold/status email from the view only (Subject + body).
-   Do not invent docket, counsel, dates, or amounts.
-   Then save_claim_letter once with that body.
-   Do not create a litigation_task.
+   Do not save_claim_letter. Do not create a litigation_task.
 
-3) Final Answer: route + email summary + exact write JSON + letter file_path.
-   Expect SESSION_DIRECTORY/claim_<ID>_letter.txt. STOP.
+3) Final Answer: route + specialist summary + exact write JSON. STOP.
+```
+
+To draft the letter after that route:
+
+```text
+Write the recommended letter for claim_id <ID>.
+Delegate ONCE to Litigation Agent. View get_litigation_view, then
+save_claim_letter. Do not send mail.
 ```
 
 Offline: `pytest tests/test_route_claim.py::test_route_litigation_support_letter`
@@ -157,7 +163,7 @@ Offline: `pytest tests/test_route_claim.py::test_route_litigation_support_letter
 
 ### Generate litigation hold/status email (letter artifact)
 
-Use this when you want the `.txt` email, including on seed **402** (skip intake — 402 would otherwise route to R1.2b and would not draft a letter). Chat the **Orchestrator**. `save_claim_letter` writes the file; it does not send mail.
+Use this when you want the `.txt` email, including on seed **402** (skip intake — 402 would otherwise route to R1.2b and would not recommend a letter). Chat the **Orchestrator** and **ask to write** the letter. `save_claim_letter` writes the file; it does not send mail.
 
 ```text
 Generate a litigation hold/status email for claim_id 402.
@@ -213,9 +219,11 @@ Needs OPEN, not litigation/SIU, and no ADJUSTER role on the claim.
 Intake and route claim_id 999201. Do not skip the Orchestrator.
 Delegate ONCE to Manager: structured intake. STOP after route.
 Expect next_step=RequestPoliceReport, agent_role=PdClaimsAgent,
-reason_probe_ids includes R2.1.
+reason_probe_ids includes R2.1. routing_summary says a police-report request
+letter is recommended and will not be drafted unless you ask.
 If PD Claims Agent is in the Crew, Delegate ONCE (get_pd_view then
-create_pd_task REQUEST_POLICE_REPORT then save_claim_letter).
+create_pd_task REQUEST_POLICE_REPORT). Do not save_claim_letter unless
+the user asked to write the letter.
 ```
 
 Offline: `pytest tests/test_route_claim.py::test_route_missing_police_report`. Apply `pd_task` DDL before the live write. Needs a claim with no `police_report` row (seed **401** already has one).

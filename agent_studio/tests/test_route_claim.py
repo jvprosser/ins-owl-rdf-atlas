@@ -69,7 +69,7 @@ def test_route_litigation():
     assert case["discovery_aging"] is False
     assert decision["next_step"] == "CompleteLitigationFile"
     assert decision["agent_role"] == "LitigationAgent"
-    assert decision["needs_llm"] is False
+    assert "needs_llm" not in decision
     assert "create_litigation_task" in decision["allowed_tools"]
 
 
@@ -130,8 +130,11 @@ def test_route_litigation_support_letter():
     assert case["discovery_aging"] is False
     assert decision["next_step"] == "LitigationSupport"
     assert decision["agent_role"] == "LitigationAgent"
-    assert decision["needs_llm"] is True
+    assert "needs_llm" not in decision
+    assert decision["letter_on_request"] is True
     assert "save_claim_letter" in decision["allowed_tools"]
+    assert "will not be drafted unless you ask" in (decision["letter_note"] or "")
+    assert "will not be drafted unless you ask" in decision["routing_summary"]
 
 
 def test_route_closed_terminal():
@@ -162,6 +165,8 @@ def test_route_missing_police_report():
     assert "get_pd_view" in decision["allowed_tools"]
     assert "create_pd_task" in decision["allowed_tools"]
     assert "save_claim_letter" in decision["allowed_tools"]
+    assert decision["letter_on_request"] is True
+    assert "police-report request letter" in (decision["letter_note"] or "")
     assert decision["routing_reason"] == "No police report on file → RequestPoliceReport."
     assert decision["checks"][-1]["probe_id"] == "R2.1"
     assert decision["checks"][-1]["status"] == "assigned"
@@ -169,6 +174,7 @@ def test_route_missing_police_report():
     assert decision["later_checks_not_run"] is True
     summary = decision["routing_summary"]
     assert "Why this routing: No police report on file → RequestPoliceReport." in summary
+    assert "will not be drafted unless you ask" in summary
     assert "assigned this work" in summary
     assert "R2.1" not in summary
 
@@ -187,6 +193,8 @@ def test_route_determine_fault():
     assert "get_pd_view" in decision["allowed_tools"]
     assert "create_pd_task" in decision["allowed_tools"]
     assert "save_claim_letter" not in decision["allowed_tools"]
+    assert decision["letter_on_request"] is False
+    assert decision["letter_note"] is None
 
 
 def test_route_siu_suspected():

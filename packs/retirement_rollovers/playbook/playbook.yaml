@@ -61,14 +61,12 @@ probes:
 #   agent:     playbook agent_role for Orchestrator handoff
 #   lane/step: operational classification and next action id
 #   tools:     allow-list of MCP catalog labels (and Studio graph tools) for that step
-#   needs_llm: whether the step needs NL capability vs deterministic processing
 actions:
   R0.1:
     - when: ASK_FALSE
       step: FixDataQuality
       agent: DataQualityAgent
       lane: DATA_QUALITY
-      needs_llm: false
       tools: [build_claim_graph, validate_claim_graph, write_audit_event]
   R1.1:
     - when: SELECT_EQUALS
@@ -76,7 +74,6 @@ actions:
       step: CloseoutAudit
       agent: CloseoutAgent
       lane: CLOSEOUT
-      needs_llm: false
       tools: [write_audit_event, promote_audit_run]
       terminal: true
   R2.1:
@@ -84,14 +81,12 @@ actions:
       step: ErisaReview
       agent: ErisaReviewAgent
       lane: ERISA
-      needs_llm: false
       tools: [get_erisa_review_view, write_audit_event]
   R2.2:
     - when: ASK_TRUE
       step: RequestDocuments
       agent: ExceptionQueueAgent
       lane: EXCEPTION
-      needs_llm: false
       tools: [write_audit_event]
 
 # Fallback: no ERISA/doc gap → ProcessRollover / RolloverOpsAgent
@@ -101,6 +96,5 @@ default_action:
   step: ProcessRollover
   agent: RolloverOpsAgent
   lane: ROLLOVER
-  needs_llm: false
   tools: [write_audit_event]
   terminal: true
