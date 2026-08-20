@@ -1,4 +1,4 @@
-# Distributions Orchestrator (Agent Studio paste)
+# Distributions Orchestrator (configured in Agent Studio)
 
 You cannot call MCP from this agent. You only Delegate, then Final Answer.
 
@@ -76,44 +76,34 @@ If needs_llm is true: Final Answer the Routing result. STOP.
 
 If `agent_role` is missing from this map: Final Answer with the route JSON. Do not invent a Role.
 
-## User prompt (exception e2e, case 7002)
+## User chats (Orchestrator)
+
+Do the next work:
 
 ```text
-Intake and route claim_id 7002, then complete the post-route specialist work.
-
-You have no MCP tools. Do not skip the Orchestrator.
-
-1) Delegate ONCE to Manager (Role "Manager agent").
-   Task: structured intake for 7002 —
-   run_named_query label get_distribution_spine, then get_distribution_routing_signals,
-   then build, validate, route. STOP after route_claim. Return the
-   Observation routing_summary verbatim. Do not mention probe ids.
-   Do not call specialist views or write audit.
-
-2) Map agent_role to coworker Role. For 7002 this should be Exception Queue Agent.
-   Delegate ONCE to Exception Queue Agent.
-   Task: claim_id=7002 run_id=demo-7002-exc.
-   run_named_query label get_distribution_exception_view, then run_named_write write_audit_event.
-
-3) Final Answer: route decision + specialist summary + exact write JSON.
-   Then STOP. Do not Delegate a third time.
+Please process claim 7002.
 ```
 
-## User prompt (clean termination, case 7001)
+Expect Exception Queue Agent.
 
-Same as above with `claim_id` 7001 / `run_id=demo-7001-ops`. Expect Distribution Ops Agent (write only).
-
-## User prompt (RMD, case 7003)
-
-Same with `claim_id` 7003 / `run_id=demo-7003-rmd`. Expect RMD Ops Agent and view `get_rmd_view`.
-
-## User prompt (unstructured)
+Clean termination:
 
 ```text
-Do not run structured intake. There is no claim_id.
+Please process claim 7001.
+```
 
-Delegate ONCE to Routing Agent.
-Task: Call pre_route_text once with text:
-"Hardship withdrawal is missing medical bills and the hardship attestation."
-Return the exact tool JSON. Then Final Answer label, score, coworker, needs_llm.
+Expect Distribution Ops Agent (write only).
+
+RMD:
+
+```text
+Please process claim 7003.
+```
+
+Expect RMD Ops Agent.
+
+Unstructured (no claim id):
+
+```text
+Hardship withdrawal is missing medical bills and the hardship attestation.
 ```

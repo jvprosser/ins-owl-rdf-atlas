@@ -128,7 +128,7 @@ Use when route returns `DenyAgent` / `DenyUnlawfulOperation` / `DenyExcludedDriv
 |---|---|
 | Name / Role (exact coworker) | `Deny Agent` |
 | Tools | `run_named_query` label `get_deny_view`; R6.* `run_named_write` `deny_claim`; `DenyAudit` `write_audit_event` then `promote_audit_run`. Studio `save_claim_letter` only when the user asks |
-| Lake smoke | Flip **401** only (impairment / excluded / lapsed). Restore afterward. Re-intake after deny → `DenyAudit`. |
+| Lake smoke | Flip **404** only (impairment on `PA-1003`). Restore afterward. Full two-snapshot runbook: [`docs/deny-path-demo.md`](../../docs/deny-path-demo.md). |
 
 ### Human Review Agent (citation analysis; MCP audit only)
 **Paste-ready definition:** [`agents/human_review_agent.md`](agents/human_review_agent.md)
@@ -146,20 +146,26 @@ For roles whose playbook tools are still only `write_audit_event`: attach MCP au
 
 ## End-to-end demo (claim 402)
 
-Paste Orchestrator Goal + user prompt from [`agents/orchestrator_agent.md`](agents/orchestrator_agent.md). Manager Goal must STOP after `route_claim`. Orchestrator maps `agent_role` → coworker Role (not litigation-only).
+Paste Orchestrator Goal from [`agents/orchestrator_agent.md`](agents/orchestrator_agent.md). Chat like a handler:
+
+```text
+Please process claim 402.
+```
+
+Manager Goal must STOP after `route_claim`. Orchestrator maps `agent_role` → coworker Role (not litigation-only).
 
 1. Orchestrator → Manager: structured claim intake (`run_named_query` spine then signals → build → validate → route).
 2. Route returns `agent_role` (402: `LitigationAgent` / `EscalateDiscovery`).
-3. Orchestrator → mapped specialist: catalog read (if the map has a view) then the write label for that `next_step` (`create_litigation_task` on 402; Closeout also `promote_audit_run`). `run_id` `demo-<claim_id>-e2e`.
+3. Orchestrator → mapped specialist: catalog read (if the map has a view) then the write label for that `next_step` (`create_litigation_task` on 402; Closeout also `promote_audit_run`). `run_id` comes from Orchestrator Goal (`demo-<claim_id>-e2e`).
 4. Orchestrator Final Answer: route decision + specialist summary + write JSON.
 
-Specialists other than Litigation still need Studio pastes in the same Crew, or step 3 ends with coworker-not-found.
+Specialists other than Litigation still need to be configured in Agent Studio in the same Crew, or step 3 ends with coworker-not-found.
 
-Direct specialist smokes (skip intake): Subrogation **401** (`subrogation_agent.md`), BI **402** (`bi_claims_agent.md`), Closeout **403** (`closeout_agent.md`), PD **401** (`pd_claims_agent.md`), Deny **401** (`deny_agent.md`), Human Review **401** (`human_review_agent.md`).
+Direct specialist smokes (skip intake): Subrogation **401** (`subrogation_agent.md`), BI **402** (`bi_claims_agent.md`), Closeout **403** (`closeout_agent.md`), PD **401** (`pd_claims_agent.md`), Deny **404** (`deny_agent.md`), Human Review **401** (`human_review_agent.md`).
 
 ## Unstructured front door
 
-Paste Orchestrator Goal from [`agents/orchestrator_agent.md`](agents/orchestrator_agent.md). Routing paste: [`agents/routing_agent.md`](agents/routing_agent.md).
+Paste Orchestrator Goal from [`agents/orchestrator_agent.md`](agents/orchestrator_agent.md). Routing agent configured in Agent Studio: [`agents/routing_agent.md`](agents/routing_agent.md). The handler just types the note, for example: `We were served a civil complaint and the case is in discovery.`
 
 1. Orchestrator → Routing Agent: `pre_route_text` once (no MCP).
 2. If `needs_llm` is true: Final Answer the Routing classify. STOP.

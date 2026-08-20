@@ -1,11 +1,11 @@
-# Human Review Agent (Agent Studio paste)
+# Human Review Agent (configured in Agent Studio)
 
 Use when `route_claim` assigns `HumanReviewAgent` / `HumanCitationReview`
 (insured operator was cited). A citation is a reason to look, not proof of
 DUI or racing. **Do not** call `deny_claim`. **Do not** set `DENIED`.
 
 Default playbook fallback `HumanReviewOrWait` is still route-JSON-only on
-Orchestrator; this paste is for `HumanCitationReview`.
+Orchestrator; this agent is configured in Agent Studio for `HumanCitationReview`.
 
 CrewAI `coworker` must match **Role** exactly: `Human Review Agent`.
 

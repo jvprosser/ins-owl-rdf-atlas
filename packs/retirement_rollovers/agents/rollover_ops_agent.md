@@ -1,4 +1,4 @@
-# Rollover Ops Agent (Agent Studio paste)
+# Rollover Ops Agent (configured in Agent Studio)
 
 Use when `route_claim` assigns `RolloverOpsAgent` (e.g. case **8002** complete direct rollover).
 

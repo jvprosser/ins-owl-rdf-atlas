@@ -1,4 +1,4 @@
-# Manager agent (Agent Studio paste)
+# Manager agent (configured in Agent Studio)
 
 NL interface for structured claim intake and one-shot MCP. Build, validate, and
 YAML playbook route are deterministic. This agent is **not** the router

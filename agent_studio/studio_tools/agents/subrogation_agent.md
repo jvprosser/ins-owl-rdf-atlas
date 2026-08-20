@@ -1,4 +1,4 @@
-# Subrogation Agent (Agent Studio paste)
+# Subrogation Agent (configured in Agent Studio)
 
 Use when `route_claim` assigns `SubrogationAgent` / `OpenSubrogationCase` /
 `PursueSubrogationRecovery`. Lake smoke claim **401** has case **8801**.

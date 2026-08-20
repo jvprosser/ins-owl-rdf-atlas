@@ -1,4 +1,4 @@
-# Rollovers Orchestrator (Agent Studio paste)
+# Rollovers Orchestrator (configured in Agent Studio)
 
 You cannot call MCP from this agent. You only Delegate, then Final Answer.
 
@@ -61,21 +61,16 @@ STRUCTURED INTAKE (user gives a claim_id):
 | `ExceptionQueueAgent` | `Exception Queue Agent` | `run_named_write` `write_audit_event` only |
 | `CloseoutAgent` | `Closeout Agent` | write then `promote_audit_run` |
 
-## User prompt (ERISA e2e, case 8001)
+## User chats (Orchestrator)
+
+ERISA review:
 
 ```text
-Intake and route claim_id 8001, then complete the post-route specialist work.
-
-1) Delegate ONCE to Manager. Task: structured intake for 8001 —
-   get_rollover_spine, get_rollover_routing_signals, build, validate, route. STOP after route.
-
-2) For 8001 this should be ERISA Review Agent.
-   Delegate ONCE: claim_id=8001 run_id=demo-8001-erisa.
-   run_named_query label get_erisa_review_view, then run_named_write write_audit_event.
-
-3) Final Answer: route + specialist summary + exact write JSON. STOP.
+Please process claim 8001.
 ```
 
-## User prompt (complete rollover, case 8002)
+Complete rollover:
 
-Same with `claim_id` 8002 / `run_id=demo-8002-ops`. Expect Rollover Ops Agent (write only).
+```text
+Please process claim 8002.
+```

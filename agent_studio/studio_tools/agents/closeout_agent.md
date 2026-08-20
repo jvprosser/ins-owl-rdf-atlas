@@ -1,4 +1,4 @@
-# Closeout Agent (Agent Studio paste)
+# Closeout Agent (configured in Agent Studio)
 
 Use when `route_claim` assigns `CloseoutAgent` / `CloseoutAudit` (seed claim **403**
 is CLOSED). No specialist view — audit write then promote only.

@@ -128,7 +128,7 @@ Routing Agent (optional): `pre_route_text` only; Role exactly `Routing Agent`.
 The `PACK_ROOT` steps below are the **legacy fixture path** (still used by `tests/test_pack_fixtures.py`). Do not use them for the customer demo.
 
 Repo path: `packs/retirement_distributions/`  
-Agent pastes: `packs/retirement_distributions/agents/`  
+Agents configured in Agent Studio: `packs/retirement_distributions/agents/`  
 Lead demo case: **7002** (hardship substantiation missing).
 
 #### Where to set `PACK_ROOT` (legacy fixtures only)
@@ -206,28 +206,22 @@ Expect 7002 → `RequestSubstantiation` / `ExceptionQueueAgent`; 7001 → `Proce
 
 #### Test — MCP in Studio (Manager, one-shot)
 
-Chat Orchestrator. Do not run intake.
+Operator checks (not handler chats). Chat Orchestrator. Do not run intake.
 
 ```text
-Do not make a multi-step Plan.
-Delegate ONCE to Manager (Role "Manager agent").
-Task: Call get_server_info once. Return the exact JSON. Stop.
+Call get_server_info once and stop.
 ```
 
 Expect `content_id` = `INS_CLAIMS_MCP_V7`. Then:
 
 ```text
-Delegate ONCE to Manager.
-Task: Call list_named_queries once. Return the exact JSON. Stop.
+Call list_named_queries once and stop.
 ```
 
 Expect read labels `get_distribution_spine` and `get_distribution_routing_signals`. Then:
 
 ```text
-Delegate ONCE to Manager.
-Task: Call run_named_query once:
-{"label":"get_distribution_spine","claim_id":"7002"}
-Return the exact JSON. Stop.
+Call run_named_query once with label get_distribution_spine and claim_id 7002.
 ```
 
 Expect `fixture: true` and `distribution_type_code` = `HARDSHIP`.
@@ -237,23 +231,7 @@ Expect `fixture: true` and `distribution_type_code` = `HARDSHIP`.
 **7002 (lead):**
 
 ```text
-Intake and route claim_id 7002, then complete the post-route specialist work.
-
-You have no MCP tools. Do not skip the Orchestrator.
-
-1) Delegate ONCE to Manager (Role "Manager agent").
-   Task: structured intake for 7002 —
-   run_named_query label get_distribution_spine, then get_distribution_routing_signals,
-   then build_claim_graph (FULL spine_json + signals_json), validate_claim_graph, route_claim.
-   STOP after route. Return next_step, lane, agent_role, routing_reason,
-   and the checks (Why this routing). Do not lead with probe ids.
-   Do not call specialist views or write audit.
-
-2) Delegate ONCE to Exception Queue Agent.
-   Task: claim_id=7002 run_id=demo-7002-exc.
-   run_named_query label get_distribution_exception_view, then run_named_write write_audit_event.
-
-3) Final Answer: route + specialist summary + exact write JSON. STOP.
+Please process claim 7002.
 ```
 
 | Check | Expect |
@@ -262,20 +240,16 @@ You have no MCP tools. Do not skip the Orchestrator.
 | `lane` | `EXCEPTION` |
 | `agent_role` | `ExceptionQueueAgent` |
 | `routing_reason` | Hardship substantiation is missing → RequestSubstantiation. |
-| write | `fixture: true`, `run_id` = `demo-7002-exc` |
+| write | `fixture: true` (Orchestrator Goal supplies `run_id`) |
 
-**7001** — same prompt with `claim_id` 7001 / `run_id=demo-7001-ops`. Step 2: Distribution Ops Agent, write only (no view). Expect `ProcessDistribution` / `DistributionOpsAgent`.
+**7001** — `Please process claim 7001.` Expect Distribution Ops Agent, write only (no view). Expect `ProcessDistribution` / `DistributionOpsAgent`.
 
-**7003** — `claim_id` 7003 / `run_id=demo-7003-rmd`. Step 2: RMD Ops Agent, view `get_rmd_view` then write. Expect `RmdReview` / `RmdOpsAgent`.
+**7003** — `Please process claim 7003.` Expect RMD Ops Agent and view `get_rmd_view`. Expect `RmdReview` / `RmdOpsAgent`.
 
 #### Test — unstructured (optional)
 
 ```text
-Do not run structured intake. There is no claim_id.
-Delegate ONCE to Routing Agent.
-Task: Call pre_route_text once with text:
-"Hardship withdrawal is missing medical bills and the hardship attestation."
-Return the exact tool JSON. Then Final Answer label, score, coworker, needs_llm.
+Hardship withdrawal is missing medical bills and the hardship attestation.
 ```
 
 Expect `label` = `EXCEPTION`, `coworker` = `Exception Queue Agent`, `needs_llm` = false.
@@ -285,7 +259,7 @@ Expect `label` = `EXCEPTION`, `coworker` = `Exception Queue Agent`, `needs_llm` 
 ### Pack: `retirement_rollovers`
 
 Repo path: `packs/retirement_rollovers/`  
-Agent pastes: `packs/retirement_rollovers/agents/`  
+Agents configured in Agent Studio: `packs/retirement_rollovers/agents/`  
 Lead demo case: **8001** (missing spousal consent).
 
 #### Where to set `PACK_ROOT`
@@ -358,10 +332,7 @@ Same pytest commands as distributions (`tests/test_packs.py` covers 8001 / 8002)
 `get_server_info` as above. Then `list_named_queries` must include `get_rollover_spine`. Then:
 
 ```text
-Delegate ONCE to Manager.
-Task: Call run_named_query once:
-{"label":"get_rollover_spine","claim_id":"8001"}
-Return the exact JSON. Stop.
+Call run_named_query once with label get_rollover_spine and claim_id 8001.
 ```
 
 Expect `fixture: true` and `rollover_type_code` = `DIRECT_ROLLOVER`.
@@ -371,22 +342,7 @@ Expect `fixture: true` and `rollover_type_code` = `DIRECT_ROLLOVER`.
 **8001 (lead):**
 
 ```text
-Intake and route claim_id 8001, then complete the post-route specialist work.
-
-You have no MCP tools. Do not skip the Orchestrator.
-
-1) Delegate ONCE to Manager (Role "Manager agent").
-   Task: structured intake for 8001 —
-   run_named_query label get_rollover_spine, then get_rollover_routing_signals,
-   then build_claim_graph (FULL spine_json + signals_json), validate_claim_graph, route_claim.
-   STOP after route. Return next_step, lane, agent_role, routing_reason,
-   and the checks (Why this routing). Do not lead with probe ids.
-
-2) Delegate ONCE to ERISA Review Agent.
-   Task: claim_id=8001 run_id=demo-8001-erisa.
-   run_named_query label get_erisa_review_view, then run_named_write write_audit_event.
-
-3) Final Answer: route + specialist summary + exact write JSON. STOP.
+Please process claim 8001.
 ```
 
 | Check | Expect |
@@ -395,18 +351,14 @@ You have no MCP tools. Do not skip the Orchestrator.
 | `lane` | `ERISA` |
 | `agent_role` | `ErisaReviewAgent` |
 | `routing_reason` | Required spousal consent is missing → ErisaReview. |
-| write | `fixture: true`, `run_id` = `demo-8001-erisa` |
+| write | `fixture: true` (Orchestrator Goal supplies `run_id`) |
 
-**8002** — same prompt with `claim_id` 8002 / `run_id=demo-8002-ops`. Step 2: Rollover Ops Agent, write only. Expect `ProcessRollover` / `RolloverOpsAgent`.
+**8002** — `Please process claim 8002.` Expect Rollover Ops Agent, write only. Expect `ProcessRollover` / `RolloverOpsAgent`.
 
 #### Test — unstructured (optional)
 
 ```text
-Do not run structured intake. There is no claim_id.
-Delegate ONCE to Routing Agent.
-Task: Call pre_route_text once with text:
-"Direct rollover is missing spousal consent; QDRO not on file for the married participant."
-Return the exact tool JSON. Then Final Answer label, score, coworker, needs_llm.
+Direct rollover is missing spousal consent; QDRO not on file for the married participant.
 ```
 
 Expect `label` = `ERISA`, `coworker` = `ERISA Review Agent`, `needs_llm` = false.

@@ -40,6 +40,15 @@ def coerce_bool(value: Any) -> bool | None:
     return bool(value)
 
 
+def sql_bool_truthy(expr: str) -> str:
+    """Match Iceberg/Impala booleans that SELECT shows as true but ``= TRUE`` misses.
+
+    Hive-written Iceberg booleans may arrive as TRUE, 1, or the strings
+    ``true`` / ``1``. ``CAST(... AS STRING)`` covers those encodings.
+    """
+    return f"UPPER(TRIM(CAST({expr} AS STRING))) IN ('TRUE', '1', 'T')"
+
+
 def claim_spine_sql(claim_id: int | str, database: str) -> str:
     db = validate_ident(database, "database")
     cid = int(claim_id)
@@ -159,7 +168,7 @@ cited AS (
   FROM {db}.loss_driver
   WHERE claim_id = {cid}
     AND driver_role_code = 'INSURED_OPERATOR'
-    AND was_cited_indicator = TRUE
+    AND {sql_bool_truthy("was_cited_indicator")}
 ),
 unlawful AS (
   SELECT COUNT(*) AS cnt
@@ -168,7 +177,7 @@ unlawful AS (
   WHERE ld.claim_id = {cid}
     AND ld.driver_role_code = 'INSURED_OPERATOR'
     AND (
-      ld.impairment_suspected_indicator = TRUE
+      {sql_bool_truthy("ld.impairment_suspected_indicator")}
       OR UPPER(COALESCE(d.license_status_code, '')) IN (
         'SUSPENDED', 'REVOKED', 'UNLICENSED'
       )
@@ -184,7 +193,7 @@ excl AS (
    AND pd.expiration_date IS NULL
   WHERE ld.claim_id = {cid}
     AND ld.driver_role_code = 'INSURED_OPERATOR'
-    AND (pd.driver_id IS NULL OR pd.is_excluded_driver = TRUE)
+    AND (pd.driver_id IS NULL OR {sql_bool_truthy("pd.is_excluded_driver")})
 ),
 lapse AS (
   SELECT COUNT(*) AS cnt

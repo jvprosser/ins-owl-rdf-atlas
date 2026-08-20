@@ -16,7 +16,7 @@ agent_studio/
   src/ins_claims_agent/
     mcp_facade/       # thin wrappers over Iceberg (Atlas/Ranger stubs)
     graph/            # build / yaml probes / validate / route
-  studio_tools/       # thin tool.py + requirements.txt + agent pastes
+  studio_tools/       # thin tool.py + requirements.txt + agents configured in Agent Studio
   ../ontology/        # case schema JSON
   ../playbook/        # step → agent → tools
 ```

@@ -1,4 +1,4 @@
-# PD Claims Agent (Agent Studio paste)
+# PD Claims Agent (configured in Agent Studio)
 
 Use when `route_claim` assigns `PdClaimsAgent` / `RequestPoliceReport` /
 `DetermineFault` / `PdClaimsReview`. `next_step` from Orchestrator chooses the write.

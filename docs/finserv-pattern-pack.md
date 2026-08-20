@@ -22,7 +22,7 @@ A pack is a directory with `pack.yaml` (and `catalog_fixtures.json` for MCP). Fi
 - Playbook with inlined YAML probes (`playbook/`)
 - Fixture JSON for named reads (`fixtures/`, `catalog_fixtures.json`) — canned lake payloads, not routing rules
 - Cosine `exemplars.yaml`
-- Agent Studio pastes (`agents/`)
+- Agents to configure in Agent Studio (`agents/`)
 
 Studio tool names stay `build_claim_graph` / `validate_claim_graph` / `route_claim` and still take `claim_id`.
 

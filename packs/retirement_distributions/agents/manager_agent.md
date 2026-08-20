@@ -1,4 +1,4 @@
-# Manager agent — retirement distributions (Agent Studio paste)
+# Manager agent — retirement distributions (configured in Agent Studio)
 
 CrewAI `coworker` must match **Role** exactly: `Manager agent`.
 

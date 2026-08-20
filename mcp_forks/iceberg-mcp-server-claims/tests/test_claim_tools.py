@@ -26,6 +26,7 @@ def test_claim_routing_signals_sql_uses_cte_not_scalar_count_gt():
     assert "DATEDIFF" in sql
     assert "insured_operator_cited" in sql
     assert "unlawful_operation_exclusion" in sql
+    assert "CAST(ld.impairment_suspected_indicator AS STRING)" in sql
     assert "excluded_operator_exclusion" in sql
     assert "policy_not_in_force_on_loss" in sql
     assert "INSURED_OPERATOR" in sql

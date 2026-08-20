@@ -17,6 +17,10 @@
 --       Claim 401 CLM-2025-000401 — PD / collision path (OPEN, subrogation)
 --       Claim 402 CLM-2025-000402 — BI path (IN_LITIGATION)
 --   Loss 302 THEFT (2024-11-02): Toyota stolen; single CLOSED claim 403.
+--   Loss 303 COLLISION (2025-07-08): John operating Ford (policy PA-1003);
+--     single-vehicle pole strike. Claim 404 CLM-2025-000404 — DENY path (OPEN).
+--     Own policy / police / fault / loss_driver so PD resets on 401 do not
+--     change this snapshot. Impairment starts FALSE; the deny demo flips it.
 --   Policy PA-1002 (EXPIRED): Prior policy for John (shows 1 party : N policies).
 --
 -- CARDINALITIES DEMONSTRATED
@@ -26,7 +30,7 @@
 --   insurance_policy 1──* policy_coverage ; coverage 1──* policy_coverage
 --   insurance_policy 1──* policy_insurable_object 1──1 vehicle
 --   insurance_policy 1──* policy_driver ; driver 1──* policy_driver
---   loss_event 1──* claim ; loss_event 1──* loss_driver ; loss_event 0──1 location
+--   loss_event 1──* claim ; loss_event 1──* loss_driver ; loss_event 0──1 geo_location
 --   claim 1──* (roles, lifecycle events, reserves, payments, docs, etc.)
 --   claim_reserve 1──* components / transactions ; claim_folder 1──* documents
 --   subrogation_case 1──* claim_recovery
@@ -76,7 +80,7 @@ USE car_insurance_claims;
 -- TRUNCATE TABLE organization;
 -- TRUNCATE TABLE person;
 -- TRUNCATE TABLE party;
--- TRUNCATE TABLE location;
+-- TRUNCATE TABLE geo_location;
 -- TRUNCATE TABLE ref_code;
 -- TRUNCATE TABLE ref_code_list;
 
@@ -287,11 +291,12 @@ SELECT * FROM (
 -- 3) LOCATION, COVERAGE CATALOG, POLICIES, ROLES, POLICY COVERAGES
 -- =============================================================================
 
-INSERT INTO TABLE car_insurance_claims.location
+INSERT INTO TABLE car_insurance_claims.geo_location
 SELECT * FROM (
   SELECT CAST(501 AS BIGINT) AS location_id, 'LOSS_SCENE' AS location_type_code, 'Main St & 5th Ave' AS location_name, 'Main St & 5th Ave' AS street_line_1, CAST(NULL AS STRING) AS street_line_2, 'Springfield' AS city_name, 'IL' AS country_subdivision_code, '62701' AS postal_code, 'US' AS country_code, CAST(39.781700 AS DECIMAL(9,6)) AS latitude, CAST(-89.650100 AS DECIMAL(9,6)) AS longitude, CAST('2025-06-15 08:00:00' AS TIMESTAMP) AS created_at
   UNION ALL SELECT 502, 'LOSS_SCENE', 'Home driveway', '100 Oak Street', NULL, 'Springfield', 'IL', '62701', 'US', CAST(39.800100 AS DECIMAL(9,6)), CAST(-89.640200 AS DECIMAL(9,6)), CAST('2024-11-02 08:00:00' AS TIMESTAMP)
   UNION ALL SELECT 503, 'GARAGING', 'Smith garaging', '100 Oak Street', NULL, 'Springfield', 'IL', '62701', 'US', CAST(39.800100 AS DECIMAL(9,6)), CAST(-89.640200 AS DECIMAL(9,6)), CAST('2020-03-15 10:00:00' AS TIMESTAMP)
+  UNION ALL SELECT 504, 'LOSS_SCENE', 'Oak St utility pole', 'Oak Street near 2nd', NULL, 'Springfield', 'IL', '62701', 'US', CAST(39.799400 AS DECIMAL(9,6)), CAST(-89.641800 AS DECIMAL(9,6)), CAST('2025-07-08 08:00:00' AS TIMESTAMP)
 ) s;
 
 
@@ -309,6 +314,7 @@ INSERT INTO TABLE car_insurance_claims.insurance_policy
 SELECT * FROM (
   SELECT CAST(1001 AS BIGINT) AS policy_id, 'PA-1001' AS policy_number, CAST(10 AS BIGINT) AS issuing_insurer_party_id, 'PERSONAL_AUTO' AS policy_type_code, 'ACTIVE' AS policy_status_code, CAST('2025-01-01' AS DATE) AS effective_date, CAST('2026-01-01' AS DATE) AS expiration_date, CAST(NULL AS DATE) AS cancellation_date, CAST(1480.00 AS DECIMAL(18,2)) AS annual_premium_amount, 'USD' AS premium_currency_code, CAST('2024-12-15 12:00:00' AS TIMESTAMP) AS created_at
   UNION ALL SELECT 1002, 'PA-1002', 10, 'PERSONAL_AUTO', 'EXPIRED', CAST('2024-01-01' AS DATE), CAST('2025-01-01' AS DATE), NULL, CAST(1390.00 AS DECIMAL(18,2)), 'USD', CAST('2023-12-10 12:00:00' AS TIMESTAMP)
+  UNION ALL SELECT 1003, 'PA-1003', 10, 'PERSONAL_AUTO', 'ACTIVE', CAST('2025-01-01' AS DATE), CAST('2026-01-01' AS DATE), NULL, CAST(980.00 AS DECIMAL(18,2)), 'USD', CAST('2024-12-20 12:00:00' AS TIMESTAMP)
 ) s;
 
 
@@ -317,6 +323,7 @@ SELECT * FROM (
   SELECT CAST(2001 AS BIGINT) AS policy_party_role_id, CAST(1001 AS BIGINT) AS policy_id, CAST(1 AS BIGINT) AS party_id, 'POLICYHOLDER' AS role_type_code, CAST('2025-01-01' AS DATE) AS effective_date, CAST(NULL AS DATE) AS expiration_date, TRUE AS is_primary_role, CAST('2024-12-15 12:00:00' AS TIMESTAMP) AS created_at
   UNION ALL SELECT 2002, 1001, 2, 'NAMED_INSURED', CAST('2025-01-01' AS DATE), NULL, FALSE, CAST('2024-12-15 12:00:00' AS TIMESTAMP)
   UNION ALL SELECT 2003, 1002, 1, 'POLICYHOLDER', CAST('2024-01-01' AS DATE), CAST('2025-01-01' AS DATE), TRUE, CAST('2023-12-10 12:00:00' AS TIMESTAMP)
+  UNION ALL SELECT 2004, 1003, 1, 'POLICYHOLDER', CAST('2025-01-01' AS DATE), NULL, TRUE, CAST('2024-12-20 12:00:00' AS TIMESTAMP)
 ) s;
 
 
@@ -329,19 +336,22 @@ SELECT * FROM (
   UNION ALL SELECT 3005, 1001, 5, CAST(0.00 AS DECIMAL(18,2)), CAST(40.00 AS DECIMAL(18,2)), 'PER_OCCURRENCE', 'USD', CAST('2025-01-01' AS DATE), NULL, TRUE, CAST('2024-12-15 12:00:00' AS TIMESTAMP)
   UNION ALL SELECT 3006, 1002, 1, CAST(500.00 AS DECIMAL(18,2)), NULL, 'PER_OCCURRENCE', 'USD', CAST('2024-01-01' AS DATE), CAST('2025-01-01' AS DATE), FALSE, CAST('2023-12-10 12:00:00' AS TIMESTAMP)
   UNION ALL SELECT 3007, 1002, 2, CAST(250.00 AS DECIMAL(18,2)), NULL, 'PER_OCCURRENCE', 'USD', CAST('2024-01-01' AS DATE), CAST('2025-01-01' AS DATE), FALSE, CAST('2023-12-10 12:00:00' AS TIMESTAMP)
+  UNION ALL SELECT 3008, 1003, 1, CAST(500.00 AS DECIMAL(18,2)), NULL, 'PER_OCCURRENCE', 'USD', CAST('2025-01-01' AS DATE), NULL, TRUE, CAST('2024-12-20 12:00:00' AS TIMESTAMP)
 ) s;
 
 
 -- =============================================================================
 -- 4) VEHICLES / INSURABLE OBJECTS / POLICY LINKS / DRIVERS
 -- =============================================================================
--- 201 Honda (PA-1001 primary), 202 Toyota (PA-1001 + theft loss), 203 adverse Chevy (not on policy)
+-- 201 Honda (PA-1001 primary), 202 Toyota (PA-1001 + theft loss), 203 adverse Chevy (not on policy),
+-- 204 Ford (PA-1003 deny-path seed)
 
 INSERT INTO TABLE car_insurance_claims.insurable_object
 SELECT * FROM (
   SELECT CAST(201 AS BIGINT) AS insurable_object_id, 'VEHICLE' AS insurable_object_type_code, CAST('2020-03-15 10:00:00' AS TIMESTAMP) AS created_at
   UNION ALL SELECT 202, 'VEHICLE', CAST('2021-05-01 10:00:00' AS TIMESTAMP)
   UNION ALL SELECT 203, 'VEHICLE', CAST('2025-06-16 09:00:00' AS TIMESTAMP)
+  UNION ALL SELECT 204, 'VEHICLE', CAST('2024-12-20 12:00:00' AS TIMESTAMP)
 ) s;
 
 
@@ -350,6 +360,7 @@ SELECT * FROM (
   SELECT CAST(201 AS BIGINT) AS insurable_object_id, '1HGBH41JXMN109186' AS vin, 'Honda' AS make_name, 'Accord' AS model_name, 2021 AS model_year, 'EX' AS trim_name, 'IL-A1001' AS license_plate_number, 'IL' AS registration_country_subdivision_code, 'COMMUTE' AS primary_use_code, 12000 AS annual_mileage_amount, TRUE AS telematics_installed_indicator, CAST(22000.00 AS DECIMAL(18,2)) AS estimated_market_value_amount, 'USD' AS market_value_currency_code, CAST('2020-03-15 10:00:00' AS TIMESTAMP) AS created_at
   UNION ALL SELECT 202, '4T1BF1FK5CU123456', 'Toyota', 'Camry', 2020, 'LE', 'IL-B2002', 'IL', 'PLEASURE', 9000, FALSE, CAST(18000.00 AS DECIMAL(18,2)), 'USD', CAST('2021-05-01 10:00:00' AS TIMESTAMP)
   UNION ALL SELECT 203, '1G1ZD5ST1MF012345', 'Chevrolet', 'Malibu', 2022, 'LT', 'IL-Z9999', 'IL', 'COMMUTE', CAST(NULL AS INT), FALSE, CAST(19500.00 AS DECIMAL(18,2)), 'USD', CAST('2025-06-16 09:00:00' AS TIMESTAMP)
+  UNION ALL SELECT 204, '1FMCU0G60NUB40404', 'Ford', 'Escape', 2022, 'SE', 'IL-C4040', 'IL', 'COMMUTE', 11000, FALSE, CAST(21000.00 AS DECIMAL(18,2)), 'USD', CAST('2024-12-20 12:00:00' AS TIMESTAMP)
 ) s;
 
 
@@ -358,6 +369,7 @@ SELECT * FROM (
   SELECT CAST(4001 AS BIGINT) AS policy_insurable_object_id, CAST(1001 AS BIGINT) AS policy_id, CAST(201 AS BIGINT) AS insurable_object_id, CAST('2025-01-01' AS DATE) AS effective_date, CAST(NULL AS DATE) AS expiration_date, CAST(1002 AS BIGINT) AS garaging_address_id, TRUE AS is_primary_vehicle, CAST('2024-12-15 12:00:00' AS TIMESTAMP) AS created_at
   UNION ALL SELECT 4002, 1001, 202, CAST('2025-01-01' AS DATE), NULL, 1002, FALSE, CAST('2024-12-15 12:00:00' AS TIMESTAMP)
   UNION ALL SELECT 4003, 1002, 201, CAST('2024-01-01' AS DATE), CAST('2025-01-01' AS DATE), 1002, TRUE, CAST('2023-12-10 12:00:00' AS TIMESTAMP)
+  UNION ALL SELECT 4004, 1003, 204, CAST('2025-01-01' AS DATE), NULL, 1002, TRUE, CAST('2024-12-20 12:00:00' AS TIMESTAMP)
 ) s;
 
 
@@ -374,6 +386,7 @@ SELECT * FROM (
   SELECT CAST(5101 AS BIGINT) AS policy_driver_id, CAST(1001 AS BIGINT) AS policy_id, CAST(501 AS BIGINT) AS driver_id, 'NAMED_INSURED' AS driver_relationship_code, TRUE AS is_primary_driver, FALSE AS is_excluded_driver, CAST('2025-01-01' AS DATE) AS effective_date, CAST(NULL AS DATE) AS expiration_date, CAST('2024-12-15 12:00:00' AS TIMESTAMP) AS created_at
   UNION ALL SELECT 5102, 1001, 502, 'SPOUSE', FALSE, FALSE, CAST('2025-01-01' AS DATE), NULL, CAST('2024-12-15 12:00:00' AS TIMESTAMP)
   UNION ALL SELECT 5103, 1002, 501, 'NAMED_INSURED', TRUE, FALSE, CAST('2024-01-01' AS DATE), CAST('2025-01-01' AS DATE), CAST('2023-12-10 12:00:00' AS TIMESTAMP)
+  UNION ALL SELECT 5104, 1003, 501, 'NAMED_INSURED', TRUE, FALSE, CAST('2025-01-01' AS DATE), NULL, CAST('2024-12-20 12:00:00' AS TIMESTAMP)
 ) s;
 
 
@@ -385,6 +398,7 @@ INSERT INTO TABLE car_insurance_claims.loss_event
 SELECT * FROM (
   SELECT CAST(301 AS BIGINT) AS loss_event_id, CAST('2025-06-15 17:42:00' AS TIMESTAMP) AS loss_datetime, CAST('2025-06-15' AS DATE) AS loss_date, 'COLLISION' AS loss_cause_code, CAST(501 AS BIGINT) AS location_id, '62701' AS loss_location_postal_code, 'IL' AS loss_location_country_subdivision_code, 'Insured Honda struck in rear by adverse Chevy at Main & 5th; passenger Jane reports neck/back pain.' AS loss_description, CAST('2025-06-15 19:05:00' AS TIMESTAMP) AS created_at
   UNION ALL SELECT 302, CAST('2024-11-02 22:15:00' AS TIMESTAMP), CAST('2024-11-02' AS DATE), 'THEFT', 502, '62701', 'IL', 'Toyota Camry stolen from driveway overnight; recovered burned total loss later.', CAST('2024-11-03 08:30:00' AS TIMESTAMP)
+  UNION ALL SELECT 303, CAST('2025-07-08 21:20:00' AS TIMESTAMP), CAST('2025-07-08' AS DATE), 'COLLISION', 504, '62701', 'IL', 'Insured Ford struck a utility pole on Oak Street; single-vehicle collision; operator statements pending.', CAST('2025-07-08 22:05:00' AS TIMESTAMP)
 ) s;
 
 
@@ -393,6 +407,7 @@ SELECT * FROM (
   SELECT CAST(401 AS BIGINT) AS claim_id, 'CLM-2025-000401' AS claim_number, CAST(301 AS BIGINT) AS loss_event_id, CAST(1001 AS BIGINT) AS policy_id, CAST(201 AS BIGINT) AS insurable_object_id, CAST(3001 AS BIGINT) AS policy_coverage_id, CAST('2025-06-15 19:05:00' AS TIMESTAMP) AS fnol_report_datetime, 'OPEN' AS claim_status_code, FALSE AS fraudulent_claim_indicator, FALSE AS litigation_indicator, TRUE AS subrogation_indicator, FALSE AS total_loss_indicator, CAST('2025-06-15 19:05:00' AS TIMESTAMP) AS created_at
   UNION ALL SELECT 402, 'CLM-2025-000402', 301, 1001, 201, 3003, CAST('2025-06-15 19:20:00' AS TIMESTAMP), 'IN_LITIGATION', FALSE, TRUE, FALSE, FALSE, CAST('2025-06-15 19:20:00' AS TIMESTAMP)
   UNION ALL SELECT 403, 'CLM-2024-000403', 302, 1001, 202, 3002, CAST('2024-11-03 08:30:00' AS TIMESTAMP), 'CLOSED', FALSE, FALSE, FALSE, TRUE, CAST('2024-11-03 08:30:00' AS TIMESTAMP)
+  UNION ALL SELECT 404, 'CLM-2025-000404', 303, 1003, 204, 3008, CAST('2025-07-08 22:05:00' AS TIMESTAMP), 'OPEN', FALSE, FALSE, FALSE, FALSE, CAST('2025-07-08 22:05:00' AS TIMESTAMP)
 ) s;
 
 
@@ -401,6 +416,7 @@ SELECT * FROM (
   SELECT CAST(5201 AS BIGINT) AS loss_driver_id, CAST(301 AS BIGINT) AS loss_event_id, CAST(501 AS BIGINT) AS driver_id, CAST(401 AS BIGINT) AS claim_id, CAST(201 AS BIGINT) AS insurable_object_id, 'INSURED_OPERATOR' AS driver_role_code, FALSE AS was_cited_indicator, FALSE AS impairment_suspected_indicator, CAST('2025-06-15 19:10:00' AS TIMESTAMP) AS created_at
   UNION ALL SELECT 5202, 301, 503, 401, 203, 'ADVERSE_OPERATOR', TRUE, FALSE, CAST('2025-06-16 09:15:00' AS TIMESTAMP)
   UNION ALL SELECT 5203, 302, 501, 403, 202, 'INSURED_OPERATOR', FALSE, FALSE, CAST('2024-11-03 08:35:00' AS TIMESTAMP)
+  UNION ALL SELECT 5204, 303, 501, 404, 204, 'INSURED_OPERATOR', FALSE, FALSE, CAST('2025-07-08 22:10:00' AS TIMESTAMP)
 ) s;
 
 
@@ -419,6 +435,8 @@ SELECT * FROM (
   UNION ALL SELECT 6007, 403, 1, 'INSURED', CAST('2024-11-03 08:30:00' AS TIMESTAMP), NULL, TRUE, CAST('2024-11-03 08:30:00' AS TIMESTAMP)
   UNION ALL SELECT 6008, 403, 4, 'ADJUSTER', CAST('2024-11-03 09:00:00' AS TIMESTAMP), CAST('2024-12-01 17:00:00' AS TIMESTAMP), FALSE, CAST('2024-11-03 09:00:00' AS TIMESTAMP)
   UNION ALL SELECT 6009, 403, 4, 'ADJUSTER', CAST('2024-11-03 09:00:00' AS TIMESTAMP), NULL, TRUE, CAST('2024-11-03 09:00:00' AS TIMESTAMP)
+  UNION ALL SELECT 6010, 404, 1, 'INSURED', CAST('2025-07-08 22:05:00' AS TIMESTAMP), NULL, TRUE, CAST('2025-07-08 22:05:00' AS TIMESTAMP)
+  UNION ALL SELECT 6011, 404, 4, 'ADJUSTER', CAST('2025-07-08 22:20:00' AS TIMESTAMP), NULL, TRUE, CAST('2025-07-08 22:20:00' AS TIMESTAMP)
 ) s;
 
 
@@ -427,6 +445,7 @@ SELECT * FROM (
   SELECT CAST(7001 AS BIGINT) AS claim_lifecycle_id, CAST(401 AS BIGINT) AS claim_id, CAST('2025-06-15 19:05:00' AS TIMESTAMP) AS intake_datetime, CAST('2025-06-15 20:00:00' AS TIMESTAMP) AS triage_datetime, CAST('2025-06-17 14:00:00' AS TIMESTAMP) AS inspection_datetime, CAST('2025-07-10 16:00:00' AS TIMESTAMP) AS settlement_offer_datetime, CAST(NULL AS TIMESTAMP) AS closed_datetime, CAST(4 AS BIGINT) AS current_adjuster_party_id, CAST('2025-07-10 16:00:00' AS TIMESTAMP) AS last_updated_at
   UNION ALL SELECT 7002, 402, CAST('2025-06-15 19:20:00' AS TIMESTAMP), CAST('2025-06-15 20:15:00' AS TIMESTAMP), CAST(NULL AS TIMESTAMP), CAST('2025-07-20 10:00:00' AS TIMESTAMP), NULL, 4, CAST('2025-08-01 09:00:00' AS TIMESTAMP)
   UNION ALL SELECT 7003, 403, CAST('2024-11-03 08:30:00' AS TIMESTAMP), CAST('2024-11-03 09:15:00' AS TIMESTAMP), CAST('2024-11-05 11:00:00' AS TIMESTAMP), CAST('2024-11-20 15:00:00' AS TIMESTAMP), CAST('2024-12-01 17:00:00' AS TIMESTAMP), 4, CAST('2024-12-01 17:00:00' AS TIMESTAMP)
+  UNION ALL SELECT 7004, 404, CAST('2025-07-08 22:05:00' AS TIMESTAMP), CAST('2025-07-08 22:40:00' AS TIMESTAMP), CAST(NULL AS TIMESTAMP), CAST(NULL AS TIMESTAMP), NULL, 4, CAST('2025-07-08 22:40:00' AS TIMESTAMP)
 ) s;
 
 
@@ -438,6 +457,7 @@ INSERT INTO TABLE car_insurance_claims.police_report
 SELECT * FROM (
   SELECT CAST(5301 AS BIGINT) AS police_report_id, CAST(301 AS BIGINT) AS loss_event_id, CAST(401 AS BIGINT) AS claim_id, 'SPD-25-11887' AS report_number, 'Springfield Police Department' AS agency_name, CAST(12 AS BIGINT) AS agency_party_id, CAST('2025-06-15 18:10:00' AS TIMESTAMP) AS report_datetime, CAST('2025-06-15' AS DATE) AS report_date, CAST(501 AS BIGINT) AS location_id, TRUE AS citation_issued_indicator, 'Unit 2 cited for failure to reduce speed; rear-end collision.' AS narrative_summary, CAST('2025-06-16 08:00:00' AS TIMESTAMP) AS created_at
   UNION ALL SELECT 5302, 302, 403, 'SPD-24-99012', 'Springfield Police Department', 12, CAST('2024-11-03 07:45:00' AS TIMESTAMP), CAST('2024-11-03' AS DATE), 502, FALSE, 'Theft report taken; vehicle entered NCIC.', CAST('2024-11-03 09:00:00' AS TIMESTAMP)
+  UNION ALL SELECT 5303, 303, 404, 'SPD-25-14044', 'Springfield Police Department', 12, CAST('2025-07-08 21:40:00' AS TIMESTAMP), CAST('2025-07-08' AS DATE), 504, FALSE, 'Single-vehicle collision with a utility pole; no citation issued at scene.', CAST('2025-07-09 08:00:00' AS TIMESTAMP)
 ) s;
 
 
@@ -445,6 +465,7 @@ INSERT INTO TABLE car_insurance_claims.fault_determination
 SELECT * FROM (
   SELECT CAST(5401 AS BIGINT) AS fault_determination_id, CAST(401 AS BIGINT) AS claim_id, CAST(301 AS BIGINT) AS loss_event_id, CAST(503 AS BIGINT) AS at_fault_driver_id, CAST(3 AS BIGINT) AS at_fault_party_id, CAST(20.00 AS DECIMAL(5,2)) AS insured_fault_percent, CAST(80.00 AS DECIMAL(5,2)) AS adverse_fault_percent, 'POLICE' AS fault_basis_code, 'FINAL' AS determination_status_code, CAST('2025-06-18 10:00:00' AS TIMESTAMP) AS determination_datetime, 'Final liability: adverse primarily at fault based on police report and photos.' AS notes, CAST('2025-06-18 10:00:00' AS TIMESTAMP) AS created_at
   UNION ALL SELECT 5402, 402, 301, 503, 3, CAST(20.00 AS DECIMAL(5,2)), CAST(80.00 AS DECIMAL(5,2)), 'ADJUSTER', 'FINAL', CAST('2025-06-18 10:05:00' AS TIMESTAMP), 'Same loss liability adopted for BI claim.', CAST('2025-06-18 10:05:00' AS TIMESTAMP)
+  UNION ALL SELECT 5403, 404, 303, 501, 1, CAST(100.00 AS DECIMAL(5,2)), CAST(0.00 AS DECIMAL(5,2)), 'POLICE', 'FINAL', CAST('2025-07-09 10:00:00' AS TIMESTAMP), 'Insured operator solely at fault; single-vehicle pole strike.', CAST('2025-07-09 10:00:00' AS TIMESTAMP)
 ) s;
 
 
@@ -472,6 +493,7 @@ SELECT * FROM (
   SELECT CAST(8101 AS BIGINT) AS claim_folder_id, CAST(401 AS BIGINT) AS claim_id, 'OPEN' AS folder_status_code, CAST('2025-06-15 19:05:00' AS TIMESTAMP) AS created_at, CAST(NULL AS TIMESTAMP) AS closed_at
   UNION ALL SELECT 8102, 402, 'OPEN', CAST('2025-06-15 19:20:00' AS TIMESTAMP), NULL
   UNION ALL SELECT 8103, 403, 'ARCHIVED', CAST('2024-11-03 08:30:00' AS TIMESTAMP), CAST('2024-12-01 17:00:00' AS TIMESTAMP)
+  UNION ALL SELECT 8104, 404, 'OPEN', CAST('2025-07-08 22:05:00' AS TIMESTAMP), NULL
 ) s;
 
 
@@ -484,6 +506,8 @@ SELECT * FROM (
   UNION ALL SELECT 8205, 8102, 402, 'MEDICAL', 'CareFirst initial eval', 'application/pdf', 's3a://claims-docs/402/medical1.pdf', 'ECM', CAST('2025-06-20 09:00:00' AS TIMESTAMP), CAST('2025-06-20' AS DATE), NULL, NULL, TRUE, CAST('2025-06-20 09:00:00' AS TIMESTAMP)
   UNION ALL SELECT 8206, 8103, 403, 'FNOL', 'FNOL theft CLM-2024-000403', 'application/pdf', 's3a://claims-docs/403/fnol.pdf', 'FNOL_APP', CAST('2024-11-03 08:31:00' AS TIMESTAMP), CAST('2024-11-03' AS DATE), NULL, NULL, TRUE, CAST('2024-11-03 08:31:00' AS TIMESTAMP)
   UNION ALL SELECT 8207, 8103, 403, 'POLICE_REPORT', 'SPD-24-99012 scan', 'application/pdf', 's3a://claims-docs/403/police.pdf', 'ECM', CAST('2024-11-03 10:00:00' AS TIMESTAMP), CAST('2024-11-03' AS DATE), 5302, NULL, TRUE, CAST('2024-11-03 10:00:00' AS TIMESTAMP)
+  UNION ALL SELECT 8208, 8104, 404, 'FNOL', 'FNOL intake CLM-2025-000404', 'application/pdf', 's3a://claims-docs/404/fnol.pdf', 'FNOL_APP', CAST('2025-07-08 22:06:00' AS TIMESTAMP), CAST('2025-07-08' AS DATE), NULL, NULL, TRUE, CAST('2025-07-08 22:06:00' AS TIMESTAMP)
+  UNION ALL SELECT 8209, 8104, 404, 'POLICE_REPORT', 'SPD-25-14044 scan', 'application/pdf', 's3a://claims-docs/404/police.pdf', 'ECM', CAST('2025-07-09 08:30:00' AS TIMESTAMP), CAST('2025-07-09' AS DATE), 5303, NULL, TRUE, CAST('2025-07-09 08:30:00' AS TIMESTAMP)
 ) s;
 
 
@@ -565,6 +589,8 @@ SELECT * FROM (
   UNION ALL SELECT 7110, 403, 'OFFER', CAST('2024-11-20 15:00:00' AS TIMESTAMP), CAST('2024-11-20' AS DATE), 4, 9003, NULL, NULL, 'ACV total loss offer', CAST('2024-11-20 15:00:00' AS TIMESTAMP)
   UNION ALL SELECT 7111, 403, 'PAYMENT', CAST('2024-11-22 10:00:00' AS TIMESTAMP), CAST('2024-11-22' AS DATE), 4, NULL, 9204, NULL, 'Insured ACV payment', CAST('2024-11-22 10:00:00' AS TIMESTAMP)
   UNION ALL SELECT 7112, 403, 'CLOSE', CAST('2024-12-01 17:00:00' AS TIMESTAMP), CAST('2024-12-01' AS DATE), 4, NULL, NULL, NULL, 'Claim closed after salvage', CAST('2024-12-01 17:00:00' AS TIMESTAMP)
+  UNION ALL SELECT 7113, 404, 'INTAKE', CAST('2025-07-08 22:05:00' AS TIMESTAMP), CAST('2025-07-08' AS DATE), 4, NULL, NULL, NULL, 'FNOL intake completed', CAST('2025-07-08 22:05:00' AS TIMESTAMP)
+  UNION ALL SELECT 7114, 404, 'TRIAGE', CAST('2025-07-08 22:40:00' AS TIMESTAMP), CAST('2025-07-08' AS DATE), 4, NULL, NULL, NULL, 'Assigned collision; coverage review pending', CAST('2025-07-08 22:40:00' AS TIMESTAMP)
 ) s;
 
 

@@ -1,4 +1,4 @@
-# Deny Agent (Agent Studio paste)
+# Deny Agent (configured in Agent Studio)
 
 Use when `route_claim` assigns `DenyAgent` / `DenyUnlawfulOperation` /
 `DenyExcludedDriver` / `DenyLapsedPolicy` / `DenyAudit`. YAML already chose
@@ -39,7 +39,7 @@ YAML probes already chose next_step. You do not re-decide the lane.
 ### Goal
 ```text
 Given claim_id, run_id, and next_step from Orchestrator
-(default claim_id=401, run_id=demo-401-deny, next_step=DenyUnlawfulOperation):
+(default claim_id=404, run_id=demo-404-deny, next_step=DenyUnlawfulOperation):
 
 WRITE LETTER (only if the user asked to write, draft, or generate a letter
 or denial letter). next_step must be DenyUnlawfulOperation, DenyExcludedDriver,
@@ -93,11 +93,11 @@ Attach the claims MCP (V7: `run_named_query` / `run_named_write`) and Studio
 
 | Use | Tool | Flat Action Input |
 |---|---|---|
-| Read | `run_named_query` | `{"label":"get_deny_view","claim_id":"401"}` |
-| Deny write | `run_named_write` | `{"label":"deny_claim","run_id":"demo-401-deny","event_json":"{...}"}` |
-| Audit | `run_named_write` | `{"label":"write_audit_event","run_id":"demo-401-deny","event_json":"{...}"}` |
-| Promote | `run_named_write` | `{"label":"promote_audit_run","run_id":"demo-401-deny"}` |
-| Letter file | `save_claim_letter` | `{"claim_id":"401","run_id":"demo-401-deny","next_step":"DenyUnlawfulOperation","body":"Subject: ...\\n\\n..."}` |
+| Read | `run_named_query` | `{"label":"get_deny_view","claim_id":"404"}` |
+| Deny write | `run_named_write` | `{"label":"deny_claim","run_id":"demo-404-deny","event_json":"{...}"}` |
+| Audit | `run_named_write` | `{"label":"write_audit_event","run_id":"demo-404-deny","event_json":"{...}"}` |
+| Promote | `run_named_write` | `{"label":"promote_audit_run","run_id":"demo-404-deny"}` |
+| Letter file | `save_claim_letter` | `{"claim_id":"404","run_id":"demo-404-deny","next_step":"DenyUnlawfulOperation","body":"Subject: ...\\n\\n..."}` |
 
 Do not attach spine/signals or build/validate/route. Do not call `deny_claim`
 on `DenyAudit`. Do not call `save_claim_letter` unless the user asked to write
@@ -107,8 +107,8 @@ the letter.
 
 ```text
 coworker: Deny Agent
-task: claim_id=401 run_id=demo-401-deny next_step=DenyUnlawfulOperation.
-Call run_named_query once with {"label":"get_deny_view","claim_id":"401"}.
+task: claim_id=404 run_id=demo-404-deny next_step=DenyUnlawfulOperation.
+Call run_named_query once with {"label":"get_deny_view","claim_id":"404"}.
 Then run_named_write once with label deny_claim,
 event_json next_step DenyUnlawfulOperation.
 Do not save_claim_letter. Return summary + exact JSON.

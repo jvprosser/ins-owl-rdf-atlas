@@ -1,4 +1,4 @@
-# Claims Orchestrator (Agent Studio paste)
+# Claims Orchestrator (configured in Agent Studio)
 
 You cannot call MCP from this agent. You only Delegate, then Final Answer.
 
@@ -50,7 +50,8 @@ STRUCTURED CLAIM INTAKE (user gives a claim_id to intake, route, or status):
    routing_summary verbatim. Do not mention probe ids. Then STOP. Do not
    call specialist view labels. Do not write audit.
 
-STATUS / INTAKE / ROUTE ONLY (user asks for status, intake, or route):
+STATUS / INTAKE / ROUTE ONLY (user asks what the status is, or to intake
+or route without doing the work):
 After Manager returns, Final Answer routing_summary verbatim. If
 letter_on_request is true, routing_summary already says a letter is
 recommended and will not be drafted unless they ask. Do not Delegate to
@@ -66,7 +67,8 @@ Do not send mail. Do not create a letter unless they asked. If the route
 did not recommend a letter (letter_on_request false), Final Answer that
 no letter is the next step.
 
-COMPLETE POST-ROUTE WORK (user asked to complete specialist work):
+COMPLETE POST-ROUTE WORK (user asked to process, handle, take care of,
+work, or complete the claim — not status-only):
 2) Map Observation agent_role to coworker Role (exact string, do not invent):
    LitigationAgent → Litigation Agent (view get_litigation_view;
      CompleteLitigationFile or EscalateDiscovery → create_litigation_task;
@@ -157,158 +159,62 @@ Use the **coworker** column as the exact `Delegate` string. Specialists must be 
 | `DenyAgent` | `Deny Agent` | `run_named_query` label `get_deny_view`; R6.* → `deny_claim`; `DenyAudit` → `write_audit_event` then `promote_audit_run`. Studio `save_claim_letter` only when the user asks to write the denial letter |
 | `HumanReviewAgent` | `Human Review Agent` | Only for `HumanCitationReview`: `get_deny_view` then `write_audit_event`. Never `deny_claim`. `HumanReviewOrWait` stays route-JSON-only |
 
-Only these specialists have Studio pastes. Playbook may still emit `SiuAgent`, `SettlementAgent`, or `DataQualityAgent` — there is no coworker for those yet. Final Answer with the route JSON. Do not invent a Role.
+Only these specialists have been configured in Agent Studio. Playbook may still emit `SiuAgent`, `SettlementAgent`, or `DataQualityAgent` — there is no coworker for those yet. Final Answer with the route JSON. Do not invent a Role.
 
 If the coworker is not in the Crew: Final Answer with the route JSON (and Studio’s “must be one of” list).
 
-## User prompt (end-to-end, chat Orchestrator)
+## User chats (Orchestrator)
+
+Paste these as the handler would type them. Goal text already has labels, `run_id`, and coworker map. Do not put those in the chat.
+
+Do the next work (402 → Litigation / EscalateDiscovery on the live seed):
 
 ```text
-Intake and route claim_id 402, then complete the post-route specialist work.
-
-You have no MCP tools. Do not skip the Orchestrator.
-
-1) Delegate ONCE to Manager (exact Role string from your tool list).
-   Task: structured claim intake for 402 —
-   run_named_query label get_claim_spine, then get_claim_routing_signals,
-   then build, validate, route. STOP after route_claim. Return the
-   Observation routing_summary verbatim. Do not mention probe ids.
-   Do not call specialist views or write audit.
-
-2) Map agent_role to coworker Role from your Goal handoff map.
-   Delegate ONCE to that coworker (for 402 this should be Litigation Agent).
-   Task: claim_id=402 run_id=demo-402-e2e next_step=<next_step>.
-   Follow the map: view via run_named_query, then create_litigation_task
-   (EscalateDiscovery on this seed) or write_audit_event if LitigationSupport.
-   Do not save_claim_letter unless the user asked to write a letter.
-
-3) Final Answer: route decision + specialist summary + exact write JSON.
-   Then STOP. Do not Delegate a third time.
+Please process claim 402.
 ```
 
-Same e2e prompt with another `claim_id` once that specialist exists in the Crew
-(Litigation, Subrogation, BI, PD, Closeout, Deny, or Human Review). Seed **401**
-may route `PdClaimsAgent` (apply `pd_task` DDL before the write) or subrogation
-unless denial/citation flags are set. Seed **403** is CLOSED → Closeout.
+Same sentence with another claim id once that specialist is in the Crew (Litigation, Subrogation, BI, PD, Closeout, Deny, or Human Review). Seed **401** is PD / subro. Seed **404** is deny (`PA-1003`). Seed **403** is CLOSED → Closeout.
 
 Status only (no specialist write, no letter):
 
 ```text
-What is the status of claim_id 402? Intake and route only.
-Do not complete post-route specialist work. Do not write a letter.
+What's the status of claim 402?
 ```
 
-Write a letter after a route that set `letter_on_request` (LitigationSupport,
-RequestPoliceReport, or a Deny Agent step):
+Write a letter after a route that recommended one:
 
 ```text
-Write the recommended letter for claim_id 402.
-Delegate ONCE to Litigation Agent. View get_litigation_view, then
-save_claim_letter. Do not send mail. Do not create a litigation_task.
+Please write the recommended letter for claim 402.
 ```
 
-## User prompt (closeout e2e, claim 403)
+Closeout:
 
 ```text
-Intake and route claim_id 403, then complete the post-route specialist work.
-
-You have no MCP tools. Do not skip the Orchestrator.
-
-1) Delegate ONCE to Manager (exact Role string from your tool list).
-   Task: structured claim intake for 403 —
-   run_named_query label get_claim_spine, then get_claim_routing_signals,
-   then build, validate, route. STOP after route_claim. Return the
-   Observation routing_summary verbatim. Do not mention probe ids.
-   Do not write audit.
-
-2) Map agent_role to coworker Role. For 403 this should be Closeout Agent.
-   Delegate ONCE to Closeout Agent.
-   Task: claim_id=403 run_id=demo-403-close.
-   run_named_write write_audit_event then run_named_write promote_audit_run.
-
-3) Final Answer: route decision + exact write JSON + exact promote JSON.
-   Then STOP. Do not Delegate a third time.
+Please process claim 403.
 ```
 
-## User prompt (deny / citation, claim 401 only)
-
-Flip **401** only in Impala for the smoke. Restore OPEN / listed / unimpaired /
-ACTIVE / `was_cited_indicator` false afterward. Leave **402** / **403** alone.
-
-Coded exclusion (expect `DenyAgent` and `deny_claim`):
+Deny (flip **404** impairment in Impala; restore afterward; leave **401** / **402** / **403** alone):
 
 ```text
-Intake and route claim_id 401, then complete the post-route specialist work.
-
-You have no MCP tools. Do not skip the Orchestrator.
-
-1) Delegate ONCE to Manager. Structured intake for 401. STOP after route_claim.
-   Expect next_step one of DenyUnlawfulOperation / DenyExcludedDriver /
-   DenyLapsedPolicy, agent_role DenyAgent.
-
-2) Delegate ONCE to Deny Agent.
-   Task: claim_id=401 run_id=demo-401-deny next_step=<next_step>.
-   run_named_query get_deny_view, then run_named_write deny_claim.
-   Do not save_claim_letter unless asked to write the letter.
-
-3) Final Answer: route + exact write JSON. STOP.
+Please process claim 404.
 ```
 
-Citation review (insured `was_cited_indicator` true; status stays OPEN):
+Citation (flip **401** `was_cited_indicator` only; restore afterward):
 
 ```text
-Intake and route claim_id 401, then complete the post-route specialist work.
-Delegate ONCE to Human Review Agent when next_step=HumanCitationReview.
-View get_deny_view, then write_audit_event. Do not deny_claim. Do not write a letter.
+Please process claim 401.
 ```
 
-Direct specialist (skip intake):
+Unstructured (no claim id). Litigation cosine:
 
 ```text
-Delegate ONCE to coworker "Closeout Agent".
-task: claim_id=403 run_id=demo-403-close.
-Call run_named_write once with label write_audit_event.
-Then run_named_write once with label promote_audit_run.
-Return summary + exact JSON.
+We were served a civil complaint and the case is in discovery.
 ```
 
-## User prompt (unstructured, chat Orchestrator)
-
-Litigation cosine (expect label LITIGATION, coworker "Litigation Agent", needs_llm false):
+Low-score (`needs_llm` true):
 
 ```text
-Do not run structured claim intake. There is no claim_id.
-
-Delegate ONCE to Routing Agent.
-Task: Call pre_route_text once with text:
-"We were served a civil complaint and the case is in discovery."
-Return the exact tool JSON.
-
-When you have the Observation, Final Answer label, score, coworker, needs_llm.
-Do not Delegate a second time. Do not call MCP.
+what time is lunch
 ```
 
-Low-score (expect needs_llm true):
-
-```text
-Do not run structured claim intake. There is no claim_id.
-
-Delegate ONCE to Routing Agent.
-Task: Call pre_route_text once with text: "what time is lunch"
-Return the exact tool JSON. Then Final Answer. Do not Delegate again.
-```
-
-## User prompt (identity, chat Orchestrator)
-
-```text
-Do not make a multi-step Plan.
-
-Delegate ONCE to the Manager coworker using the EXACT Role string from your
-tool list (the long Manager sentence if that is what is listed).
-
-Task: Call get_server_info once. Return the exact JSON. Do not run structured
-claim intake. Do not call any other tool.
-
-When you have the Observation JSON, Final Answer immediately with that JSON.
-Do not Delegate a second time. content_id should be INS_CLAIMS_MCP_V7.
-```
+Operator identity check (not a handler chat): `Call get_server_info once and stop.` Expect `INS_CLAIMS_MCP_V7`.

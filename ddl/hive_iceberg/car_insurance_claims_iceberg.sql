@@ -26,7 +26,7 @@
 --   D11 Codes              : ref_code_list / ref_code (SKOS-ready)
 --   D12 PII                : person holds PII; organization for vendors/firms
 --
--- HIGH-VALUE EXTENSION (accepted): drivers, location, police report, fault,
+-- HIGH-VALUE EXTENSION (accepted): drivers, geo_location, police report, fault,
 --   injuries, damage assessment, claim folder/documents, settlement offers,
 --   subrogation, recoveries, litigation, fraud/SIU assessment, other insurance,
 --   lifecycle events.
@@ -65,14 +65,14 @@
 --   party 1──* party_postal_address
 --   party 1──* policy_party_role *──1 insurance_policy
 --   party 1──1 driver (driver is a person party specialization)
---   location (first-class) <- loss_event, police_report
+--   geo_location (first-class) <- loss_event, police_report
 --   insurance_policy 1──* policy_coverage *──1 coverage
 --   insurance_policy 1──* policy_insurable_object *──1 insurable_object
 --   insurance_policy 1──* policy_driver *──1 driver
 --   insurable_object 1──1 vehicle
 --   loss_event 1──* claim
 --   loss_event 1──* loss_driver *──1 driver
---   loss_event 0──1 location
+--   loss_event 0──1 geo_location
 --   loss_event 0──* police_report
 --   insurance_policy 1──* claim
 --   claim 0──1 insurable_object (vehicle)
@@ -129,7 +129,7 @@
 -- =============================================================================
 
 CREATE DATABASE IF NOT EXISTS car_insurance_claims
-COMMENT 'Personal auto P&C insurance warehouse: parties, policies, coverages, vehicles, loss events, claims, reserves, payments, repairs, plus high-value FNOL/claims entities (drivers, location, police reports, fault, injuries, assessments, documents, offers, subrogation, recoveries, litigation, fraud/SIU, other insurance, lifecycle events). Iceberg analytics and OWL/RDF semantic mapping (ACORD/OMG/FIBO-aligned).';
+COMMENT 'Personal auto P&C insurance warehouse: parties, policies, coverages, vehicles, loss events, claims, reserves, payments, repairs, plus high-value FNOL/claims entities (drivers, geo_location, police reports, fault, injuries, assessments, documents, offers, subrogation, recoveries, litigation, fraud/SIU, other insurance, lifecycle events). Iceberg analytics and OWL/RDF semantic mapping (ACORD/OMG/FIBO-aligned).';
 
 USE car_insurance_claims;
 
@@ -654,7 +654,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS car_insurance_claims.loss_event (
   loss_datetime               TIMESTAMP COMMENT 'Best-known date/time of loss (may be date-only in source with 00:00).',
   loss_date                   DATE    COMMENT 'Loss calendar date; preferred partition/analytics field.',
   loss_cause_code             STRING  COMMENT 'Code -> ref_code(LOSS_CAUSE): COLLISION | THEFT | WEATHER | VANDALISM | GLASS | OTHER.',
-  location_id                 BIGINT  COMMENT 'FK -> location.location_id. First-class loss scene (prefer over fragmented postal fields).',
+  location_id                 BIGINT  COMMENT 'FK -> geo_location.location_id. First-class loss scene (prefer over fragmented postal fields).',
   loss_location_postal_code   STRING  COMMENT 'Optional postal/region code where loss occurred (legacy/denormalized).',
   loss_location_country_subdivision_code STRING COMMENT 'State/province of loss location (denormalized convenience).',
   loss_description            STRING  COMMENT 'Free-text FNOL narrative; useful for NLP agents; may contain PII.',
@@ -676,14 +676,14 @@ TBLPROPERTIES (
   'llm.fibo_alignment' = 'extend: event/occurrence underpinning Claim',
   'llm.primary_key' = 'loss_event_id',
   'llm.business_key' = '',
-  'llm.foreign_keys' = 'location_id->location.location_id',
+  'llm.foreign_keys' = 'location_id->geo_location.location_id',
   'llm.object_properties' = 'givesRiseToClaim;occurredAtLocation;hasPoliceReport;hasLossDriver',
   'llm.pii' = 'mixed',
   'llm.sensitivity' = 'confidential',
   'llm.grain' = 'one loss occurrence',
   'llm.partitioning_rationale' = 'year(loss_date)+loss_cause_code for actuarial accident-year and cause analytics',
   'llm.competency_questions' = 'What caused the loss? How many claims stem from loss_event L? Where did it occur?',
-  'llm.related_tables' = 'claim;location;police_report;loss_driver;fault_determination;other_insurance',
+  'llm.related_tables' = 'claim;geo_location;police_report;loss_driver;fault_determination;other_insurance',
   'llm.decision_refs' = 'D9,high_value_location',
   'llm.notes' = 'Legacy claims.date_of_loss migrates to loss_date/loss_datetime.'
 );
@@ -1030,10 +1030,12 @@ TBLPROPERTIES (
 
 
 -- =============================================================================
--- HIGH-VALUE EXTENSION: LOCATION
+-- HIGH-VALUE EXTENSION: GEO_LOCATION
+-- Table is geo_location (not location): LOCATION is reserved in Impala.
+-- PK/FK column stays location_id.
 -- =============================================================================
 
-CREATE EXTERNAL TABLE IF NOT EXISTS car_insurance_claims.location (
+CREATE EXTERNAL TABLE IF NOT EXISTS car_insurance_claims.geo_location (
   location_id                       BIGINT  COMMENT 'PK. Surrogate location identifier.',
   location_type_code                STRING  COMMENT 'Code -> ref_code(LOCATION_TYPE): LOSS_SCENE | GARAGING | INTERSECTION | PARKING_LOT | HIGHWAY | OTHER.',
   location_name                     STRING  COMMENT 'Optional place name (intersection name, landmark, facility).',
@@ -1209,12 +1211,12 @@ CREATE EXTERNAL TABLE IF NOT EXISTS car_insurance_claims.police_report (
   agency_party_id                   BIGINT  COMMENT 'Optional FK -> party/organization for the agency.',
   report_datetime                   TIMESTAMP COMMENT 'When the report was taken / filed.',
   report_date                       DATE    COMMENT 'Report calendar date for partitioning.',
-  location_id                       BIGINT  COMMENT 'Optional FK -> location.location_id of incident as recorded by police.',
+  location_id                       BIGINT  COMMENT 'Optional FK -> geo_location.location_id of incident as recorded by police.',
   citation_issued_indicator         BOOLEAN COMMENT 'True if any citation issued (detail may be on loss_driver).',
   narrative_summary                 STRING  COMMENT 'Short police narrative if stored; may contain PII.',
   created_at                        TIMESTAMP COMMENT 'Row creation timestamp.'
 )
-COMMENT 'Law-enforcement incident/police report associated with a loss (common FNOL artifact). Supports report number lookup and linkage to location and claims.'
+COMMENT 'Law-enforcement incident/police report associated with a loss (common FNOL artifact). Supports report number lookup and linkage to geo_location and claims.'
 PARTITIONED BY SPEC (
   YEAR(report_date)
 )
@@ -1229,14 +1231,14 @@ TBLPROPERTIES (
   'llm.fibo_alignment' = 'extend: evidence document for Claim',
   'llm.primary_key' = 'police_report_id',
   'llm.business_key' = 'agency_name+report_number',
-  'llm.foreign_keys' = 'loss_event_id->loss_event.loss_event_id;claim_id->claim.claim_id;location_id->location.location_id;agency_party_id->party.party_id',
+  'llm.foreign_keys' = 'loss_event_id->loss_event.loss_event_id;claim_id->claim.claim_id;location_id->geo_location.location_id;agency_party_id->party.party_id',
   'llm.object_properties' = 'documentsLoss;documentsClaim;reportedAtLocation',
   'llm.pii' = 'mixed',
   'llm.sensitivity' = 'confidential',
   'llm.grain' = 'one police/accident report',
   'llm.partitioning_rationale' = 'year(report_date) for FNOL document-era pruning',
   'llm.competency_questions' = 'Is there a police report for loss L? What is the report number?',
-  'llm.related_tables' = 'loss_event;claim;location;claim_document;loss_driver',
+  'llm.related_tables' = 'loss_event;claim;geo_location;claim_document;loss_driver',
   'llm.decision_refs' = 'high_value_police_report',
   'llm.notes' = 'Binary/PDF payload should live in claim_document with document_type_code=POLICE_REPORT; this table holds structured metadata.'
 );

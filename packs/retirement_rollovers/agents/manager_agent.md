@@ -1,4 +1,4 @@
-# Manager agent — retirement rollovers (Agent Studio paste)
+# Manager agent — retirement rollovers (configured in Agent Studio)
 
 CrewAI `coworker` must match **Role** exactly: `Manager agent`.
 

@@ -97,20 +97,7 @@ Check: Delegate Manager `get_server_info` → `content_id=INS_FINSERV_MCP_V1`. T
 Paste Orchestrator / Manager / Exception Queue from `agents/`. Then chat Orchestrator:
 
 ```text
-Intake and route claim_id 7002, then complete the post-route specialist work.
-
-You have no MCP tools. Do not skip the Orchestrator.
-
-1) Delegate ONCE to Manager (Role "Manager agent").
-   Task: structured intake for 7002 —
-   run_named_query label get_distribution_spine, then get_distribution_routing_signals,
-   then build, validate, route. STOP after route_claim.
-
-2) Delegate ONCE to Exception Queue Agent.
-   Task: claim_id=7002 run_id=demo-7002-exc.
-   run_named_query label get_distribution_exception_view, then run_named_write write_audit_event.
-
-3) Final Answer: route + specialist summary + exact write JSON. STOP.
+Please process claim 7002.
 ```
 
 Expect `next_step=RequestSubstantiation`, `lane=EXCEPTION`, probe **R2.2**.

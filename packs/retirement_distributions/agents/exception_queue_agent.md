@@ -1,4 +1,4 @@
-# Exception Queue Agent (Agent Studio paste)
+# Exception Queue Agent (configured in Agent Studio)
 
 Use when `route_claim` assigns `ExceptionQueueAgent` (e.g. case **7002** hardship substantiation missing).
 

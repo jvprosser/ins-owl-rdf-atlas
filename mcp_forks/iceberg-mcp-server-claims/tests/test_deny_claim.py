@@ -8,10 +8,10 @@ from iceberg_mcp_server_claims.tools import deny_claim
 
 
 def test_update_claim_denied_sql():
-    sql = deny_claim.update_claim_denied_sql("car_insurance_claims", 401)
+    sql = deny_claim.update_claim_denied_sql("car_insurance_claims", 404)
     assert "UPDATE car_insurance_claims.claim" in sql
     assert "claim_status_code = 'DENIED'" in sql
-    assert "claim_id = 401" in sql
+    assert "claim_id = 404" in sql
     assert "CLOSED" in sql
     assert "DENIED" in sql
 
@@ -21,7 +21,7 @@ def test_deny_claim_ok():
 
     def fake_query(sql: str):
         assert "claim_status_code" in sql
-        assert "401" in sql
+        assert "404" in sql
         return [{"claim_status_code": "OPEN"}]
 
     def fake_dml(sql: str):
@@ -29,9 +29,9 @@ def test_deny_claim_ok():
         return "OK"
 
     raw = deny_claim.deny_claim(
-        "demo-401-deny",
+        "demo-404-deny",
         json.dumps(
-            {"claim_id": "401", "next_step": "DenyUnlawfulOperation"}
+            {"claim_id": "404", "next_step": "DenyUnlawfulOperation"}
         ),
         "car_insurance_claims",
         query_rows=fake_query,
@@ -72,8 +72,8 @@ def test_deny_claim_refuses_already_denied():
         return [{"claim_status_code": "DENIED"}]
 
     raw = deny_claim.deny_claim(
-        "demo-401-deny",
-        json.dumps({"claim_id": "401", "next_step": "DenyExcludedDriver"}),
+        "demo-404-deny",
+        json.dumps({"claim_id": "404", "next_step": "DenyExcludedDriver"}),
         "car_insurance_claims",
         query_rows=fake_query,
         execute_dml=lambda _sql: "OK",
@@ -85,7 +85,7 @@ def test_deny_claim_refuses_already_denied():
 
 def test_deny_claim_missing_claim():
     raw = deny_claim.deny_claim(
-        "demo-401-deny",
+        "demo-404-deny",
         json.dumps({"claim_id": "999", "next_step": "DenyUnlawfulOperation"}),
         "car_insurance_claims",
         query_rows=lambda _sql: [],
@@ -96,8 +96,8 @@ def test_deny_claim_missing_claim():
 
 def test_deny_claim_rejects_deny_audit_step():
     raw = deny_claim.deny_claim(
-        "demo-401-deny",
-        json.dumps({"claim_id": "401", "next_step": "DenyAudit"}),
+        "demo-404-deny",
+        json.dumps({"claim_id": "404", "next_step": "DenyAudit"}),
     )
     payload = json.loads(raw)
     assert "next_step" in payload["error"]
@@ -105,7 +105,7 @@ def test_deny_claim_rejects_deny_audit_step():
 
 def test_deny_claim_requires_claim_id():
     raw = deny_claim.deny_claim(
-        "demo-401-deny",
+        "demo-404-deny",
         json.dumps({"next_step": "DenyUnlawfulOperation"}),
     )
     assert "claim_id" in json.loads(raw)["error"]
@@ -118,8 +118,8 @@ def test_deny_claim_reports_audit_failure():
         return "OK"
 
     raw = deny_claim.deny_claim(
-        "demo-401-deny",
-        json.dumps({"claim_id": "401", "next_step": "DenyLapsedPolicy"}),
+        "demo-404-deny",
+        json.dumps({"claim_id": "404", "next_step": "DenyLapsedPolicy"}),
         "car_insurance_claims",
         query_rows=lambda _sql: [{"claim_status_code": "OPEN"}],
         execute_dml=fake_dml,

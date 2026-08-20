@@ -1,4 +1,4 @@
-"""Server identity for Studio paste / restart verification."""
+"""Server identity for Agent Studio configuration / restart verification."""
 
 from __future__ import annotations
 

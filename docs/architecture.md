@@ -66,17 +66,17 @@ Mapping from lake JSON → case JSON is code (claims builder) or `pack.yaml` fie
 
 Probes bind field paths on the case document (`litigation_indicator`, `triangle`, …). Rules are reviewed as YAML, not as prompt text and not as Iceberg UI config.
 
-The playbook can name specialists that have no Studio paste yet (`SiuAgent`, `SettlementAgent`, `DataQualityAgent`). Orchestrator must Final Answer the route JSON rather than invent a Role. `DenyAgent` and `HumanCitationReview` now have pastes.
+The playbook can name specialists that have not been configured in Agent Studio yet (`SiuAgent`, `SettlementAgent`, `DataQualityAgent`). Orchestrator must Final Answer the route JSON rather than invent a Role. `DenyAgent` and `HumanCitationReview` are now configured in Agent Studio.
 
-FNOL → payout is **not** one crew run. The claims platform (or BPA) writes Iceberg rows; this stack classifies the current snapshot. Re-invoke structured intake with the same `claim_id` after the lake changes. Pass `claim_id` (and `run_id`). Do not pass `next_step`.
+FNOL → payout is **not** one crew run. The claims platform (or BPA) writes Iceberg rows; this stack classifies the current snapshot. Re-chat the Orchestrator with the same claim id after the data changes (`Please process claim 401.`). Do not pass `run_id` or `next_step` in the chat.
 
 ### Typical PD path (separate calls)
 
-Live Studio runbook (Impala reset + three Orchestrator chats on **401**): [pd-path-demo.md](pd-path-demo.md).
+Live Studio runbook (Impala reset + three Orchestrator chats on **401**): [pd-path-demo.md](pd-path-demo.md). DENIED runbook (impairment flip on **404** + two chats, restore after): [deny-path-demo.md](deny-path-demo.md).
 
 Each row is a later snapshot. Earlier gaps are already filled so a higher probe does not preempt. Case JSON is what `route_claim` sees after `build_claim_graph` (spine + signals). CLOSED, DENIED, insured citation, and coded exclusions (R1.1 / R1.1d / R5.2 / R6.*) win before litigation, SIU, PD gaps, and money. If `subrogation_indicator` is true and `has_subrogation_case` is false, **R4.1** `OpenSubrogationCase` wins before offer, payment, or PD review.
 
-| When the lake looks like | Case JSON input (discriminating fields) | First hit | `next_step` |
+| When the data looks like | Case JSON input (discriminating fields) | First hit | `next_step` |
 |---|---|---|---|
 | Claim missing / case not built | `{"claim_exists": false}` | R0.1 | `FixDataQuality` |
 | Claim exists, triangle incomplete | `{"claim_exists": true, "triangle": false, "claim_status_code": "OPEN"}` | R0.4 | `FixDataQuality` |
@@ -94,7 +94,7 @@ Each row is a later snapshot. Earlier gaps are already filled so a higher probe 
 
 PD steps (`RequestPoliceReport`, `DetermineFault`, `PdClaimsReview`) use `get_pd_view` then `create_pd_task` (work item in `pd_task` plus an `agent_run_audit` receipt). `RequestPoliceReport` sets `letter_on_request`; a session letter via `save_claim_letter` is drafted only if the user asks (no mail send). Settlement steps on this path still `write_audit_event`. `IssuePayment` means settlement work is due; the payment row still has to land in `claim_payment` from the claims platform. A later intake can then hit R1.1.
 
-Denial: CLOSED stays **approved** (Closeout). DENIED is the other terminal status. R5.2 (`insured_operator_cited`) is Human Review — view + audit, no `deny_claim`. R6.* coded exclusions (`unlawful_operation_exclusion`, `excluded_operator_exclusion`, `policy_not_in_force_on_loss`) go to Deny Agent, which `UPDATE`s `claim_status_code` to `DENIED`. Live smokes flip **401** only and restore afterward.
+Denial: CLOSED stays **approved** (Closeout). DENIED is the other terminal status. R5.2 (`insured_operator_cited`) is Human Review — view + audit, no `deny_claim`. R6.* coded exclusions (`unlawful_operation_exclusion`, `excluded_operator_exclusion`, `policy_not_in_force_on_loss`) go to Deny Agent, which `UPDATE`s `claim_status_code` to `DENIED`. Live deny smokes flip **404** only (`PA-1003`) and restore afterward. Do not use **401** for deny. Repeatable runbook: [deny-path-demo.md](deny-path-demo.md).
 
 ## Pattern: two Studio filesystems
 
@@ -204,7 +204,7 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 |---|---|
 | `Manager agent` | Exact CrewAI **Role** string required for Delegate to Manager. |
 | Final Answer | CrewAI terminal reply. Orchestrator uses this when no coworker exists for a role. |
-| Studio paste | Name / Role / Backstory / Goal (and tools table) copied into Agent Studio. |
+| Configured in Agent Studio | Name / Role / Backstory / Goal (and tools table) set on the agent in Agent Studio. |
 | Workflow Data | Studio read-only tree: schema JSON, playbook, `pack.yaml`, exemplars. |
 | `UserParameters` | Studio tool config fields. Do not put lake credentials here. |
 | `WORKFLOW_DATA_DIRECTORY` | Env for the Workflow Data mount (`/workflow_data`). |
@@ -221,7 +221,10 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 | `PACK_ID` | Rejected for the live distributions demo. Finserv MCP is a compiled catalog, not a fixture bake-in. |
 | Fixture | Canned JSON for a named query. Lake-shaped payload, not a routing rule. |
 | Pointer pack | `pack.yaml` that points at existing claims trees without moving them. |
+| 401 | PD / subro live seed (collision). Do not use for deny. |
 | 402 | Proven live auto-claims seed (Litigation e2e). Not a version number. |
+| 403 | CLOSED live seed (Closeout). |
+| 404 | Deny-path live seed (`PA-1003`). Impairment flip does not touch 401. |
 | Finserv | Retirement distributions/rollovers demos on this control plane. |
 
 **Governance**
@@ -236,9 +239,10 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 | Path | Role |
 |---|---|
 | `ontology/`, `playbook/` | Live claims schema JSON and router (402) |
-| `ddl/hive_iceberg/` | Iceberg DDL (claims, audit, `litigation_task`, `pd_task`) |
+| `ddl/hive_iceberg/` | Iceberg DDL (claims, audit, `litigation_task`, `pd_task`); claims seed includes **404** deny file (`car_insurance_claims_seed_404.sql` for already-loaded lakes) |
 | `docs/pd-path-demo.md` | Repeatable PD demo on claim 401 (Impala + Orchestrator) |
+| `docs/deny-path-demo.md` | Repeatable DENIED demo on claim 404 (impairment flip + Orchestrator) |
 | `mcp_forks/iceberg-mcp-server-claims/` | Impala MCP V7 + named catalog |
 | `agent_studio/src/ins_claims_agent/` | Shared build / validate / route / pack loader |
-| `agent_studio/studio_tools/` | Thin Studio tools + claims agent pastes |
+| `agent_studio/studio_tools/` | Thin Studio tools + claims agents to configure in Agent Studio |
 | `packs/` | Finserv demo domains (same intake sequence) |

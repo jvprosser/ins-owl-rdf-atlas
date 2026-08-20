@@ -1,4 +1,4 @@
-# Routing Agent (Agent Studio paste)
+# Routing Agent (configured in Agent Studio)
 
 Fast unstructured pre-router. Uses Studio tool `pre_route_text` (TF-IDF + numpy
 cosine). Does **not** replace structured claim intake. If `claim_id` is present,

@@ -78,16 +78,7 @@ Labels: `get_rollover_spine`, `get_rollover_routing_signals`, `get_erisa_review_
 ## Studio prompt (lead with 8001)
 
 ```text
-Intake and route claim_id 8001, then complete the post-route specialist work.
-
-1) Delegate ONCE to Manager. Task: get_rollover_spine, get_rollover_routing_signals,
-   build, validate, route. STOP after route_claim.
-
-2) Delegate ONCE to ERISA Review Agent.
-   Task: claim_id=8001 run_id=demo-8001-erisa.
-   run_named_query label get_erisa_review_view, then run_named_write write_audit_event.
-
-3) Final Answer: route + specialist summary + exact write JSON. STOP.
+Please process claim 8001.
 ```
 
 Expect `next_step=ErisaReview`, `lane=ERISA`, probe **R2.1**.

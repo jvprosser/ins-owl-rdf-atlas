@@ -135,6 +135,14 @@ def get_claim_routing_signals(
     ]
 
     try:
+        if query_rows is None:
+            from iceberg_mcp_server_claims.tools.impala_tools import refresh_table
+
+            for table in ("loss_driver", "claim", "police_report", "fault_determination"):
+                try:
+                    refresh_table(db, table)
+                except Exception:
+                    pass
         signal_rows = qr(claim_sql.claim_routing_signals_sql(cid, db))
         injuries = qr(claim_sql.claim_injury_ids_sql(cid, db))
         offers = qr(claim_sql.claim_offers_sql(cid, db))

@@ -31,7 +31,7 @@ packs/<id>/
   ontology/                 # Case field schema JSON
   playbook/                 # Probe order and agent_role / next_step
   fixtures/                 # Canned MCP JSON (stand-in for Impala)
-  agents/                   # Studio Name / Role / Backstory / Goal / Tools pastes
+  agents/                   # Name / Role / Backstory / Goal / Tools — configure in Agent Studio
 ```
 
 | Path | Purpose | Who reads it |

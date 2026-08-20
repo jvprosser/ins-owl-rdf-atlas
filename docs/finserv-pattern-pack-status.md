@@ -39,7 +39,7 @@ Claims is **not** a pack. It becomes one only when you need two live products in
 
 `packs/retirement_distributions/` and `packs/retirement_rollovers/`.
 
-Each has: `pack.yaml`, schema JSON (`ontology/*.json`), YAML playbook with inlined path probes, `exemplars.yaml`, `catalog_fixtures.json`, `fixtures/**/*.json`, agent pastes, README. Turtle TBox + `probes/*.rq` live only on branch/tag `rdf-sparql-runtime`.
+Each has: `pack.yaml`, schema JSON (`ontology/*.json`), YAML playbook with inlined path probes, `exemplars.yaml`, `catalog_fixtures.json`, `fixtures/**/*.json`, agents configured in Agent Studio, README. Turtle TBox + `probes/*.rq` live only on branch/tag `rdf-sparql-runtime`.
 
 | Case | Expected route |
 |---|---|
@@ -83,7 +83,7 @@ MCP runs as `uvx` stdio from the **workflow engine**, not inside the tool sandbo
 - Still no per-label MCP tools. Still no LLM as the hardship/RMD decision.
 - Workflow Data remains ontology / playbook / `pack.yaml` / `exemplars.yaml`.
 
-**Still to do:** apply DDL/seed on the lake; register finserv MCP in a distributions Studio project; prove e2e **7002**. Pin `ins-claims-agent` to a SHA that includes the generic pack builder if the Studio project is still on an older pin.
+**Still to do:** apply DDL/seed on the data; register finserv MCP in a distributions Studio project; prove e2e **7002**. Pin `ins-claims-agent` to a SHA that includes the generic pack builder if the Studio project is still on an older pin.
 
 Rollovers stay on the old fixture path until this e2e is proven. Do not add `get_rollover_*` to the finserv catalog.
 

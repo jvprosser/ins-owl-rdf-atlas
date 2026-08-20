@@ -1,4 +1,4 @@
-# ERISA Review Agent (Agent Studio paste)
+# ERISA Review Agent (configured in Agent Studio)
 
 Use when `route_claim` assigns `ErisaReviewAgent` (e.g. case **8001** missing spousal consent).
 

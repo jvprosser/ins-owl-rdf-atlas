@@ -1,4 +1,4 @@
-# Distribution Ops Agent (Agent Studio paste)
+# Distribution Ops Agent (configured in Agent Studio)
 
 Use when `route_claim` assigns `DistributionOpsAgent` (e.g. case **7001** clean termination).
 

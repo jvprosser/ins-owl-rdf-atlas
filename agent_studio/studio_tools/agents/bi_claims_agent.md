@@ -1,4 +1,4 @@
-# BI Claims Agent (Agent Studio paste)
+# BI Claims Agent (configured in Agent Studio)
 
 Use when `route_claim` assigns `BiClaimsAgent` / `BiClaimsReview` /
 `CaptureInjuryDetails`. Lake injury rows live on claim **402** (ids **5501**, **5502**).

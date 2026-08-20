@@ -97,6 +97,19 @@ def execute_dml(statement: str) -> str:
     return json.dumps(result, default=str)
 
 
+def refresh_table(database: str, table: str) -> None:
+    """Reload Iceberg metadata on this Impala coordinator (Hue writes otherwise stay invisible)."""
+    from iceberg_mcp_server_claims.tools.claim_sql import validate_ident
+
+    db = validate_ident(database, "database")
+    tbl = validate_ident(table, "identifier")
+    result = _execute(f"REFRESH `{db}`.`{tbl}`")
+    if isinstance(result, str) and str(result).startswith("Error:"):
+        result = _execute(f"INVALIDATE METADATA `{db}`.`{tbl}`")
+        if isinstance(result, str) and str(result).startswith("Error:"):
+            raise RuntimeError(result)
+
+
 def get_schema(database: str | None = None) -> str:
     conn = None
     try:

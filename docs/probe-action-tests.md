@@ -1,31 +1,20 @@
 # Probe / action test prompts
 
-One chat prompt per playbook **probe → action** pair. Chat the **Orchestrator** (not Manager). The LLM must not choose the lane. Pass = `route_claim` returns the expected `next_step`, `agent_role`, `routing_reason`, and `checks`. Probe ids remain in the JSON for audit (`reason_probe_ids`); do not lead the chat with them.
+One chat per playbook **probe → action** pair. Chat the **Orchestrator** as a claims handler: one sentence and a claim id. Do not mention tools, catalog labels, `run_id`, or probe ids. Orchestrator Goal already maps those. Pass = `route_claim` returns the expected `next_step`, `agent_role`, `routing_reason`, and `checks`. Probe ids remain in the JSON for audit.
 
 First-match-wins: a later probe only fires if every earlier action’s `when` failed. You cannot test `R1.4` on claim **402**; litigation (`R1.2b` discovery aging) wins first.
 
-Specialist Delegate after route only if that `agent_role` has a Studio paste. Otherwise Orchestrator Final Answers the route JSON (`SiuAgent`, `SettlementAgent`, `DataQualityAgent`, and `HumanReviewOrWait`). `HumanCitationReview` maps to Human Review Agent; deny steps map to Deny Agent.
+Specialist work runs only if that `agent_role` has been configured in Agent Studio. Otherwise Orchestrator Final Answers the route JSON (`SiuAgent`, `SettlementAgent`, `DataQualityAgent`, and `HumanReviewOrWait`). `HumanCitationReview` maps to Human Review Agent; deny steps map to Deny Agent.
 
 Citation is **not** auto-deny. Narrative is **not** a YAML probe. `R6.1` is the coded unlawful-operation exclusion (impairment or license `SUSPENDED`/`REVOKED`/`UNLICENSED`).
 
-## Shared intake prompt
+## Handler chats
 
-Replace `<ID>` and the expect line. Keep the rest.
-
-```text
-Intake and route claim_id <ID>. Do not skip the Orchestrator.
-
-1) Delegate ONCE to Manager. Task: structured intake for <ID> —
-   run_named_query spine, then routing signals, then build, validate, route.
-   STOP after route_claim. Return next_step, lane, agent_role, routing_reason,
-   and the checks (Why this routing). Do not lead with probe ids.
-   Do not call specialist views or write_audit_event.
-
-2) Map agent_role to coworker Role from your Goal. If that Role is in the Crew,
-   Delegate ONCE. If not, Final Answer the route JSON. Do not invent a Role.
-
-Expect: next_step=<STEP>, agent_role=<AGENT>, routing_reason names the assigned check.
-```
+| Intent | Say |
+|---|---|
+| Status only | `What's the status of claim <ID>?` |
+| Do the next work | `Please process claim <ID>.` |
+| Draft the recommended letter | `Please write the recommended letter for claim <ID>.` |
 
 Offline (no Studio): `cd agent_studio && pytest tests/test_route_claim.py tests/test_packs.py`.
 
@@ -33,18 +22,18 @@ Offline (no Studio): `cd agent_studio && pytest tests/test_route_claim.py tests/
 
 ## Claims (`playbook/playbook.yaml`)
 
-Studio project: live Impala catalog, Workflow Data = repo `ontology/` + `playbook/`. Proven e2e: **402** (Litigation), **403** (Closeout). Seed **401** is lake-dependent (often PD or subro). Repeatable PD demo (Impala reset + three chats): [pd-path-demo.md](pd-path-demo.md). Snapshot-by-snapshot PD path (case JSON → `next_step`): [architecture.md — typical PD path](architecture.md#typical-pd-path-separate-calls).
+Studio project: live Impala catalog, Workflow Data = repo `ontology/` + `playbook/`. Proven e2e: **402** (Litigation), **403** (Closeout). Seed **401** is PD / subro. Seed **404** is deny (`PA-1003`). Repeatable PD demo: [pd-path-demo.md](pd-path-demo.md). Repeatable DENIED demo: [deny-path-demo.md](deny-path-demo.md). Snapshot-by-snapshot PD path (case JSON → `next_step`): [architecture.md — typical PD path](architecture.md#typical-pd-path-separate-calls).
 
 | Probe | When | `next_step` / `agent_role` / lane | How to fire | Studio id |
 |---|---|---|---|---|
 | R0.1 | ASK_FALSE | `FixDataQuality` / `DataQualityAgent` / DATA_QUALITY | Graph has no `AutoClaim` at the claim IRI (builder usually prevents this) | none |
 | R0.4 | ASK_FALSE | `FixDataQuality` / `DataQualityAgent` / DATA_QUALITY | Claim exists but triangle broken (no policy↔vehicle) | none |
 | R1.1 | SELECT_EQUALS CLOSED | `CloseoutAudit` / `CloseoutAgent` / CLOSEOUT | Status CLOSED | **403** |
-| R1.1d | SELECT_EQUALS DENIED | `DenyAudit` / `DenyAgent` / DENY | Status DENIED; letter on request; no `deny_claim` | pytest `test_route_denied_terminal`; live **401** after a deny write |
+| R1.1d | SELECT_EQUALS DENIED | `DenyAudit` / `DenyAgent` / DENY | Status DENIED; letter on request; no `deny_claim` | pytest `test_route_denied_terminal`; live **404** after a deny write |
 | R5.2 | ASK_TRUE | `HumanCitationReview` / `HumanReviewAgent` / GENERAL | Insured operator `was_cited_indicator`; do not use police `citation_issued_indicator` | pytest `test_route_insured_cited_human_review`; live **401** flip only |
-| R6.1 | ASK_TRUE | `DenyUnlawfulOperation` / `DenyAgent` / DENY | Insured impairment or license SUSPENDED/REVOKED/UNLICENSED | pytest `test_route_unlawful_operation_deny`; live **401** flip only |
-| R6.2 | ASK_TRUE | `DenyExcludedDriver` / `DenyAgent` / DENY | Insured operator excluded or unlisted (skip PERMISSIVE_USER) | pytest `test_route_excluded_operator_deny`; live **401** flip only |
-| R6.3 | ASK_TRUE | `DenyLapsedPolicy` / `DenyAgent` / DENY | Policy LAPSED/CANCELLED/EXPIRED, loss outside term, or cancellation ≤ loss | pytest `test_route_lapsed_policy_deny`; live **401** flip only |
+| R6.1 | ASK_TRUE | `DenyUnlawfulOperation` / `DenyAgent` / DENY | Insured impairment or license SUSPENDED/REVOKED/UNLICENSED | pytest `test_route_unlawful_operation_deny`; live **404** flip only |
+| R6.2 | ASK_TRUE | `DenyExcludedDriver` / `DenyAgent` / DENY | Insured operator excluded or unlisted (skip PERMISSIVE_USER) | pytest `test_route_excluded_operator_deny`; live **404** / `PA-1003` flip only |
+| R6.3 | ASK_TRUE | `DenyLapsedPolicy` / `DenyAgent` / DENY | Policy LAPSED/CANCELLED/EXPIRED, loss outside term, or cancellation ≤ loss | pytest `test_route_lapsed_policy_deny`; live **404** / `PA-1003` flip only |
 | R1.2a | ASK_TRUE | `CompleteLitigationFile` / `LitigationAgent` / LITIGATION | Litigated claim missing docket or both counsel ids | pytest `test_route_litigation` |
 | R1.2b | ASK_TRUE | `EscalateDiscovery` / `LitigationAgent` / LITIGATION | IN_DISCOVERY, closed_date null, filed_date > 90 days | **402** |
 | R1.2 | ASK_TRUE | `LitigationSupport` / `LitigationAgent` / LITIGATION | Remaining litigation (file complete, not aging); `letter_on_request`; draft via `save_claim_letter` only when the user asks | pytest `test_route_litigation_support_letter`; email smoke **402** (skip intake, ask to write) |
@@ -64,59 +53,35 @@ Studio project: live Impala catalog, Workflow Data = repo `ontology/` + `playboo
 ### R0.1 ASK_FALSE — FixDataQuality
 
 ```text
-Intake and route claim_id 999001. Do not skip the Orchestrator.
-Delegate ONCE to Manager: spine, signals, build, validate, route. STOP after route.
-Expect next_step=FixDataQuality, agent_role=DataQualityAgent, reason_probe_ids includes R0.1.
-If agent_role has no coworker, Final Answer the route JSON.
+What's the status of claim 999001?
 ```
 
-Only passes if the session graph has no `ex:AutoClaim` at that IRI. A successful `build_claim_graph` usually makes R0.1 true.
+Expect `FixDataQuality` / `DataQualityAgent` (R0.1). Only passes if the session graph has no `ex:AutoClaim` at that IRI. A successful `build_claim_graph` usually makes R0.1 true.
 
 ### R0.4 ASK_FALSE — FixDataQuality (triangle)
 
 ```text
-Intake and route claim_id 999004. Do not skip the Orchestrator.
-Delegate ONCE to Manager: spine, signals, build, validate, route. STOP after route.
-Expect next_step=FixDataQuality, agent_role=DataQualityAgent, reason_probe_ids includes R0.4.
+What's the status of claim 999004?
 ```
 
-Needs a claim row whose spine omits policy or vehicle (or `policy_covers_vehicle` false) so the triangle ASK is false while R0.1 is true.
+Expect `FixDataQuality` / `DataQualityAgent` (R0.4). Needs a claim row whose spine omits policy or vehicle (or `policy_covers_vehicle` false) so the triangle ASK is false while R0.1 is true.
 
 ### R1.1 SELECT_EQUALS CLOSED — CloseoutAudit (403)
 
 ```text
-Intake and route claim_id 403, then complete the post-route specialist work.
-Do not skip the Orchestrator.
-
-1) Delegate ONCE to Manager: structured intake for 403. STOP after route_claim.
-   Expect next_step=CloseoutAudit, agent_role=CloseoutAgent, reason_probe_ids includes R1.1.
-
-2) Delegate ONCE to Closeout Agent.
-   Task: claim_id=403 run_id=demo-403-close.
-   run_named_write write_audit_event then run_named_write promote_audit_run.
-
-3) Final Answer: route + exact write JSON + exact promote JSON. STOP.
+Please process claim 403.
 ```
+
+Expect `CloseoutAudit` / `CloseoutAgent` (R1.1), then audit write + promote.
 
 ### R1.1d SELECT_EQUALS DENIED — DenyAudit
 
 Offline: `pytest tests/test_route_claim.py::test_route_denied_terminal`.
 
-Live: after an R6.* `deny_claim` on **401**, re-intake. Expect `DenyAudit` / `DenyAgent`. View `get_deny_view`, then `write_audit_event` + `promote_audit_run`. Do **not** call `deny_claim`. Restore **401** to OPEN afterward.
+Live: after an R6.* deny write on **404**, chat again. Expect `DenyAudit` / `DenyAgent` (no second status UPDATE). Full runbook: [deny-path-demo.md](deny-path-demo.md). Restore **404** to OPEN afterward.
 
 ```text
-Intake and route claim_id 401, then complete the post-route specialist work.
-Do not skip the Orchestrator.
-
-1) Delegate ONCE to Manager: structured intake for 401. STOP after route_claim.
-   Expect next_step=DenyAudit, agent_role=DenyAgent, reason_probe_ids includes R1.1d.
-
-2) Delegate ONCE to Deny Agent.
-   Task: claim_id=401 run_id=demo-401-deny-audit next_step=DenyAudit.
-   run_named_query get_deny_view, then write_audit_event, then promote_audit_run.
-   Do not deny_claim. Do not save_claim_letter unless asked to write the letter.
-
-3) Final Answer: route + exact JSON. STOP.
+Please process claim 404.
 ```
 
 ### R5.2 ASK_TRUE — HumanCitationReview (401 smoke)
@@ -131,156 +96,88 @@ WHERE claim_id = 401 AND driver_role_code = 'INSURED_OPERATOR';
 ```
 
 ```text
-Intake and route claim_id 401, then complete the post-route specialist work.
-Do not skip the Orchestrator.
-
-1) Delegate ONCE to Manager: structured intake for 401. STOP after route_claim.
-   Expect next_step=HumanCitationReview, agent_role=HumanReviewAgent,
-   reason_probe_ids includes R5.2. Claim status stays OPEN.
-
-2) Delegate ONCE to Human Review Agent.
-   Task: claim_id=401 run_id=demo-401-cite next_step=HumanCitationReview.
-   run_named_query get_deny_view, then write_audit_event.
-   Do not deny_claim. Do not save_claim_letter.
-
-3) Final Answer: who was cited, narrative, license/impairment, plus write JSON. STOP.
+Please process claim 401.
 ```
 
-Restore: `was_cited_indicator = FALSE` for that 401 insured operator row.
+Expect `HumanCitationReview` / `HumanReviewAgent` (R5.2). Status stays OPEN. Do not deny. Restore: `was_cited_indicator = FALSE` for that 401 insured operator row.
 
-### R6.1 ASK_TRUE — DenyUnlawfulOperation (401 smoke)
+### R6.1 ASK_TRUE — DenyUnlawfulOperation (404 smoke)
 
 ```sql
--- 401 only. Restore after. Do not flip 402/403.
-UPDATE car_insurance_claims.loss_driver
-SET impairment_suspected_indicator = TRUE
-WHERE claim_id = 401 AND driver_role_code = 'INSURED_OPERATOR';
+-- 404 only. Rewrite the row (do not UPDATE). Restore after. Do not flip 401/402/403.
+DELETE FROM car_insurance_claims.loss_driver
+WHERE claim_id = 404 AND driver_role_code = 'INSURED_OPERATOR';
+INSERT INTO TABLE car_insurance_claims.loss_driver
+SELECT CAST(5204 AS BIGINT), CAST(303 AS BIGINT), CAST(501 AS BIGINT),
+       CAST(404 AS BIGINT), CAST(204 AS BIGINT), 'INSURED_OPERATOR',
+       FALSE, TRUE, CAST('2025-07-08 22:10:00' AS TIMESTAMP);
+INVALIDATE METADATA car_insurance_claims.loss_driver;
 ```
 
 ```text
-Intake and route claim_id 401, then complete the post-route specialist work.
-Do not skip the Orchestrator.
-
-1) Delegate ONCE to Manager: structured intake for 401. STOP after route_claim.
-   Expect next_step=DenyUnlawfulOperation, agent_role=DenyAgent,
-   reason_probe_ids includes R6.1.
-
-2) Delegate ONCE to Deny Agent.
-   Task: claim_id=401 run_id=demo-401-deny next_step=DenyUnlawfulOperation.
-   run_named_query get_deny_view, then run_named_write deny_claim.
-   Do not save_claim_letter unless asked to write the denial letter.
-
-3) Final Answer: route + exact deny_claim JSON (claim_status_code=DENIED). STOP.
+Please process claim 404.
 ```
 
-Optional: `Write the recommended letter for claim_id 401.` → Deny Agent `save_claim_letter` only.
+Expect `DenyUnlawfulOperation` / `DenyAgent` (R6.1) and `claim_status_code=DENIED`. Full runbook: [deny-path-demo.md](deny-path-demo.md).
 
-Restore 401: `impairment_suspected_indicator = FALSE` and `claim_status_code = 'OPEN'`.
+Optional letter:
+
+```text
+Please write the recommended letter for claim 404.
+```
+
+Restore 404: `impairment_suspected_indicator = FALSE` and `claim_status_code = 'OPEN'`.
 
 ### R6.2 ASK_TRUE — DenyExcludedDriver
 
 Offline: `pytest tests/test_route_claim.py::test_route_excluded_operator_deny`.
 
-Live **401**: set current `policy_driver.is_excluded_driver = TRUE` for the insured operator (or expire/remove that listing). Same Orchestrator prompt as R6.1 with expect `DenyExcludedDriver`. Restore listing and OPEN.
+Live **404**: set `policy_driver.is_excluded_driver = TRUE` for policy **1003** / driver 501 (or expire that listing). Do **not** flip PA-1001. Same chat as R6.1. Expect `DenyExcludedDriver`. Restore listing and OPEN.
 
 ### R6.3 ASK_TRUE — DenyLapsedPolicy
 
 Offline: `pytest tests/test_route_claim.py::test_route_lapsed_policy_deny`.
 
-Live **401**: set policy `policy_status_code = 'LAPSED'` (or `cancellation_date` ≤ loss date). Same Orchestrator prompt with expect `DenyLapsedPolicy`. Restore `ACTIVE` and OPEN.
+Live **404**: set policy **1003** `policy_status_code = 'LAPSED'` (or `cancellation_date` ≤ loss date). Do **not** lapse PA-1001. Same chat as R6.1. Expect `DenyLapsedPolicy`. Restore `ACTIVE` and OPEN.
 
 ### R1.2a ASK_TRUE — CompleteLitigationFile
 
 ```text
-Intake and route claim_id 99912a. Do not skip the Orchestrator.
-Delegate ONCE to Manager: structured intake. STOP after route.
-Expect next_step=CompleteLitigationFile, agent_role=LitigationAgent,
-reason_probe_ids includes R1.2a.
-If Litigation Agent is in the Crew: Delegate ONCE — get_litigation_view
-then create_litigation_task task_type_code COMPLETE_FILE.
+Please process claim 99912a.
 ```
 
-Offline: `pytest tests/test_route_claim.py::test_route_litigation` (litigation indicator, empty signals).
+Expect `CompleteLitigationFile` / `LitigationAgent` (R1.2a). Offline: `pytest tests/test_route_claim.py::test_route_litigation` (litigation indicator, empty signals).
 
 ### R1.2b ASK_TRUE — EscalateDiscovery (402)
 
 ```text
-Intake and route claim_id 402, then complete the post-route specialist work.
-Do not skip the Orchestrator.
-
-1) Delegate ONCE to Manager: structured intake for 402. STOP after route_claim.
-   Expect next_step=EscalateDiscovery, agent_role=LitigationAgent,
-   reason_probe_ids includes R1.2b.
-
-2) Delegate ONCE to Litigation Agent.
-   Task: claim_id=402 run_id=demo-402-e2e next_step=EscalateDiscovery.
-   run_named_query {"label":"get_litigation_view","claim_id":"402"}
-   then run_named_write create_litigation_task
-   event_json task_type_code ESCALATE_DISCOVERY.
-
-3) Final Answer: route + specialist summary + exact write JSON. STOP.
+Please process claim 402.
 ```
 
-Offline: `pytest tests/test_route_claim.py::test_route_litigation_discovery_aging`.
+Expect `EscalateDiscovery` / `LitigationAgent` (R1.2b). Offline: `pytest tests/test_route_claim.py::test_route_litigation_discovery_aging`.
 
 ### R1.2 ASK_TRUE — LitigationSupport (letter on request)
 
 No live seed today. Seed **402** is R1.2b (`EscalateDiscovery`), not this probe. To fire R1.2 you need a litigated claim with docket + counsel and discovery **not** aging (not `IN_DISCOVERY` with `filed_date` older than 90 days and `closed_date` null). Intake reports that a letter is recommended. It does **not** draft the letter unless you ask.
 
 ```text
-Intake and route claim_id <ID>, then complete the post-route specialist work.
-Do not skip the Orchestrator. Do not write a letter.
-
-1) Delegate ONCE to Manager: structured intake for <ID>. STOP after route_claim.
-   Expect next_step=LitigationSupport, agent_role=LitigationAgent,
-   letter_on_request true, reason_probe_ids includes R1.2.
-   routing_summary says a hold/status letter is recommended and will not be
-   drafted unless you ask.
-
-2) Delegate ONCE to Litigation Agent.
-   Task: claim_id=<ID> run_id=demo-<ID>-letter next_step=LitigationSupport.
-   run_named_query {"label":"get_litigation_view","claim_id":"<ID>"}
-   then run_named_write write_audit_event.
-   Do not save_claim_letter. Do not create a litigation_task.
-
-3) Final Answer: route + specialist summary + exact write JSON. STOP.
+Please process claim <ID>.
 ```
 
-To draft the letter after that route:
+Expect `LitigationSupport` / `LitigationAgent` (R1.2), `letter_on_request` true. Then, to draft:
 
 ```text
-Write the recommended letter for claim_id <ID>.
-Delegate ONCE to Litigation Agent. View get_litigation_view, then
-save_claim_letter. Do not send mail.
+Please write the recommended letter for claim <ID>.
 ```
 
-Offline: `pytest tests/test_route_claim.py::test_route_litigation_support_letter`
-(route only).
+Offline: `pytest tests/test_route_claim.py::test_route_litigation_support_letter` (route only).
 
 ### Generate litigation hold/status email (letter artifact)
 
-Use this when you want the `.txt` email, including on seed **402** (skip intake — 402 would otherwise route to R1.2b and would not recommend a letter). Chat the **Orchestrator** and **ask to write** the letter. `save_claim_letter` writes the file; it does not send mail.
+Use this when you want the `.txt` email, including on seed **402** (402 would otherwise route to R1.2b and would not recommend a letter). `save_claim_letter` writes the file; it does not send mail.
 
 ```text
-Generate a litigation hold/status email for claim_id 402.
-Do not skip the Orchestrator. Do not run structured claim intake.
-
-1) Delegate ONCE to Litigation Agent (Role exactly "Litigation Agent").
-   Task: claim_id=402 run_id=demo-402-letter next_step=LitigationSupport.
-   Call run_named_query once:
-   {"label":"get_litigation_view","claim_id":"402"}
-   Then run_named_write once label write_audit_event.
-   Draft a short hold/status email from the view Observation only.
-   Include a Subject line and 1–2 short paragraphs (status, docket, venue,
-   counsel, dates, demand). Do not invent ids or amounts.
-   Then call save_claim_letter once:
-   {"claim_id":"402","run_id":"demo-402-letter","next_step":"LitigationSupport",
-    "body":"<the drafted email>"}
-   Do not create_litigation_task. Do not send mail.
-
-2) Final Answer: the email text, exact write JSON, and letter file_path.
-   Expect claim_402_letter.txt in SESSION_DIRECTORY. Then STOP.
-   Do not Delegate a second time.
+Please write a litigation hold letter for claim 402.
 ```
 
 Pass = `save_claim_letter` returns `status=success` and `claim_402_letter.txt` is in the session folder. Offline file write (canned body, no LLM): `pytest tests/test_studio_io.py::test_save_claim_letter_writes_txt`.
@@ -288,151 +185,98 @@ Pass = `save_claim_letter` returns `status=success` and `claim_402_letter.txt` i
 ### R5.1 ASK_TRUE — SiuInvestigation
 
 ```text
-Intake and route claim_id 999501. Do not skip the Orchestrator.
-Delegate ONCE to Manager: structured intake. STOP after route.
-Expect next_step=SiuInvestigation, agent_role=SiuAgent, lane=SIU,
-reason_probe_ids includes R5.1.
-Final Answer the route JSON (no SiuAgent paste). Do not invent a Role.
+What's the status of claim 999501?
 ```
 
-Studio needs a lake row with SIU/fraud suspected and no litigation/CLOSED. Offline: `pytest tests/test_route_claim.py::test_route_siu_suspected`.
+Expect `SiuInvestigation` / `SiuAgent` / SIU (R5.1). SiuAgent is not configured in Agent Studio — route JSON is enough. Studio needs a database record with SIU/fraud suspected and no litigation/CLOSED. Offline: `pytest tests/test_route_claim.py::test_route_siu_suspected`.
 
 ### R2.3 ASK_TRUE — AssignAdjuster
 
 ```text
-Intake and route claim_id 999203. Do not skip the Orchestrator.
-Delegate ONCE to Manager: structured intake. STOP after route.
-Expect next_step=AssignAdjuster, agent_role=DataQualityAgent,
-reason_probe_ids includes R2.3.
-Final Answer the route JSON (no DataQualityAgent paste).
+What's the status of claim 999203?
 ```
 
-Needs OPEN, not litigation/SIU, and no ADJUSTER role on the claim.
+Expect `AssignAdjuster` / `DataQualityAgent` (R2.3). Needs OPEN, not litigation/SIU, and no ADJUSTER role on the claim.
 
 ### R2.1 ASK_TRUE — RequestPoliceReport
 
 ```text
-Intake and route claim_id 999201. Do not skip the Orchestrator.
-Delegate ONCE to Manager: structured intake. STOP after route.
-Expect next_step=RequestPoliceReport, agent_role=PdClaimsAgent,
-reason_probe_ids includes R2.1. routing_summary says a police-report request
-letter is recommended and will not be drafted unless you ask.
-If PD Claims Agent is in the Crew, Delegate ONCE (get_pd_view then
-create_pd_task REQUEST_POLICE_REPORT). Do not save_claim_letter unless
-the user asked to write the letter.
+Please process claim 999201.
 ```
 
-Offline: `pytest tests/test_route_claim.py::test_route_missing_police_report`. Apply `pd_task` DDL before the live write. Needs a claim with no `police_report` row (seed **401** already has one).
+Expect `RequestPoliceReport` / `PdClaimsAgent` (R2.1). A police-report request letter is recommended and will not be drafted unless you ask. Offline: `pytest tests/test_route_claim.py::test_route_missing_police_report`. Apply `pd_task` DDL before the live write. Needs a claim with no `police_report` row (seed **401** already has one). Live PD path: [pd-path-demo.md](pd-path-demo.md).
 
 ### R2.2 ASK_TRUE — DetermineFault
 
 ```text
-Intake and route claim_id 999202. Do not skip the Orchestrator.
-Delegate ONCE to Manager: structured intake. STOP after route.
-Expect next_step=DetermineFault, agent_role=PdClaimsAgent,
-reason_probe_ids includes R2.2.
-If PD Claims Agent is in the Crew, Delegate ONCE (get_pd_view then
-create_pd_task DETERMINE_FAULT). Do not call save_claim_letter.
+Please process claim 999202.
 ```
 
-Needs police report present, no fault determination, and no earlier hit. Offline: `pytest tests/test_route_claim.py::test_route_determine_fault`.
+Expect `DetermineFault` / `PdClaimsAgent` (R2.2). Needs police report present, no fault determination, and no earlier hit. Offline: `pytest tests/test_route_claim.py::test_route_determine_fault`.
 
 ### R2.5 ASK_TRUE — CaptureInjuryDetails
 
 ```text
-Intake and route claim_id 999205. Do not skip the Orchestrator.
-Delegate ONCE to Manager: structured intake. STOP after route.
-Expect next_step=CaptureInjuryDetails, agent_role=BiClaimsAgent,
-reason_probe_ids includes R2.5.
-If BI Claims Agent is in the Crew, Delegate ONCE (view get_bi_view then write).
+Please process claim 999205.
 ```
 
-Needs BI_LIABILITY coverage and no `hasInjury`.
+Expect `CaptureInjuryDetails` / `BiClaimsAgent` (R2.5). Needs BI_LIABILITY coverage and no `hasInjury`.
 
 ### R3.2 ASK_TRUE — FollowUpOffer
 
 ```text
-Intake and route claim_id 999302. Do not skip the Orchestrator.
-Delegate ONCE to Manager: structured intake. STOP after route.
-Expect next_step=FollowUpOffer, agent_role=SettlementAgent,
-reason_probe_ids includes R3.2.
-Final Answer the route JSON (no SettlementAgent paste).
+What's the status of claim 999302?
 ```
 
-Offline: `pytest tests/test_route_claim.py::test_route_unresolved_offer`.
+Expect `FollowUpOffer` / `SettlementAgent` (R3.2). SettlementAgent is not configured in Agent Studio — route JSON is enough. Offline: `pytest tests/test_route_claim.py::test_route_unresolved_offer`.
 
 ### R3.4 ASK_TRUE — IssuePayment
 
 ```text
-Intake and route claim_id 999304. Do not skip the Orchestrator.
-Delegate ONCE to Manager: structured intake. STOP after route.
-Expect next_step=IssuePayment, agent_role=SettlementAgent,
-reason_probe_ids includes R3.4.
-Final Answer the route JSON.
+What's the status of claim 999304?
 ```
 
-Needs an ACCEPTED offer and no loss payment; gaps and SIU/litigation must miss.
+Expect `IssuePayment` / `SettlementAgent` (R3.4). Needs an ACCEPTED offer and no loss payment; gaps and SIU/litigation must miss.
 
 ### R4.1 ASK_TRUE — OpenSubrogationCase
 
 ```text
-Intake and route claim_id 401. Do not skip the Orchestrator.
-Delegate ONCE to Manager: structured intake for 401. STOP after route.
-If next_step=OpenSubrogationCase: expect agent_role=SubrogationAgent,
-reason_probe_ids includes R4.1. Delegate ONCE to Subrogation Agent
-(view get_subrogation_view then write), run_id=demo-401-sub.
-If agent_role is PdClaimsAgent: Delegate ONCE to PD Claims Agent
-(view get_pd_view then create_pd_task PD_REVIEW), run_id=demo-401-pd.
+Please process claim 401.
 ```
 
-Injected pytest (police+fault, subro indicator, no case): `test_route_subrogation_gap`. Live **401** may already have a subro case and skip R4.1.
+If `OpenSubrogationCase`: expect `SubrogationAgent` (R4.1). If `PdClaimsAgent`, that is also a valid live 401 outcome. Injected pytest (police+fault, subro indicator, no case): `test_route_subrogation_gap`. Live **401** may already have a subro case and skip R4.1.
 
 ### R4.3 ASK_TRUE — PursueSubrogationRecovery
 
 ```text
-Intake and route claim_id 999403. Do not skip the Orchestrator.
-Delegate ONCE to Manager: structured intake. STOP after route.
-Expect next_step=PursueSubrogationRecovery, agent_role=SubrogationAgent,
-reason_probe_ids includes R4.3.
-If Subrogation Agent is in the Crew, Delegate ONCE (get_subrogation_view then write).
+Please process claim 999403.
 ```
 
-Needs an OPEN/NEGOTIATING/DEMANDED subrogation case and no recovery. R4.1 must not fire (case already exists).
+Expect `PursueSubrogationRecovery` / `SubrogationAgent` (R4.3). Needs an OPEN/NEGOTIATING/DEMANDED subrogation case and no recovery. R4.1 must not fire (case already exists).
 
 ### R1.3 ASK_TRUE — BiClaimsReview
 
 ```text
-Intake and route claim_id 999103. Do not skip the Orchestrator.
-Delegate ONCE to Manager: structured intake. STOP after route.
-Expect next_step=BiClaimsReview, agent_role=BiClaimsAgent,
-reason_probe_ids includes R1.3.
-Delegate ONCE to BI Claims Agent (get_bi_view then write) if in the Crew.
+Please process claim 999103.
 ```
 
-Needs injury or BI_LIABILITY, and no R2.5 (injury already present) or earlier hits.
+Expect `BiClaimsReview` / `BiClaimsAgent` (R1.3). Needs injury or BI_LIABILITY, and no R2.5 (injury already present) or earlier hits.
 
 ### R1.4 ASK_TRUE — PdClaimsReview
 
 ```text
-Intake and route claim_id 401. Do not skip the Orchestrator.
-Delegate ONCE to Manager: structured intake for 401. STOP after route.
-If next_step=PdClaimsReview: expect agent_role=PdClaimsAgent,
-reason_probe_ids includes R1.4. Delegate ONCE to PD Claims Agent
-(get_pd_view then create_pd_task PD_REVIEW) if in the Crew.
+Please process claim 401.
 ```
 
-Offline: `pytest tests/test_route_claim.py::test_route_pd_lane`.
+Expect `PdClaimsReview` / `PdClaimsAgent` (R1.4) when police, fault, and subro gaps are already filled. Offline: `pytest tests/test_route_claim.py::test_route_pd_lane`.
 
 ### default_action — HumanReviewOrWait
 
 ```text
-Intake and route claim_id 999000. Do not skip the Orchestrator.
-Delegate ONCE to Manager: structured intake. STOP after route.
-Expect next_step=HumanReviewOrWait, agent_role=HumanReviewAgent, terminal=true.
-Final Answer the route JSON.
+What's the status of claim 999000?
 ```
 
-Needs a valid triangle claim that matches **no** action `when` (no CLOSED/litigation/SIU/gaps/offers/subro/BI/PD coverage). No seed today.
+Expect `HumanReviewOrWait` / `HumanReviewAgent`, terminal. Needs a valid triangle claim that matches **no** action `when` (no CLOSED/litigation/SIU/gaps/offers/subro/BI/PD coverage). No seed today.
 
 ---
 
@@ -452,94 +296,50 @@ Separate Studio project. Fixture cases: **7001**, **7002**, **7003**. MCP must s
 ### R0.1 ASK_FALSE
 
 ```text
-Intake and route claim_id 7009. Do not skip the Orchestrator.
-Delegate ONCE to Manager: structured intake. STOP after route.
-Expect next_step=FixDataQuality, agent_role=DataQualityAgent,
-reason_probe_ids includes R0.1.
-Final Answer the route JSON.
+What's the status of claim 7009?
 ```
+
+Expect `FixDataQuality` / `DataQualityAgent` (R0.1).
 
 ### R1.1 SELECT_EQUALS CLOSED
 
 ```text
-Intake and route claim_id 7004. Do not skip the Orchestrator.
-Delegate ONCE to Manager: structured intake. STOP after route.
-Expect next_step=CloseoutAudit, agent_role=CloseoutAgent,
-reason_probe_ids includes R1.1.
+Please process claim 7004.
 ```
 
-Needs a fixture spine with `request_status_code: CLOSED` before this prompt is valid.
+Expect `CloseoutAudit` / `CloseoutAgent` (R1.1). Needs a fixture spine with `request_status_code: CLOSED` before this chat is valid.
 
 ### R2.1 ASK_TRUE — HoldReview
 
 ```text
-Intake and route claim_id 7005. Do not skip the Orchestrator.
-Delegate ONCE to Manager: structured intake. STOP after route.
-Expect next_step=HoldReview, agent_role=ExceptionQueueAgent,
-reason_probe_ids includes R2.1.
-Delegate ONCE to Exception Queue Agent (get_distribution_exception_view then write).
+Please process claim 7005.
 ```
 
-Needs `hold_or_aml_flag: true` and not CLOSED.
+Expect `HoldReview` / `ExceptionQueueAgent` (R2.1). Needs `hold_or_aml_flag: true` and not CLOSED.
 
 ### R2.2 ASK_TRUE — RequestSubstantiation (7002)
 
 ```text
-Intake and route claim_id 7002, then complete the post-route specialist work.
-Do not skip the Orchestrator.
-
-1) Delegate ONCE to Manager: structured intake for 7002. STOP after route.
-   Expect next_step=RequestSubstantiation, agent_role=ExceptionQueueAgent,
-   reason_probe_ids includes R2.2.
-
-2) Delegate ONCE to Exception Queue Agent.
-   Task: claim_id=7002 run_id=demo-7002-exc.
-   run_named_query {"label":"get_distribution_exception_view","claim_id":"7002"}
-   then run_named_write write_audit_event.
-
-3) Final Answer: route + summary + exact write JSON. STOP.
+Please process claim 7002.
 ```
 
-Offline: `pytest tests/test_packs.py::test_distribution_7002_exception`.
+Expect `RequestSubstantiation` / `ExceptionQueueAgent` (R2.2). Offline: `pytest tests/test_packs.py::test_distribution_7002_exception`.
 
 ### R2.3 ASK_TRUE — RmdReview (7003)
 
 ```text
-Intake and route claim_id 7003, then complete the post-route specialist work.
-Do not skip the Orchestrator.
-
-1) Delegate ONCE to Manager: structured intake for 7003. STOP after route.
-   Expect next_step=RmdReview, agent_role=RmdOpsAgent,
-   reason_probe_ids includes R2.3.
-
-2) Delegate ONCE to RMD Ops Agent.
-   Task: claim_id=7003 run_id=demo-7003-rmd.
-   run_named_query {"label":"get_rmd_view","claim_id":"7003"}
-   then run_named_write write_audit_event.
-
-3) Final Answer: route + summary + exact write JSON. STOP.
+Please process claim 7003.
 ```
 
-Offline: `pytest tests/test_packs.py::test_distribution_7003_rmd`.
+Expect `RmdReview` / `RmdOpsAgent` (R2.3). Offline: `pytest tests/test_packs.py::test_distribution_7003_rmd`.
 
 ### default — ProcessDistribution (7001)
 
 ```text
-Intake and route claim_id 7001, then complete the post-route specialist work.
-Do not skip the Orchestrator.
-
-1) Delegate ONCE to Manager: structured intake for 7001. STOP after route.
-   Expect next_step=ProcessDistribution, agent_role=DistributionOpsAgent.
-   reason_probe_ids should not include R2.1, R2.2, or R2.3 as the matching action.
-
-2) Delegate ONCE to Distribution Ops Agent.
-   Task: claim_id=7001 run_id=demo-7001-ops.
-   run_named_write write_audit_event only.
-
-3) Final Answer: route + exact write JSON. STOP.
+Please process claim 7001.
 ```
 
-Offline: `pytest tests/test_packs.py::test_distribution_7001_ops`.
+Expect `ProcessDistribution` / `DistributionOpsAgent`. Offline: `pytest tests/test_packs.py::test_distribution_7001_ops`.
 
 ---
 
@@ -558,70 +358,39 @@ Separate Studio project. Fixture cases: **8001**, **8002**.
 ### R0.1 ASK_FALSE
 
 ```text
-Intake and route claim_id 8009. Do not skip the Orchestrator.
-Delegate ONCE to Manager: structured intake. STOP after route.
-Expect next_step=FixDataQuality, agent_role=DataQualityAgent,
-reason_probe_ids includes R0.1.
-Final Answer the route JSON.
+What's the status of claim 8009?
 ```
+
+Expect `FixDataQuality` / `DataQualityAgent` (R0.1).
 
 ### R1.1 SELECT_EQUALS CLOSED
 
 ```text
-Intake and route claim_id 8004. Do not skip the Orchestrator.
-Delegate ONCE to Manager: structured intake. STOP after route.
-Expect next_step=CloseoutAudit, agent_role=CloseoutAgent,
-reason_probe_ids includes R1.1.
+Please process claim 8004.
 ```
 
-Needs a CLOSED rollover fixture.
+Expect `CloseoutAudit` / `CloseoutAgent` (R1.1). Needs a CLOSED rollover fixture.
 
 ### R2.1 ASK_TRUE — ErisaReview (8001)
 
 ```text
-Intake and route claim_id 8001, then complete the post-route specialist work.
-Do not skip the Orchestrator.
-
-1) Delegate ONCE to Manager: structured intake for 8001. STOP after route.
-   Expect next_step=ErisaReview, agent_role=ErisaReviewAgent,
-   reason_probe_ids includes R2.1.
-
-2) Delegate ONCE to ERISA Review Agent.
-   Task: claim_id=8001 run_id=demo-8001-erisa.
-   run_named_query {"label":"get_erisa_review_view","claim_id":"8001"}
-   then run_named_write write_audit_event.
-
-3) Final Answer: route + summary + exact write JSON. STOP.
+Please process claim 8001.
 ```
 
-Offline: `pytest tests/test_packs.py::test_rollover_8001_erisa`.
+Expect `ErisaReview` / `ErisaReviewAgent` (R2.1). Offline: `pytest tests/test_packs.py::test_rollover_8001_erisa`.
 
 ### R2.2 ASK_TRUE — RequestDocuments
 
 ```text
-Intake and route claim_id 8003. Do not skip the Orchestrator.
-Delegate ONCE to Manager: structured intake. STOP after route.
-Expect next_step=RequestDocuments, agent_role=ExceptionQueueAgent,
-reason_probe_ids includes R2.2.
-Delegate ONCE to Exception Queue Agent (write_audit_event only) if in the Crew.
+Please process claim 8003.
 ```
 
-Needs `missing_required_docs: true` and `missing_spousal_consent: false` (else R2.1 wins).
+Expect `RequestDocuments` / `ExceptionQueueAgent` (R2.2). Needs `missing_required_docs: true` and `missing_spousal_consent: false` (else R2.1 wins).
 
 ### default — ProcessRollover (8002)
 
 ```text
-Intake and route claim_id 8002, then complete the post-route specialist work.
-Do not skip the Orchestrator.
-
-1) Delegate ONCE to Manager: structured intake for 8002. STOP after route.
-   Expect next_step=ProcessRollover, agent_role=RolloverOpsAgent.
-
-2) Delegate ONCE to Rollover Ops Agent.
-   Task: claim_id=8002 run_id=demo-8002-ops.
-   run_named_write write_audit_event only.
-
-3) Final Answer: route + exact write JSON. STOP.
+Please process claim 8002.
 ```
 
-Offline: `pytest tests/test_packs.py::test_rollover_8002_ops`.
+Expect `ProcessRollover` / `RolloverOpsAgent`. Offline: `pytest tests/test_packs.py::test_rollover_8002_ops`.

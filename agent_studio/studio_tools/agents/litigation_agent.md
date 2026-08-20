@@ -1,4 +1,4 @@
-# Litigation Agent (Agent Studio paste)
+# Litigation Agent (configured in Agent Studio)
 
 Use when cosine or `route_claim` assigns `LitigationAgent` (claim **402** live seed:
 `EscalateDiscovery` / R1.2b). `next_step` from Orchestrator chooses the write.

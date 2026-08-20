@@ -180,9 +180,9 @@ def test_write_dispatches_deny_claim(monkeypatch):
             "deny_claim",
             json.dumps(
                 {
-                    "run_id": "demo-401-deny",
+                    "run_id": "demo-404-deny",
                     "event_json": {
-                        "claim_id": "401",
+                        "claim_id": "404",
                         "next_step": "DenyUnlawfulOperation",
                     },
                 }

@@ -1,4 +1,4 @@
-# RMD Ops Agent (Agent Studio paste)
+# RMD Ops Agent (configured in Agent Studio)
 
 Use when `route_claim` assigns `RmdOpsAgent` (e.g. case **7003**).
 
