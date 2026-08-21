@@ -1,15 +1,16 @@
 """
-CONTENT_ID: INS_CLAIMS_LETTER_TXT_V1
+CONTENT_ID: INS_CLAIMS_LETTER_TXT_V2
 REPO_REF: json-yaml-runtime
-UPDATED: 2026-08-17
+UPDATED: 2026-08-21
 FILE: agent_studio/studio_tools/save_claim_letter/tool.py
 
-CUSTOM TOOL save_claim_letter — persist drafted hold/status or police-report letter.
+CUSTOM TOOL save_claim_letter — persist drafted hold/status, SMS copy, or police-report letter.
 
-Call only when the user asks to write the letter. Playbook
-`letter_on_request` (LitigationSupport / RequestPoliceReport / deny steps)
-marks the letter as recommended next work; intake and status must not auto-draft.
-Does not send mail and does not call MCP.
+Call only when the user asks to write the letter or SMS copy. Playbook
+`letter_on_request` (LitigationSupport / CollectIncidentReportNumber /
+RequestPoliceReport / deny steps)
+marks the file as recommended next work; intake and status must not auto-draft.
+Does not send mail or SMS and does not call MCP.
 """
 
 from __future__ import annotations
@@ -20,7 +21,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-TOOL_FINGERPRINT = "INS_CLAIMS_LETTER_TXT_V1"
+TOOL_FINGERPRINT = "INS_CLAIMS_LETTER_TXT_V2"
 
 
 class UserParameters(BaseModel):
@@ -79,7 +80,7 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
             {
                 "file_name": letter_path.name,
                 "file_path": saved["letter_artifact"],
-                "description": "Hold/status letter text for BPA email handoff",
+                "description": "Session letter or SMS copy (no send)",
             }
         ],
     }

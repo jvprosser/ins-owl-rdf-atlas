@@ -1,7 +1,7 @@
 """
-CONTENT_ID: INS_CLAIMS_ROUTE_JSON_V3
-REPO_REF: json-yaml-runtime
-UPDATED: 2026-08-18
+CONTENT_ID: INS_CLAIMS_ROUTE_JSON_V4
+REPO_REF: main
+UPDATED: 2026-08-20
 FILE: agent_studio/studio_tools/route_claim/tool.py
 
 CUSTOM TOOL route_claim — structured claim intake.
@@ -19,13 +19,14 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-TOOL_FINGERPRINT = "INS_CLAIMS_ROUTE_JSON_V3"
+TOOL_FINGERPRINT = "INS_CLAIMS_ROUTE_JSON_V4"
 
 _PIN_HINT = (
     "route_claim returned no routing_reason. Studio is running an ins-claims-agent "
     "pin older than the explanation router (PACKAGE_PIN 8f60419 does not emit "
-    "routing_reason). Re-upload route_claim/requirements.txt pinned to a commit "
-    "that includes routing_summary, then retry."
+    "routing_reason, and build_claim_graph at that pin omits deny flags). "
+    "Re-upload route_claim and build_claim_graph requirements.txt pinned to main, "
+    "then retry."
 )
 
 

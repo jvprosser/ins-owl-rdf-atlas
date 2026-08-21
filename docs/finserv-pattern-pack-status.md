@@ -94,7 +94,7 @@ Fallback (do not use): Manager reads spine from Workflow Data and skips `run_nam
 - One pack = one Agent Studio project. Do not mix with 402. Do not register the claims MCP in the distributions project.
 - Manager Role exactly `Manager agent`. CrewAI Delegate matches **Role**.
 - Custom tools: `build_claim_graph`, `validate_claim_graph`, `route_claim`, optional `pre_route_text`.
-- Identity: claims `get_server_info` → `INS_CLAIMS_MCP_V7`. Finserv `get_server_info` → `INS_FINSERV_MCP_V1`.
+- Identity: claims `get_server_info` → `INS_CLAIMS_MCP_V8`. Finserv `get_server_info` → `INS_FINSERV_MCP_V1`.
 - Lead customer prompt: intake **7002**.
 
 ## Tests to re-run on resume

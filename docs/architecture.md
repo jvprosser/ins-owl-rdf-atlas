@@ -81,7 +81,8 @@ Each row is a later snapshot. Earlier gaps are already filled so a higher probe 
 | Claim missing / case not built | `{"claim_exists": false}` | R0.1 | `FixDataQuality` |
 | Claim exists, triangle incomplete | `{"claim_exists": true, "triangle": false, "claim_status_code": "OPEN"}` | R0.4 | `FixDataQuality` |
 | No ADJUSTER role | `{"claim_exists": true, "triangle": true, "claim_status_code": "OPEN", "has_adjuster": false, "litigation_indicator": false, "has_siu_suspected": false, "subrogation_indicator": false, "coverage_type_codes": ["COLLISION"]}` | R2.3 | `AssignAdjuster` |
-| No police report | `{"claim_status_code": "OPEN", "has_adjuster": true, "has_police_report": false, "litigation_indicator": false, "has_siu_suspected": false, "subrogation_indicator": false}` | R2.1 | `RequestPoliceReport` |
+| No police report, no incident number | `{"claim_status_code": "OPEN", "has_adjuster": true, "has_police_report": false, "has_incident_report_number": false, "litigation_indicator": false, "has_siu_suspected": false, "subrogation_indicator": false}` | R2.0 | `CollectIncidentReportNumber` |
+| No police report, incident number on file | `{"claim_status_code": "OPEN", "has_adjuster": true, "has_police_report": false, "has_incident_report_number": true, "litigation_indicator": false, "has_siu_suspected": false, "subrogation_indicator": false}` | R2.1 | `RequestPoliceReport` |
 | No fault determination | `{"claim_status_code": "OPEN", "has_adjuster": true, "has_police_report": true, "has_fault_determination": false, "litigation_indicator": false, "has_siu_suspected": false, "subrogation_indicator": false}` | R2.2 | `DetermineFault` |
 | Offer EXTENDED | `{"claim_status_code": "OPEN", "has_adjuster": true, "has_police_report": true, "has_fault_determination": true, "has_extended_offer": true, "litigation_indicator": false, "has_siu_suspected": false, "subrogation_indicator": false}` | R3.2 | `FollowUpOffer` |
 | Offer ACCEPTED, no loss payment | `{"claim_status_code": "OPEN", "has_adjuster": true, "has_police_report": true, "has_fault_determination": true, "has_extended_offer": false, "has_accepted_offer": true, "has_loss_payment": false, "litigation_indicator": false, "has_siu_suspected": false, "subrogation_indicator": false}` | R3.4 | `IssuePayment` |
@@ -92,7 +93,7 @@ Each row is a later snapshot. Earlier gaps are already filled so a higher probe 
 | Excluded/unlisted operator | `{"claim_status_code": "OPEN", "excluded_operator_exclusion": true}` | R6.2 | `DenyExcludedDriver` |
 | Policy not in force on loss | `{"claim_status_code": "OPEN", "policy_not_in_force_on_loss": true}` | R6.3 | `DenyLapsedPolicy` |
 
-PD steps (`RequestPoliceReport`, `DetermineFault`, `PdClaimsReview`) use `get_pd_view` then `create_pd_task` (work item in `pd_task` plus an `agent_run_audit` receipt). `RequestPoliceReport` sets `letter_on_request`; a session letter via `save_claim_letter` is drafted only if the user asks (no mail send). Settlement steps on this path still `write_audit_event`. `IssuePayment` means settlement work is due; the payment row still has to land in `claim_payment` from the claims platform. A later intake can then hit R1.1.
+PD steps (`CollectIncidentReportNumber`, `RequestPoliceReport`, `DetermineFault`, `PdClaimsReview`) use `get_pd_view` then `create_pd_task` (work item in `pd_task` plus an `agent_run_audit` receipt). `CollectIncidentReportNumber` also inserts `claim_outbound_message` (SMS; no carrier). `RequestPoliceReport` cites `incident_report_number` from `claim_police_intake`, not claim id. Both set `letter_on_request`; a session file via `save_claim_letter` is drafted only if the user asks. Settlement steps on this path still `write_audit_event`. `IssuePayment` means settlement work is due; the payment row still has to land in `claim_payment` from the claims platform. A later intake can then hit R1.1.
 
 Denial: CLOSED stays **approved** (Closeout). DENIED is the other terminal status. R5.2 (`insured_operator_cited`) is Human Review — view + audit, no `deny_claim`. R6.* coded exclusions (`unlawful_operation_exclusion`, `excluded_operator_exclusion`, `policy_not_in_force_on_loss`) go to Deny Agent, which `UPDATE`s `claim_status_code` to `DENIED`. Live deny smokes flip **404** only (`PA-1003`) and restore afterward. Do not use **401** for deny. Repeatable runbook: [deny-path-demo.md](deny-path-demo.md).
 
@@ -102,7 +103,7 @@ Denial: CLOSED stays **approved** (Closeout). DENIED is the other terminal statu
 |---|---|---|
 | Mount | `/workflow_data` (`WORKFLOW_DATA_DIRECTORY`) | `/workspace` (`SESSION_DIRECTORY`) |
 | Access | Read-only | Read-write |
-| Contents | Schema JSON, playbook, `pack.yaml`, exemplars | `claim_{id}_case.json`, validation JSON, route JSON, `claim_{id}_letter.txt` (R1.2) |
+| Contents | Schema JSON, playbook, `pack.yaml`, exemplars | `claim_{id}_case.json`, validation JSON, route JSON, `claim_{id}_letter.txt` (R1.2 / R2.1), `claim_{id}_sms.txt` (R2.0) |
 | Scope | All tools in the workflow | Same, per run |
 
 Thin tools: each Studio tool is `tool.py` + `requirements.txt` only. Shared logic is `ins-claims-agent` pinned from git.
@@ -192,7 +193,7 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 | Hive WAP branches | Write-audit-publish on Iceberg branches. Later Hive fork; not this path. |
 | `write_audit_event` | Catalog write: `INSERT` one `agent_run_audit` row. |
 | `create_litigation_task` | Catalog write: `INSERT` one `litigation_task` row from `run_id` + `event_json`. |
-| `create_pd_task` | Catalog write: `INSERT` one `pd_task` row (`REQUEST_POLICE_REPORT` / `DETERMINE_FAULT` / `PD_REVIEW`) and one `agent_run_audit` receipt. |
+| `create_pd_task` | Catalog write: `INSERT` one `pd_task` row (`COLLECT_INCIDENT_NUMBER` / `REQUEST_POLICE_REPORT` / `DETERMINE_FAULT` / `PD_REVIEW`) and one `agent_run_audit` receipt. `COLLECT_INCIDENT_NUMBER` also inserts `claim_outbound_message`. |
 | `get_deny_view` | Catalog read: operator / policy / police business columns for deny and citation review (no PK/FK). |
 | `deny_claim` | Catalog write: `UPDATE claim` to `DENIED` (refuses CLOSED and already-DENIED) plus an `agent_run_audit` receipt. Not used on `DenyAudit`. |
 | `promote_audit_run` | No-op success on Impala (rows already on main). |

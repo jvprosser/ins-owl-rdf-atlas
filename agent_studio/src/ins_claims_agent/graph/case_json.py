@@ -131,6 +131,11 @@ def build_claim_case(
         ),
         "has_police_report": _as_bool(signals.get("has_police_report")),
         "has_fault_determination": _as_bool(signals.get("has_fault_determination")),
+        "has_incident_report_number": _as_bool(
+            signals.get("has_incident_report_number")
+            or signals.get("incident_report_number")
+        ),
+        "incident_report_number": signals.get("incident_report_number"),
         "injury_ids": injury_ids,
         "has_injury": has_injury,
         "offers": offers,

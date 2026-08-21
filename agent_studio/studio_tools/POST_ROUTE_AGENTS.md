@@ -100,13 +100,13 @@ Use when route returns `BiClaimsAgent` / `BiClaimsReview` / `CaptureInjuryDetail
 ### PD Claims Agent (MCP + `save_claim_letter` on request)
 **Paste-ready definition:** [`agents/pd_claims_agent.md`](agents/pd_claims_agent.md)
 
-Use when route returns `PdClaimsAgent` / `RequestPoliceReport` / `DetermineFault` / `PdClaimsReview`.
+Use when route returns `PdClaimsAgent` / `CollectIncidentReportNumber` / `RequestPoliceReport` / `DetermineFault` / `PdClaimsReview`.
 
 | Field | Value |
 |---|---|
 | Name / Role (exact coworker) | `PD Claims Agent` |
-| Tools | `run_named_query` label `get_pd_view`; `run_named_write` `create_pd_task`; Studio `save_claim_letter` (`RequestPoliceReport` letter only when the user asks) |
-| Lake smoke | claim **401** `PdClaimsReview` (direct specialist). Apply `pd_task` DDL before the write. Full three-snapshot runbook: [`docs/pd-path-demo.md`](../../docs/pd-path-demo.md). |
+| Tools | `run_named_query` label `get_pd_view`; `run_named_write` `create_pd_task`; Studio `save_claim_letter` (SMS copy or incident-number police letter only when the user asks) |
+| Lake smoke | claim **401**. Apply `pd_task` + [`car_insurance_claims_pd_intake.sql`](../../ddl/hive_iceberg/car_insurance_claims_pd_intake.sql). Full runbook: [`docs/pd-path-demo.md`](../../docs/pd-path-demo.md). |
 
 ### Closeout Agent (MCP only)
 **Paste-ready definition:** [`agents/closeout_agent.md`](agents/closeout_agent.md)
@@ -174,4 +174,4 @@ Paste Orchestrator Goal from [`agents/orchestrator_agent.md`](agents/orchestrato
 
 ## Restart note
 
-Restart `iceberg-mcp-server-claims` after pulling main so identity is **`INS_CLAIMS_MCP_V7`** / **`0.3.7`** (catalog includes `get_deny_view` / `deny_claim`).
+Restart `iceberg-mcp-server-claims` after pulling main so identity is **`INS_CLAIMS_MCP_V8`** / **`0.3.8`**.

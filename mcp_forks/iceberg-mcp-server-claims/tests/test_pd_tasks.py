@@ -21,22 +21,19 @@ def test_insert_pd_task_sql():
         },
     )
     assert "INSERT INTO car_insurance_claims.pd_task" in sql
+    assert "incident_report_number" in sql
     assert "REQUEST_POLICE_REPORT" in sql
     assert "401" in sql
     assert "301" in sql
 
 
-def test_create_pd_task_ok(monkeypatch):
+def test_create_pd_task_ok():
     captured: list[str] = []
 
     def fake_dml(sql: str):
         captured.append(sql)
         return "OK"
 
-    monkeypatch.setattr(
-        "iceberg_mcp_server_claims.tools.impala_tools.execute_dml",
-        fake_dml,
-    )
     raw = pd_tasks.create_pd_task(
         "demo-401-pd",
         json.dumps(
@@ -47,6 +44,7 @@ def test_create_pd_task_ok(monkeypatch):
             }
         ),
         "car_insurance_claims",
+        execute_dml=fake_dml,
     )
     payload = json.loads(raw)
     assert payload["ok"] is True
@@ -61,7 +59,7 @@ def test_create_pd_task_ok(monkeypatch):
     assert "DetermineFault" in captured[1]
 
 
-def test_create_pd_task_reports_audit_failure(monkeypatch):
+def test_create_pd_task_reports_audit_failure():
     captured: list[str] = []
 
     def fake_dml(sql: str):
@@ -70,14 +68,11 @@ def test_create_pd_task_reports_audit_failure(monkeypatch):
             return "Error: audit table missing"
         return "OK"
 
-    monkeypatch.setattr(
-        "iceberg_mcp_server_claims.tools.impala_tools.execute_dml",
-        fake_dml,
-    )
     raw = pd_tasks.create_pd_task(
         "demo-401-pd",
         json.dumps({"claim_id": "401", "task_type_code": "PD_REVIEW"}),
         "car_insurance_claims",
+        execute_dml=fake_dml,
     )
     payload = json.loads(raw)
     assert payload["ok"] is False
@@ -90,6 +85,7 @@ def test_create_pd_task_rejects_bad_type():
     raw = pd_tasks.create_pd_task(
         "demo-401-pd",
         json.dumps({"claim_id": "401", "task_type_code": "INVENT"}),
+        execute_dml=lambda _sql: "OK",
     )
     payload = json.loads(raw)
     assert "error" in payload
@@ -100,5 +96,69 @@ def test_create_pd_task_requires_claim_id():
     raw = pd_tasks.create_pd_task(
         "demo-401-pd",
         json.dumps({"task_type_code": "PD_REVIEW"}),
+        execute_dml=lambda _sql: "OK",
     )
     assert "claim_id" in json.loads(raw)["error"]
+
+
+def test_create_pd_task_collect_sends_sms():
+    captured: list[str] = []
+
+    def fake_dml(sql: str):
+        captured.append(sql)
+        return "OK"
+
+    def fake_query(sql: str):
+        assert "phone_number" in sql
+        return [{"phone_number": "+1-555-0101"}]
+
+    raw = pd_tasks.create_pd_task(
+        "demo-401-pd",
+        json.dumps({"claim_id": "401", "task_type_code": "COLLECT_INCIDENT_NUMBER"}),
+        "car_insurance_claims",
+        query_rows=fake_query,
+        execute_dml=fake_dml,
+    )
+    payload = json.loads(raw)
+    assert payload["ok"] is True
+    assert payload["next_step"] == "CollectIncidentReportNumber"
+    assert payload["to_phone"] == "+1-555-0101"
+    assert "claims app" in payload["sms_body"]
+    assert payload["sms_table"] == "claim_outbound_message"
+    assert any("claim_outbound_message" in s for s in captured)
+    assert len(captured) == 3
+    assert "401" not in payload["sms_body"]
+    assert "CLM-" not in payload["sms_body"]
+
+
+def test_create_pd_task_request_requires_incident_number():
+    raw = pd_tasks.create_pd_task(
+        "demo-401-pd",
+        json.dumps({"claim_id": "401", "task_type_code": "REQUEST_POLICE_REPORT"}),
+        "car_insurance_claims",
+        query_rows=lambda _sql: [],
+        execute_dml=lambda _sql: "OK",
+    )
+    payload = json.loads(raw)
+    assert "incident_report_number" in payload["error"]
+
+
+def test_create_pd_task_request_stores_incident_number():
+    captured: list[str] = []
+
+    def fake_dml(sql: str):
+        captured.append(sql)
+        return "OK"
+
+    raw = pd_tasks.create_pd_task(
+        "demo-401-pd",
+        json.dumps({"claim_id": "401", "task_type_code": "REQUEST_POLICE_REPORT"}),
+        "car_insurance_claims",
+        query_rows=lambda _sql: [{"incident_report_number": "SPD-25-11887"}],
+        execute_dml=fake_dml,
+    )
+    payload = json.loads(raw)
+    assert payload["ok"] is True
+    assert payload["incident_report_number"] == "SPD-25-11887"
+    assert "SPD-25-11887" in captured[0]
+    assert "SPD-25-11887" in captured[1]

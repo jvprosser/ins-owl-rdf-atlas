@@ -126,6 +126,25 @@ def test_save_claim_letter_writes_txt(tmp_path, monkeypatch):
     assert saved["bytes"] > 0
 
 
+def test_save_claim_letter_sms_copy(tmp_path, monkeypatch):
+    from ins_claims_agent.studio_io import save_claim_letter
+
+    monkeypatch.setenv("SESSION_DIRECTORY", str(tmp_path))
+    body = "Please open the claims app and enter the police incident report number."
+    saved = save_claim_letter(
+        "401",
+        body,
+        run_id="demo-401-pd",
+        next_step="CollectIncidentReportNumber",
+    )
+    path = tmp_path / "claim_401_sms.txt"
+    assert path.is_file()
+    assert saved["sms_artifact"] == str(path.resolve())
+    assert saved["letter_artifact"] == str(path.resolve())
+    assert not (tmp_path / "claim_401_letter.txt").exists()
+    assert "claims app" in path.read_text(encoding="utf-8")
+
+
 def test_save_claim_letter_rejects_empty_body(tmp_path, monkeypatch):
     from ins_claims_agent.studio_io import save_claim_letter
 

@@ -63,7 +63,7 @@ READ_OPS: dict[str, dict[str, Any]] = {
     "get_pd_view": {
         "required": ("claim_id",),
         "optional": ("database",),
-        "summary": "Police report and fault business columns (no PK/FK)",
+        "summary": "Police report, intake incident number, and fault business columns",
         "handler": lambda p: view_tools.get_pd_view(
             str(p["claim_id"]), p.get("database")
         ),

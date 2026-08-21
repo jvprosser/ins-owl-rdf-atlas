@@ -64,6 +64,11 @@ def test_get_subrogation_view_shapes():
 def test_get_pd_view_shapes():
     def fake(sql: str):
         select = _select_list(sql)
+        if "claim_police_intake" in sql:
+            assert "incident_report_number" in sql
+            return [{"incident_report_number": "SPD-25-11887"}]
+        if "claim_outbound_message" in sql:
+            return []
         if "police_report" in sql:
             assert "401" in sql
             assert "narrative_summary" in select
@@ -89,6 +94,8 @@ def test_get_pd_view_shapes():
     assert payload["claim_id"] == 401
     assert payload["police_reports"][0]["narrative_summary"] == "Rear-end collision."
     assert payload["fault_determinations"][0]["notes"] == "Adverse primarily at fault."
+    assert payload["incident_report_number"] == "SPD-25-11887"
+    assert payload["last_sms"] is None
 
 
 def test_get_deny_view_shapes():

@@ -133,6 +133,14 @@ pr AS (
   SELECT COUNT(*) AS cnt, MIN(police_report_id) AS police_report_id
   FROM {db}.police_report WHERE claim_id = {cid}
 ),
+intake AS (
+  SELECT COUNT(*) AS cnt,
+         MIN(incident_report_number) AS incident_report_number
+  FROM {db}.claim_police_intake
+  WHERE claim_id = {cid}
+    AND incident_report_number IS NOT NULL
+    AND TRIM(incident_report_number) <> ''
+),
 fd AS (
   SELECT COUNT(*) AS cnt, MIN(fault_determination_id) AS fault_determination_id
   FROM {db}.fault_determination WHERE claim_id = {cid}
@@ -248,6 +256,8 @@ SELECT
   pr.police_report_id,
   (fd.cnt > 0) AS has_fault_determination,
   fd.fault_determination_id,
+  (intake.cnt > 0) AS has_incident_report_number,
+  intake.incident_report_number,
   (ofr.cnt > 0) AS has_offer,
   (COALESCE(ofr.extended_cnt, 0) > 0) AS has_unresolved_offer,
   (COALESCE(ofr.accepted_cnt, 0) > 0) AS has_accepted_offer,
@@ -267,6 +277,7 @@ CROSS JOIN lit
 CROSS JOIN inj
 CROSS JOIN pr
 CROSS JOIN fd
+CROSS JOIN intake
 CROSS JOIN ofr
 CROSS JOIN pay
 CROSS JOIN rec

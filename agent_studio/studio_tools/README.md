@@ -13,7 +13,7 @@ UPDATED: YYYY-MM-DD
 FILE: agent_studio/studio_tools/...
 ```
 
-`requirements.txt` also has `# PACKAGE_PIN: …`. After paste, confirm those lines match the repo file. Tool results echo `tool_fingerprint` / `content_id` equal to `CONTENT_ID`. **Bump `CONTENT_ID` (and fingerprint) whenever the file contents change.**
+`requirements.txt` also has `# PACKAGE_PIN: …`. After paste, confirm those lines match the repo file. **`8f60419` is too old** — it builds case JSON without R6 deny flags, so `route_claim` can assign PD while MCP already shows `unlawful_operation_exclusion: true`. Tool results echo `tool_fingerprint` / `content_id` equal to `CONTENT_ID`. **Bump `CONTENT_ID` (and fingerprint) whenever the file contents change.**
 
 **Manager agent (locked):** natural-language interface to the user — drives tools, returns friendly explanations, and may assign LLM subtasks for unstructured data. It does **not** invent SQL or routing rules (probes + playbook do). Paste-ready definition: [`agents/manager_agent.md`](agents/manager_agent.md).
 
@@ -22,7 +22,7 @@ FILE: agent_studio/studio_tools/...
 | `build_claim_graph/` | `claim_id` + MCP `spine_json` / `signals_json` | `claim_{id}_case.json` |
 | `validate_claim_graph/` | `claim_id` | `claim_{id}_validation.json` |
 | `route_claim/` | `claim_id` | `claim_{id}_route.json` |
-| `save_claim_letter/` | `claim_id` + drafted `body` | `claim_{id}_letter.txt` — only when the user asks; playbook `letter_on_request` marks the letter as recommended |
+| `save_claim_letter/` | `claim_id` + drafted `body` | `claim_{id}_letter.txt` or `claim_{id}_sms.txt` — only when the user asks; playbook `letter_on_request` marks the file as recommended |
 | `pre_route_text/` | unstructured `text` (+ optional `claim_id`) | `pre_route_{id}.json` — cosine label/score; `needs_llm` if below threshold |
 
 **After route:** playbook `allowed_tools` map to MCP (views + audit aliases) — see [`POST_ROUTE_AGENTS.md`](POST_ROUTE_AGENTS.md).

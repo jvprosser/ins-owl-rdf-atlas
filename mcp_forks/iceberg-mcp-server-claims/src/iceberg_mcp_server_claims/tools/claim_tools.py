@@ -41,9 +41,11 @@ def get_claim_spine(
           "database": "..."
         }
     """
-    from iceberg_mcp_server_claims.tools.impala_tools import query_rows as _qr
+    qr = query_rows
+    if qr is None:
+        from iceberg_mcp_server_claims.tools.impala_tools import query_rows as _qr
 
-    qr = query_rows or _qr
+        qr = _qr
     db = claim_sql.validate_ident(_default_database(database), "database")
     cid = str(int(claim_id))
 
@@ -106,9 +108,11 @@ def get_claim_routing_signals(
           "database": "..."
         }
     """
-    from iceberg_mcp_server_claims.tools.impala_tools import query_rows as _qr
+    qr = query_rows
+    if qr is None:
+        from iceberg_mcp_server_claims.tools.impala_tools import query_rows as _qr
 
-    qr = query_rows or _qr
+        qr = _qr
     db = claim_sql.validate_ident(_default_database(database), "database")
     cid = str(int(claim_id))
 
@@ -118,6 +122,7 @@ def get_claim_routing_signals(
         "has_injury",
         "has_police_report",
         "has_fault_determination",
+        "has_incident_report_number",
         "has_offer",
         "has_unresolved_offer",
         "has_accepted_offer",
@@ -138,7 +143,13 @@ def get_claim_routing_signals(
         if query_rows is None:
             from iceberg_mcp_server_claims.tools.impala_tools import refresh_table
 
-            for table in ("loss_driver", "claim", "police_report", "fault_determination"):
+            for table in (
+                "loss_driver",
+                "claim",
+                "police_report",
+                "fault_determination",
+                "claim_police_intake",
+            ):
                 try:
                     refresh_table(db, table)
                 except Exception:

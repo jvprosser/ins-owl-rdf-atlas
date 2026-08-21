@@ -217,6 +217,10 @@ class IcebergFacade(McpToolCaller):
             "police_report_id": row.get("police_report_id"),
             "has_fault_determination": bool(sql.coerce_bool(row.get("has_fault_determination"))),
             "fault_determination_id": row.get("fault_determination_id"),
+            "has_incident_report_number": bool(
+                sql.coerce_bool(row.get("has_incident_report_number"))
+            ),
+            "incident_report_number": row.get("incident_report_number"),
             "has_offer": bool(sql.coerce_bool(row.get("has_offer"))),
             "has_unresolved_offer": bool(sql.coerce_bool(row.get("has_unresolved_offer"))),
             "has_accepted_offer": bool(sql.coerce_bool(row.get("has_accepted_offer"))),

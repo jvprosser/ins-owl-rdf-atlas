@@ -20,6 +20,8 @@
     "triangle": { "type": "boolean", "comment": "policy + vehicle + covers" },
     "coverage_type_codes": { "type": "string[]" },
     "has_adjuster": { "type": "boolean" },
+    "has_incident_report_number": { "type": "boolean", "comment": "policyholder supplied agency incident report number" },
+    "incident_report_number": { "type": "string", "comment": "agency incident / exchange-slip number from claim_police_intake" },
     "has_police_report": { "type": "boolean" },
     "has_fault_determination": { "type": "boolean" },
     "has_injury": { "type": "boolean" },

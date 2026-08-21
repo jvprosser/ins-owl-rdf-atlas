@@ -16,6 +16,12 @@ def get_path(doc: dict[str, Any], path: str | None) -> Any:
             cur = cur.get(part)
         else:
             return None
+    # Studio build_claim_graph pin 8f60419 nested MCP signals but omitted
+    # top-level R6/R5.2 fields. Probes read the document root.
+    if cur is None and isinstance(doc, dict) and "." not in str(path):
+        nested = doc.get("signals")
+        if isinstance(nested, dict):
+            return nested.get(str(path))
     return cur
 
 

@@ -2,7 +2,7 @@
 
 Claims fork of Cloudera’s Impala Iceberg MCP for the car-insurance claims agent.
 
-**V7 MCP surface is catalog-only.** Agents call `run_named_query` / `run_named_write` with an allow-listed label. Per-label tools and free-form `execute_query` are not registered. SQL still lives in Python handlers behind the catalog.
+**V8 MCP surface is catalog-only.** Agents call `run_named_query` / `run_named_write` with an allow-listed label. Per-label tools and free-form `execute_query` are not registered. SQL still lives in Python handlers behind the catalog.
 
 | Aspect | Detail |
 |---|---|
@@ -17,7 +17,7 @@ Claims fork of Cloudera’s Impala Iceberg MCP for the car-insurance claims agen
 
 | Tool | Notes |
 |---|---|
-| `get_server_info()` | One-shot identity. Expect **`INS_CLAIMS_MCP_V7`** / **`0.3.7`**. Prompt: “Call get_server_info once and stop.” |
+| `get_server_info()` | One-shot identity. Expect **`INS_CLAIMS_MCP_V8`** / **`0.3.8`**. Prompt: “Call get_server_info once and stop.” |
 
 ### Named catalog (only lake I/O)
 
@@ -33,7 +33,7 @@ Read labels: `get_claim_spine`, `get_claim_routing_signals`, `get_litigation_vie
 
 Write labels: `write_audit_event`, `append_agent_audit_event`, `append_agent_audit_evidence`, `begin_agent_audit_run`, `promote_audit_run`, `promote_agent_audit_run`, `abandon_agent_audit_run`, `create_litigation_task`, `create_pd_task`, `deny_claim`.
 
-Impala audit writes are table-append (no Iceberg WAP branch). `promote_audit_run` returns `mode=table_append`. `create_pd_task` also inserts one `agent_run_audit` receipt. `deny_claim` updates `claim.claim_status_code` to `DENIED` (refuses CLOSED and already-DENIED) and inserts one `agent_run_audit` receipt. Prerequisite: audit DDL plus `litigation_task` / `pd_task` from `ddl/hive_iceberg/` in the target database.
+Impala audit writes are table-append (no Iceberg WAP branch). `promote_audit_run` returns `mode=table_append`. `create_pd_task` inserts one `pd_task` row and one `agent_run_audit` receipt; `COLLECT_INCIDENT_NUMBER` also inserts `claim_outbound_message`. `REQUEST_POLICE_REPORT` requires `claim_police_intake.incident_report_number`. `deny_claim` updates `claim.claim_status_code` to `DENIED` (refuses CLOSED and already-DENIED) and inserts one `agent_run_audit` receipt. Prerequisite: audit DDL plus `litigation_task` / `pd_task` / intake tables from `ddl/hive_iceberg/` in the target database.
 
 ## Agent Studio registration
 
@@ -212,7 +212,7 @@ Operator checks (not handler chats). Chat Orchestrator. Do not run intake.
 Call get_server_info once and stop.
 ```
 
-Expect `content_id` = `INS_CLAIMS_MCP_V7`. Then:
+Expect `content_id` = `INS_CLAIMS_MCP_V8`. Then:
 
 ```text
 Call list_named_queries once and stop.

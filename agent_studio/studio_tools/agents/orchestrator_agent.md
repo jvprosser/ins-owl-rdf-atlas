@@ -58,12 +58,13 @@ recommended and will not be drafted unless they ask. Do not Delegate to
 a specialist. Do not save_claim_letter.
 
 WRITE LETTER (user asks to write, draft, or generate a letter, email,
-hold/status letter, police-report request, or denial letter):
+hold/status letter, police-report request, SMS copy, or denial letter):
 Delegate ONCE to the specialist for that claim (Litigation Agent for
-LitigationSupport; PD Claims Agent for RequestPoliceReport; Deny Agent
+LitigationSupport; PD Claims Agent for CollectIncidentReportNumber or
+RequestPoliceReport; Deny Agent
 for DenyUnlawfulOperation / DenyExcludedDriver / DenyLapsedPolicy /
 DenyAudit). Task: view once, then save_claim_letter once from the view.
-Do not send mail. Do not create a letter unless they asked. If the route
+Do not send mail or SMS. Do not create a letter unless they asked. If the route
 did not recommend a letter (letter_on_request false), Final Answer that
 no letter is the next step.
 
@@ -76,6 +77,7 @@ work, or complete the claim — not status-only):
    SubrogationAgent → Subrogation Agent (view get_subrogation_view)
    BiClaimsAgent → BI Claims Agent (view get_bi_view)
    PdClaimsAgent → PD Claims Agent (view get_pd_view;
+     CollectIncidentReportNumber → create_pd_task COLLECT_INCIDENT_NUMBER;
      RequestPoliceReport → create_pd_task REQUEST_POLICE_REPORT;
      DetermineFault → create_pd_task DETERMINE_FAULT;
      PdClaimsReview → create_pd_task PD_REVIEW;
@@ -102,6 +104,8 @@ work, or complete the claim — not status-only):
    LitigationAgent EscalateDiscovery → create_litigation_task
      event_json task_type_code ESCALATE_DISCOVERY.
    LitigationAgent LitigationSupport → write_audit_event only.
+   PdClaimsAgent CollectIncidentReportNumber → create_pd_task
+     event_json task_type_code COLLECT_INCIDENT_NUMBER.
    PdClaimsAgent RequestPoliceReport → create_pd_task
      event_json task_type_code REQUEST_POLICE_REPORT.
    PdClaimsAgent DetermineFault → create_pd_task DETERMINE_FAULT.
@@ -154,7 +158,7 @@ Use the **coworker** column as the exact `Delegate` string. Specialists must be 
 | `LitigationAgent` | `Litigation Agent` | `run_named_query` label `get_litigation_view`, then `run_named_write` `create_litigation_task` (CompleteLitigationFile / EscalateDiscovery) or `write_audit_event` (LitigationSupport). Studio `save_claim_letter` only when the user asks to write the letter |
 | `SubrogationAgent` | `Subrogation Agent` | `run_named_query` label `get_subrogation_view`, then `run_named_write` `write_audit_event` |
 | `BiClaimsAgent` | `BI Claims Agent` | `run_named_query` label `get_bi_view`, then `run_named_write` `write_audit_event` |
-| `PdClaimsAgent` | `PD Claims Agent` | `run_named_query` label `get_pd_view`, then `run_named_write` `create_pd_task`. Studio `save_claim_letter` only when the user asks to write a `RequestPoliceReport` letter |
+| `PdClaimsAgent` | `PD Claims Agent` | `run_named_query` label `get_pd_view`, then `run_named_write` `create_pd_task`. Studio `save_claim_letter` only when the user asks for the SMS copy (`CollectIncidentReportNumber`) or a `RequestPoliceReport` letter keyed by incident report number |
 | `CloseoutAgent` | `Closeout Agent` | `run_named_write` `write_audit_event`, then `run_named_write` `promote_audit_run` |
 | `DenyAgent` | `Deny Agent` | `run_named_query` label `get_deny_view`; R6.* → `deny_claim`; `DenyAudit` → `write_audit_event` then `promote_audit_run`. Studio `save_claim_letter` only when the user asks to write the denial letter |
 | `HumanReviewAgent` | `Human Review Agent` | Only for `HumanCitationReview`: `get_deny_view` then `write_audit_event`. Never `deny_claim`. `HumanReviewOrWait` stays route-JSON-only |
@@ -217,4 +221,4 @@ Low-score (`needs_llm` true):
 what time is lunch
 ```
 
-Operator identity check (not a handler chat): `Call get_server_info once and stop.` Expect `INS_CLAIMS_MCP_V7`.
+Operator identity check (not a handler chat): `Call get_server_info once and stop.` Expect `INS_CLAIMS_MCP_V8`.

@@ -111,7 +111,7 @@ def get_pd_view(
     *,
     query_rows: QueryFn | None = None,
 ) -> str:
-    """Police report + fault rows for PdClaimsAgent (playbook: get_pd_view)."""
+    """Police report + fault + intake number for PdClaimsAgent (playbook: get_pd_view)."""
     qr = query_rows or _qr()
     db = validate_ident(_default_database(database), "database")
     cid = str(int(claim_id))
@@ -127,15 +127,39 @@ SELECT insured_fault_percent, adverse_fault_percent, fault_basis_code,
 FROM {db}.fault_determination
 WHERE claim_id = {cid}
 """.strip()
+    intake_sql = f"""
+SELECT incident_report_number
+FROM {db}.claim_police_intake
+WHERE claim_id = {cid}
+  AND incident_report_number IS NOT NULL
+  AND TRIM(incident_report_number) <> ''
+ORDER BY collected_at DESC
+LIMIT 1
+""".strip()
+    sms_sql = f"""
+SELECT to_phone, body_text, created_at
+FROM {db}.claim_outbound_message
+WHERE claim_id = {cid}
+  AND purpose_code = 'COLLECT_INCIDENT_REPORT_NUMBER'
+ORDER BY created_at DESC
+LIMIT 1
+""".strip()
     try:
         police_reports = qr(police_sql)
         fault_determinations = qr(fault_sql)
+        intake_rows = qr(intake_sql)
+        sms_rows = qr(sms_sql)
     except Exception as exc:
         return json.dumps({"error": str(exc), "claim_id": cid, "database": db})
+    incident = None
+    if intake_rows:
+        incident = intake_rows[0].get("incident_report_number")
     return json.dumps(
         {
             "claim_id": int(cid),
             "database": db,
+            "incident_report_number": incident,
+            "last_sms": sms_rows[0] if sms_rows else None,
             "police_reports": police_reports,
             "fault_determinations": fault_determinations,
         },

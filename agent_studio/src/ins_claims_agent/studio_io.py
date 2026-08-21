@@ -57,11 +57,9 @@ def letter_artifact_path(claim_id: str | int) -> Path:
     return session_dir() / f"claim_{_safe_claim_id(claim_id)}_letter.txt"
 
 
-def write_text_artifact(path: Path, text: str) -> str:
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8")
-    return str(path.resolve())
+def sms_artifact_path(claim_id: str | int) -> Path:
+    """Session SMS copy (R2.0 CollectIncidentReportNumber)."""
+    return session_dir() / f"claim_{_safe_claim_id(claim_id)}_sms.txt"
 
 
 def save_claim_letter(
@@ -71,22 +69,36 @@ def save_claim_letter(
     run_id: str | None = None,
     next_step: str = "LitigationSupport",
 ) -> dict[str, Any]:
-    """Write drafted letter text to SESSION_DIRECTORY. Does not send mail."""
+    """Write drafted letter or SMS copy to SESSION_DIRECTORY. Does not send."""
     text = (body or "").strip()
     if not text:
         raise ValueError("body is required (drafted letter text)")
     if not text.endswith("\n"):
         text = text + "\n"
-    path = letter_artifact_path(claim_id)
+    step = next_step or "LitigationSupport"
+    path = (
+        sms_artifact_path(claim_id)
+        if step == "CollectIncidentReportNumber"
+        else letter_artifact_path(claim_id)
+    )
     write_text_artifact(path, text)
+    key = "sms_artifact" if step == "CollectIncidentReportNumber" else "letter_artifact"
     return {
         "claim_id": _safe_claim_id(claim_id),
         "run_id": run_id,
-        "next_step": next_step,
+        "next_step": step,
+        key: str(path.resolve()),
         "letter_artifact": str(path.resolve()),
         "session_directory": str(session_dir()),
         "bytes": path.stat().st_size,
     }
+
+
+def write_text_artifact(path: Path, text: str) -> str:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    return str(path.resolve())
 
 
 def _safe_claim_id(claim_id: str | int) -> str:

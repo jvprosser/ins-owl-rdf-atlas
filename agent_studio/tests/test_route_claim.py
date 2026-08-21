@@ -242,6 +242,35 @@ def test_route_unlawful_operation_deny():
     assert "R6.1" in decision["reason_probe_ids"]
 
 
+def test_route_lifts_deny_flag_from_nested_signals():
+    """build_claim_graph pin 8f60419 nested MCP signals but omitted R6 fields."""
+    spine = _spine_401()
+    spine["subrogation_indicator"] = False
+    case = build_claim_graph(
+        404,
+        spine=spine,
+        signals={
+            "unlawful_operation_exclusion": True,
+            "has_police_report": True,
+            "has_fault_determination": True,
+        },
+    )
+    stale = dict(case)
+    for key in (
+        "unlawful_operation_exclusion",
+        "excluded_operator_exclusion",
+        "policy_not_in_force_on_loss",
+        "insured_operator_cited",
+    ):
+        stale.pop(key, None)
+    assert "unlawful_operation_exclusion" not in stale
+    assert stale["signals"]["unlawful_operation_exclusion"] is True
+    decision = route_claim(stale, 404)
+    assert decision["next_step"] == "DenyUnlawfulOperation"
+    assert decision["agent_role"] == "DenyAgent"
+    assert "R6.1" in decision["reason_probe_ids"]
+
+
 def test_route_excluded_operator_deny():
     spine = _spine_401()
     spine["subrogation_indicator"] = False
@@ -281,7 +310,12 @@ def test_route_missing_police_report():
     case = build_claim_graph(
         401,
         spine=spine,
-        signals={"has_police_report": False, "has_fault_determination": True},
+        signals={
+            "has_police_report": False,
+            "has_incident_report_number": True,
+            "incident_report_number": "SPD-25-11887",
+            "has_fault_determination": True,
+        },
     )
     decision = route_claim(case, 401)
     assert decision["next_step"] == "RequestPoliceReport"
@@ -300,6 +334,24 @@ def test_route_missing_police_report():
     assert "will not be drafted unless you ask" in summary
     assert "assigned this work" in summary
     assert "R2.1" not in summary
+
+
+def test_route_collect_incident_report_number():
+    spine = _spine_401()
+    spine["subrogation_indicator"] = False
+    case = build_claim_graph(
+        401,
+        spine=spine,
+        signals={"has_police_report": False, "has_incident_report_number": False},
+    )
+    decision = route_claim(case, 401)
+    assert decision["next_step"] == "CollectIncidentReportNumber"
+    assert decision["agent_role"] == "PdClaimsAgent"
+    assert "create_pd_task" in decision["allowed_tools"]
+    assert decision["letter_on_request"] is True
+    assert "incident report number" in (decision["letter_note"] or "")
+    assert "R2.0" in decision["reason_probe_ids"]
+    assert decision["checks"][-1]["probe_id"] == "R2.0"
 
 
 def test_route_determine_fault():

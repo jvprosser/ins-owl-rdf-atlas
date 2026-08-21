@@ -1,7 +1,7 @@
 """
-CONTENT_ID: INS_CLAIMS_BUILD_JSON_V1
-REPO_REF: json-yaml-runtime
-UPDATED: 2026-08-16
+CONTENT_ID: INS_CLAIMS_BUILD_JSON_V2
+REPO_REF: main
+UPDATED: 2026-08-20
 FILE: agent_studio/studio_tools/build_claim_graph/tool.py
 
 CUSTOM TOOL build_claim_graph — structured claim intake.
@@ -18,7 +18,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-TOOL_FINGERPRINT = "INS_CLAIMS_BUILD_JSON_V1"
+TOOL_FINGERPRINT = "INS_CLAIMS_BUILD_JSON_V2"
 
 
 class UserParameters(BaseModel):
@@ -69,6 +69,10 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
         "policy_id": spine.get("policy_id"),
         "insurable_object_id": spine.get("insurable_object_id"),
         "coverage_type_code": spine.get("coverage_type_code"),
+        "insured_operator_cited": case.get("insured_operator_cited"),
+        "unlawful_operation_exclusion": case.get("unlawful_operation_exclusion"),
+        "excluded_operator_exclusion": case.get("excluded_operator_exclusion"),
+        "policy_not_in_force_on_loss": case.get("policy_not_in_force_on_loss"),
         "graph_artifact": str(case_path.resolve()),
         "session_directory": str(studio_io.session_dir()),
         "workflow_data_directory": str(assets),

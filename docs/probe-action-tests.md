@@ -198,13 +198,21 @@ What's the status of claim 999203?
 
 Expect `AssignAdjuster` / `DataQualityAgent` (R2.3). Needs OPEN, not litigation/SIU, and no ADJUSTER role on the claim.
 
+### R2.0 ASK_TRUE — CollectIncidentReportNumber
+
+```text
+Please process claim 401.
+```
+
+Expect `CollectIncidentReportNumber` / `PdClaimsAgent` (R2.0). An SMS is written to `claim_outbound_message` (no carrier). Offline: `pytest tests/test_route_claim.py::test_route_collect_incident_report_number`. Needs no `police_report` and no `claim_police_intake` row. Live PD path: [pd-path-demo.md](pd-path-demo.md).
+
 ### R2.1 ASK_TRUE — RequestPoliceReport
 
 ```text
-Please process claim 999201.
+Please process claim 401.
 ```
 
-Expect `RequestPoliceReport` / `PdClaimsAgent` (R2.1). A police-report request letter is recommended and will not be drafted unless you ask. Offline: `pytest tests/test_route_claim.py::test_route_missing_police_report`. Apply `pd_task` DDL before the live write. Needs a claim with no `police_report` row (seed **401** already has one). Live PD path: [pd-path-demo.md](pd-path-demo.md).
+Expect `RequestPoliceReport` / `PdClaimsAgent` (R2.1). A police-report request letter for the **incident report number** (not claim id) is recommended and will not be drafted unless you ask. Offline: `pytest tests/test_route_claim.py::test_route_missing_police_report`. Apply `pd_task` + intake DDL before the live write. Needs `claim_police_intake` present and no `police_report` row. Live PD path: [pd-path-demo.md](pd-path-demo.md).
 
 ### R2.2 ASK_TRUE — DetermineFault
 
