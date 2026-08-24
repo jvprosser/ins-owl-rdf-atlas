@@ -578,7 +578,7 @@ INSERT INTO ${var:database}.litigation_task (
 
 ## create_pd_task
 
-`event_json.task_type_code` must be `COLLECT_INCIDENT_NUMBER`, `REQUEST_POLICE_REPORT`, `DETERMINE_FAULT`, or `PD_REVIEW`. Then one audit receipt. `REQUEST_POLICE_REPORT` requires `claim_police_intake.incident_report_number` and stores it on the task. `COLLECT_INCIDENT_NUMBER` also inserts `claim_outbound_message`.
+`event_json.task_type_code` must be `COLLECT_INCIDENT_NUMBER`, `REQUEST_POLICE_REPORT`, `DETERMINE_FAULT`, or `PD_REVIEW`. Then one audit receipt. `REQUEST_POLICE_REPORT` requires `claim_police_intake.incident_report_number`, stores it on the task, and refuses if a `police_report` row already exists. `COLLECT_INCIDENT_NUMBER` also inserts `claim_outbound_message`.
 
 ```sql
 INSERT INTO ${var:database}.pd_task (

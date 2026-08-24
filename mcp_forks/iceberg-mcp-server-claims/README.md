@@ -17,7 +17,7 @@ Claims fork of Cloudera’s Impala Iceberg MCP for the car-insurance claims agen
 
 | Tool | Notes |
 |---|---|
-| `get_server_info()` | One-shot identity. Expect **`INS_CLAIMS_MCP_V8`** / **`0.3.8`**. Prompt: “Call get_server_info once and stop.” |
+| `get_server_info()` | One-shot identity. Expect **`INS_CLAIMS_MCP_V9`** / **`0.3.9`**. Prompt: “Call get_server_info once and stop.” |
 
 ### Named catalog (only lake I/O)
 
@@ -212,7 +212,7 @@ Operator checks (not handler chats). Chat Orchestrator. Do not run intake.
 Call get_server_info once and stop.
 ```
 
-Expect `content_id` = `INS_CLAIMS_MCP_V8`. Then:
+Expect `content_id` = `INS_CLAIMS_MCP_V9`. Then:
 
 ```text
 Call list_named_queries once and stop.

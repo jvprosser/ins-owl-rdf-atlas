@@ -65,6 +65,14 @@ LIMIT 1
 """.strip()
 
 
+def police_report_count_sql(database: str, claim_id: int) -> str:
+    db = validate_ident(database, "database")
+    return (
+        f"SELECT COUNT(*) AS cnt FROM {db}.police_report "
+        f"WHERE claim_id = {int(claim_id)}"
+    )
+
+
 def intake_incident_number_sql(database: str, claim_id: int) -> str:
     db = validate_ident(database, "database")
     return f"""
@@ -163,8 +171,30 @@ def create_pd_task(
     to_phone = None
 
     if task_type == "REQUEST_POLICE_REPORT":
+        qr = _need_query(query_rows)
         try:
-            intake_rows = _need_query(query_rows)(intake_incident_number_sql(db, cid))
+            police_rows = qr(police_report_count_sql(db, cid))
+        except Exception as exc:
+            return json.dumps({"error": str(exc), "run_id": rid, "database": db})
+        police_cnt = 0
+        if police_rows:
+            try:
+                police_cnt = int(police_rows[0].get("cnt") or 0)
+            except (TypeError, ValueError):
+                police_cnt = 0
+        if police_cnt > 0:
+            return json.dumps(
+                {
+                    "error": "police_report already on file; do not REQUEST_POLICE_REPORT. "
+                    "Re-run structured claim intake (expect DetermineFault).",
+                    "run_id": rid,
+                    "database": db,
+                    "claim_id": cid,
+                    "has_police_report": True,
+                }
+            )
+        try:
+            intake_rows = qr(intake_incident_number_sql(db, cid))
         except Exception as exc:
             return json.dumps({"error": str(exc), "run_id": rid, "database": db})
         incident = (intake_rows[0].get("incident_report_number") if intake_rows else None)

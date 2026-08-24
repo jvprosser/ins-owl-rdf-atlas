@@ -12,9 +12,9 @@ def test_content_id_and_version():
     payload = json.loads(get_server_info())
     assert payload["ok"] is True
     assert payload["done"] is True
-    assert payload["content_id"] == "INS_CLAIMS_MCP_V8"
+    assert payload["content_id"] == "INS_CLAIMS_MCP_V9"
     assert payload["server"] == "iceberg-mcp-server-claims"
-    assert payload["version"] == "0.3.8"
+    assert payload["version"] == "0.3.9"
     assert "catalog_only_mcp_surface" in payload["features"]
     assert payload["registered_tools"] == [
         "get_server_info",

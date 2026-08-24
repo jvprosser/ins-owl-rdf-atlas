@@ -23,9 +23,9 @@ Coworker Role must be exactly `Deny Agent`. Playbook `agent_role` is `DenyAgent`
 
 Skip if already done this session. These checks are for the operator, not the handler chats below.
 
-1. Claims MCP on **0.3.8** or later (`INS_CLAIMS_MCP_V8`). Studio `uvx` from GitHub `main` only sees `get_deny_view` / `deny_claim` after that commit is on the remote.
+1. Claims MCP on **0.3.9** or later (`INS_CLAIMS_MCP_V9`). Studio `uvx` from GitHub `main` only sees `get_deny_view` / `deny_claim` after that commit is on the remote.
 2. Restart `iceberg-mcp-server-claims`.
-3. Operator chat: `Call get_server_info once and stop.` Expect `INS_CLAIMS_MCP_V8` / **`0.3.8`** or newer.
+3. Operator chat: `Call get_server_info once and stop.` Expect `INS_CLAIMS_MCP_V9` / **`0.3.9`** or newer.
 4. Operator chat: `Call list_named_queries once and stop.` Must include `get_deny_view` and `deny_claim`.
 5. Workflow Data includes the playbook whose R6.* actions list `get_deny_view` / `deny_claim` (and `save_claim_letter`, drafted only if the handler asks).
 6. Same Crew, Roles **exactly**: `Manager agent`, `Deny Agent`. Re-paste Orchestrator Goal from [`agent_studio/studio_tools/agents/orchestrator_agent.md`](../agent_studio/studio_tools/agents/orchestrator_agent.md) so the Deny handoff is in it. Paste [`deny_agent.md`](../agent_studio/studio_tools/agents/deny_agent.md). Attach MCP + Studio `save_claim_letter` on the Deny agent (used only if the handler asks to write the letter).

@@ -357,6 +357,28 @@ def test_route_missing_police_report():
     assert "R2.1" not in summary
 
 
+def test_police_report_id_counts_as_report_on_file():
+    """Omitted/false has_police_report must not steal R2.1 when MCP sent an id."""
+    spine = _spine_401()
+    spine["subrogation_indicator"] = False
+    case = build_claim_graph(
+        401,
+        spine=spine,
+        signals={
+            "has_police_report": False,
+            "police_report_id": 5301,
+            "has_incident_report_number": True,
+            "incident_report_number": "SPD-25-11887",
+            "has_fault_determination": False,
+        },
+    )
+    assert case["has_police_report"] is True
+    decision = route_claim(case, 401)
+    assert decision["next_step"] == "DetermineFault"
+    assert decision["checks"][-1]["probe_id"] == "R2.2"
+    assert decision["checks"][-1]["status"] == "assigned"
+
+
 def test_route_collect_incident_report_number():
     spine = _spine_401()
     spine["subrogation_indicator"] = False

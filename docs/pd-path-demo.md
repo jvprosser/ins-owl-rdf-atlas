@@ -21,9 +21,9 @@ Coworker Role must be exactly `PD Claims Agent`. Playbook `agent_role` is `PdCla
 
 Skip if already done this session. These checks are for the operator, not the handler chats below.
 
-1. Claims MCP on **0.3.8** or later (`INS_CLAIMS_MCP_V8`). Studio `uvx` from GitHub `main` only sees SMS / intake after that commit is on the remote.
+1. Claims MCP on **0.3.9** or later (`INS_CLAIMS_MCP_V9`). Studio `uvx` from GitHub `main` only sees SMS / intake after that commit is on the remote.
 2. Restart `iceberg-mcp-server-claims`.
-3. Operator chat: `Call get_server_info once and stop.` Expect `INS_CLAIMS_MCP_V8` / **`0.3.8`** or newer.
+3. Operator chat: `Call get_server_info once and stop.` Expect `INS_CLAIMS_MCP_V9` / **`0.3.9`** or newer.
 4. Operator chat: `Call list_named_queries once and stop.` Must include `get_pd_view` and `create_pd_task`.
 5. Workflow Data includes the playbook with **R2.0** `CollectIncidentReportNumber` before R2.1.
 6. Same Crew, Roles **exactly**: `Manager agent`, `PD Claims Agent`. Re-paste Orchestrator Goal from [`agent_studio/studio_tools/agents/orchestrator_agent.md`](../agent_studio/studio_tools/agents/orchestrator_agent.md). Paste [`pd_claims_agent.md`](../agent_studio/studio_tools/agents/pd_claims_agent.md). Attach MCP + Studio `save_claim_letter` on the PD agent (always SMS copy on CollectIncidentReportNumber; police letter only if the handler asks).
@@ -180,6 +180,8 @@ SELECT CAST(5301 AS BIGINT), CAST(301 AS BIGINT), CAST(401 AS BIGINT),
        CAST(501 AS BIGINT), TRUE,
        'Unit 2 cited for failure to reduce speed; rear-end collision.',
        CAST('2025-06-16 08:00:00' AS TIMESTAMP);
+
+INVALIDATE METADATA car_insurance_claims.police_report;
 
 SELECT COUNT(*) FROM car_insurance_claims.police_report WHERE claim_id = 401;
 -- expect 1

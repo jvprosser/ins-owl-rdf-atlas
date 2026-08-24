@@ -174,4 +174,4 @@ Paste Orchestrator Goal from [`agents/orchestrator_agent.md`](agents/orchestrato
 
 ## Restart note
 
-Restart `iceberg-mcp-server-claims` after pulling main so identity is **`INS_CLAIMS_MCP_V8`** / **`0.3.8`**.
+Restart `iceberg-mcp-server-claims` after pulling main so identity is **`INS_CLAIMS_MCP_V9`** / **`0.3.9`**.

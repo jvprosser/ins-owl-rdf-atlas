@@ -179,4 +179,4 @@ Low-score (`needs_llm` true):
 what time is lunch
 ```
 
-Operator identity check (not a handler chat): `Call get_server_info once and stop.` Expect `INS_CLAIMS_MCP_V8`.
+Operator identity check (not a handler chat): `Call get_server_info once and stop.` Expect `INS_CLAIMS_MCP_V9`.

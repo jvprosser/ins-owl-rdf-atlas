@@ -129,7 +129,9 @@ def build_claim_case(
         "has_adjuster": any(
             (r.get("role_type_code") or "").upper() == "ADJUSTER" for r in roles
         ),
-        "has_police_report": _as_bool(signals.get("has_police_report")),
+        "has_police_report": _as_bool(
+            signals.get("has_police_report") or signals.get("police_report_id")
+        ),
         "has_fault_determination": _as_bool(signals.get("has_fault_determination")),
         "has_incident_report_number": _as_bool(
             signals.get("has_incident_report_number")

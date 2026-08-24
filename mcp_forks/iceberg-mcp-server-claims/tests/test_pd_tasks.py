@@ -162,3 +162,21 @@ def test_create_pd_task_request_stores_incident_number():
     assert payload["incident_report_number"] == "SPD-25-11887"
     assert "SPD-25-11887" in captured[0]
     assert "SPD-25-11887" in captured[1]
+
+
+def test_create_pd_task_request_refuses_when_police_on_file():
+    raw = pd_tasks.create_pd_task(
+        "demo-401-pd",
+        json.dumps({"claim_id": "401", "task_type_code": "REQUEST_POLICE_REPORT"}),
+        "car_insurance_claims",
+        query_rows=lambda sql: (
+            [{"cnt": 1}]
+            if "police_report" in sql
+            else [{"incident_report_number": "SPD-25-11887"}]
+        ),
+        execute_dml=lambda _sql: "OK",
+    )
+    payload = json.loads(raw)
+    assert "error" in payload
+    assert "police_report already on file" in payload["error"]
+    assert payload["has_police_report"] is True

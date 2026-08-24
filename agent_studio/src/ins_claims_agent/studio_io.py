@@ -205,6 +205,13 @@ def assert_signals_json_is_mcp_observation(raw: Any) -> dict[str, Any]:
             break
     named = payload.get("named_op")
     if named == "get_claim_routing_signals":
+        inner = payload.get("signals")
+        if not isinstance(inner, dict) or "has_police_report" not in inner:
+            raise ValueError(
+                "get_claim_routing_signals Observation must include "
+                "signals.has_police_report. Pass the run_named_query JSON "
+                "unmodified (do not rebuild signals or pass claim_*_case.json)."
+            )
         return payload
     if "spine" in payload and isinstance(payload.get("signals"), dict):
         raise ValueError(

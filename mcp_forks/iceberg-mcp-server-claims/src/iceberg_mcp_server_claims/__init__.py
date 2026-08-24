@@ -1,3 +1,3 @@
 """Iceberg MCP claims fork (Impala) — additive claim/audit tools."""
 
-__version__ = "0.3.8"
+__version__ = "0.3.9"
