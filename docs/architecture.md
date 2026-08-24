@@ -32,7 +32,7 @@ User
 2. Manager calls `run_named_query` for spine, then routing signals (catalog **labels**, not extra MCP tools).
 3. Manager passes those JSON payloads, unmodified, into `build_claim_graph` → `validate_claim_graph` → `route_claim`.
 4. Manager stops. Orchestrator maps `agent_role` → coworker **Role** and Delegates once.
-5. Specialist may run one view label, then the playbook write (`create_litigation_task`, `create_pd_task`, `deny_claim`, or `write_audit_event`; Closeout and `DenyAudit` also `promote_audit_run`). `LitigationSupport`, `RequestPoliceReport`, and Deny steps mark a letter as recommended (`letter_on_request`); Studio `save_claim_letter` runs only when the user asks to write it.
+5. Specialist may run one view label, then the playbook write (`create_litigation_task`, `create_pd_task`, `deny_claim`, or `write_audit_event`; Closeout and `DenyAudit` also `promote_audit_run`). `CollectIncidentReportNumber` always writes `claim_{id}_sms.txt`. `LitigationSupport`, `RequestPoliceReport`, and Deny steps mark a letter as recommended (`letter_on_request`); Studio `save_claim_letter` runs for those letters only when the user asks to write it.
 
 Custom Studio tools **cannot** call MCP in-process. The agent is the only bridge: MCP result → tool argument → session artifact.
 
@@ -93,7 +93,7 @@ Each row is a later snapshot. Earlier gaps are already filled so a higher probe 
 | Excluded/unlisted operator | `{"claim_status_code": "OPEN", "excluded_operator_exclusion": true}` | R6.2 | `DenyExcludedDriver` |
 | Policy not in force on loss | `{"claim_status_code": "OPEN", "policy_not_in_force_on_loss": true}` | R6.3 | `DenyLapsedPolicy` |
 
-PD steps (`CollectIncidentReportNumber`, `RequestPoliceReport`, `DetermineFault`, `PdClaimsReview`) use `get_pd_view` then `create_pd_task` (work item in `pd_task` plus an `agent_run_audit` receipt). `CollectIncidentReportNumber` also inserts `claim_outbound_message` (SMS; no carrier). `RequestPoliceReport` cites `incident_report_number` from `claim_police_intake`, not claim id. Both set `letter_on_request`; a session file via `save_claim_letter` is drafted only if the user asks. Settlement steps on this path still `write_audit_event`. `IssuePayment` means settlement work is due; the payment row still has to land in `claim_payment` from the claims platform. A later intake can then hit R1.1.
+PD steps (`CollectIncidentReportNumber`, `RequestPoliceReport`, `DetermineFault`, `PdClaimsReview`) use `get_pd_view` then `create_pd_task` (work item in `pd_task` plus an `agent_run_audit` receipt). `CollectIncidentReportNumber` also inserts `claim_outbound_message` (SMS; no carrier) and always saves `claim_{id}_sms.txt`. `RequestPoliceReport` cites `incident_report_number` from `claim_police_intake`, not claim id, and sets `letter_on_request`; that session letter via `save_claim_letter` is drafted only if the user asks. Settlement steps on this path still `write_audit_event`. `IssuePayment` means settlement work is due; the payment row still has to land in `claim_payment` from the claims platform. A later intake can then hit R1.1.
 
 Denial: CLOSED stays **approved** (Closeout). DENIED is the other terminal status. R5.2 (`insured_operator_cited`) is Human Review — view + audit, no `deny_claim`. R6.* coded exclusions (`unlawful_operation_exclusion`, `excluded_operator_exclusion`, `policy_not_in_force_on_loss`) go to Deny Agent, which `UPDATE`s `claim_status_code` to `DENIED`. Live deny smokes flip **404** only (`PA-1003`) and restore afterward. Do not use **401** for deny. Repeatable runbook: [deny-path-demo.md](deny-path-demo.md).
 
@@ -211,7 +211,7 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 | `WORKFLOW_DATA_DIRECTORY` | Env for the Workflow Data mount (`/workflow_data`). |
 | `SESSION_DIRECTORY` | Env for per-run artifacts (`/workspace`). |
 | Exemplars | Labeled NL snippets for cosine `pre_route_text`. |
-| `save_claim_letter` | Studio tool: write `claim_{id}_letter.txt` to the session folder when the user asks. Does not send mail. Playbook `letter_on_request` marks the letter as recommended next work. |
+| `save_claim_letter` | Studio tool: write `claim_{id}_letter.txt` when the user asks, or `claim_{id}_sms.txt` always on CollectIncidentReportNumber. Does not send mail or SMS. |
 
 **Packs / demo**
 

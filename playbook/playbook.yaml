@@ -351,8 +351,8 @@ actions:
       step: CollectIncidentReportNumber
       agent: PdClaimsAgent
       lane: PD
-      letter_on_request: true
-      letter_note: An SMS was sent asking the policyholder to enter the incident report number in the app. A copy will be saved only if you ask.
+      letter_on_request: false
+      letter_note: An SMS was sent asking the policyholder to enter the incident report number in the app.
       tools: [get_pd_view, create_pd_task, save_claim_letter]
   R2.1:
     - when: ASK_TRUE

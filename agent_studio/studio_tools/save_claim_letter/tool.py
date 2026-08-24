@@ -1,15 +1,14 @@
 """
-CONTENT_ID: INS_CLAIMS_LETTER_TXT_V2
+CONTENT_ID: INS_CLAIMS_LETTER_TXT_V3
 REPO_REF: json-yaml-runtime
-UPDATED: 2026-08-21
+UPDATED: 2026-08-24
 FILE: agent_studio/studio_tools/save_claim_letter/tool.py
 
 CUSTOM TOOL save_claim_letter — persist drafted hold/status, SMS copy, or police-report letter.
 
-Call only when the user asks to write the letter or SMS copy. Playbook
-`letter_on_request` (LitigationSupport / CollectIncidentReportNumber /
-RequestPoliceReport / deny steps)
-marks the file as recommended next work; intake and status must not auto-draft.
+CollectIncidentReportNumber always writes claim_<id>_sms.txt (no carrier).
+Playbook letter_on_request (LitigationSupport / RequestPoliceReport / deny
+steps) marks a letter as recommended; draft those only when the user asks.
 Does not send mail or SMS and does not call MCP.
 """
 
@@ -21,7 +20,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-TOOL_FINGERPRINT = "INS_CLAIMS_LETTER_TXT_V2"
+TOOL_FINGERPRINT = "INS_CLAIMS_LETTER_TXT_V3"
 
 
 class UserParameters(BaseModel):

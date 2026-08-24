@@ -57,6 +57,20 @@ def test_assert_spine_triangle_fields():
         assert "insurable_object_id" in str(exc)
 
 
+def test_assert_signals_intake_fields_when_police_missing():
+    from ins_claims_agent.studio_io import assert_signals_has_intake_fields
+
+    assert_signals_has_intake_fields(
+        {"has_police_report": False, "has_incident_report_number": True}
+    )
+    assert_signals_has_intake_fields({"has_police_report": True})
+    try:
+        assert_signals_has_intake_fields({"has_police_report": False})
+        assert False, "expected ValueError"
+    except ValueError as exc:
+        assert "has_incident_report_number" in str(exc)
+
+
 def test_normalize_fork_signals_envelope():
     raw = {
         "claim_id": 401,

@@ -271,6 +271,27 @@ def test_route_lifts_deny_flag_from_nested_signals():
     assert "R6.1" in decision["reason_probe_ids"]
 
 
+def test_route_lifts_intake_flag_from_nested_signals():
+    """Root default false must not steal R2.0 when nested MCP signals have the number."""
+    spine = _spine_401()
+    spine["subrogation_indicator"] = False
+    case = build_claim_graph(
+        401,
+        spine=spine,
+        signals={
+            "has_police_report": False,
+            "has_incident_report_number": True,
+            "incident_report_number": "SPD-25-11887",
+        },
+    )
+    stale = dict(case)
+    stale["has_incident_report_number"] = False
+    stale["incident_report_number"] = None
+    decision = route_claim(stale, 401)
+    assert decision["next_step"] == "RequestPoliceReport"
+    assert "R2.1" in decision["reason_probe_ids"]
+
+
 def test_route_excluded_operator_deny():
     spine = _spine_401()
     spine["subrogation_indicator"] = False
@@ -348,8 +369,11 @@ def test_route_collect_incident_report_number():
     assert decision["next_step"] == "CollectIncidentReportNumber"
     assert decision["agent_role"] == "PdClaimsAgent"
     assert "create_pd_task" in decision["allowed_tools"]
-    assert decision["letter_on_request"] is True
+    assert "save_claim_letter" in decision["allowed_tools"]
+    assert decision["letter_on_request"] is False
     assert "incident report number" in (decision["letter_note"] or "")
+    assert "only if you ask" not in (decision["letter_note"] or "")
+    assert "only if you ask" not in decision["routing_summary"]
     assert "R2.0" in decision["reason_probe_ids"]
     assert decision["checks"][-1]["probe_id"] == "R2.0"
 

@@ -172,6 +172,20 @@ def assert_spine_has_triangle_fields(spine: dict[str, Any]) -> None:
         )
 
 
+def assert_signals_has_intake_fields(signals: dict[str, Any]) -> None:
+    """Fail fast when omitted V8 flags would default to false and steal R2.0."""
+    police = signals.get("has_police_report")
+    if police is True or str(police).strip().lower() in {"true", "1", "yes"}:
+        return
+    if "has_incident_report_number" in signals or signals.get("incident_report_number"):
+        return
+    raise ValueError(
+        "signals_json omitted has_incident_report_number while has_police_report "
+        "is false. Pass the full get_claim_routing_signals JSON unmodified into "
+        "build_claim_graph (do not summarize or omit keys)."
+    )
+
+
 def normalize_signals_payload(raw: Any) -> dict[str, Any]:
     """Accept fork MCP envelope or flat signals dict."""
     payload = _lower_keys(parse_json_arg(raw, label="signals_json"))

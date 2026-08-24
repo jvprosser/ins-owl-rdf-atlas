@@ -1,6 +1,6 @@
 # Probe / action test prompts
 
-One chat per playbook **probe → action** pair. Chat the **Orchestrator** as a claims handler: one sentence and a claim id. Do not mention tools, catalog labels, `run_id`, or probe ids. Orchestrator Goal already maps those. Pass = `route_claim` returns the expected `next_step`, `agent_role`, `routing_reason`, and `checks`. Probe ids remain in the JSON for audit.
+One chat per playbook **probe → action** pair. Chat the **Orchestrator** as a claims handler: one sentence and a claim id. Do not mention tools, catalog labels, `run_id`, or probe ids. Orchestrator maps `agent_role` to a coworker Role; the specialist Goal owns the write. Pass = `route_claim` returns the expected `next_step`, `agent_role`, `routing_reason`, and `checks`. Probe ids remain in the JSON for audit.
 
 First-match-wins: a later probe only fires if every earlier action’s `when` failed. You cannot test `R1.4` on claim **402**; litigation (`R1.2b` discovery aging) wins first.
 
@@ -204,7 +204,7 @@ Expect `AssignAdjuster` / `DataQualityAgent` (R2.3). Needs OPEN, not litigation/
 Please process claim 401.
 ```
 
-Expect `CollectIncidentReportNumber` / `PdClaimsAgent` (R2.0). An SMS is written to `claim_outbound_message` (no carrier). Offline: `pytest tests/test_route_claim.py::test_route_collect_incident_report_number`. Needs no `police_report` and no `claim_police_intake` row. Live PD path: [pd-path-demo.md](pd-path-demo.md).
+Expect `CollectIncidentReportNumber` / `PdClaimsAgent` (R2.0). An SMS is written to `claim_outbound_message` (no carrier) and a session copy is always saved to `claim_{id}_sms.txt`. Offline: `pytest tests/test_route_claim.py::test_route_collect_incident_report_number`. Needs no `police_report` and no `claim_police_intake` row. Live PD path: [pd-path-demo.md](pd-path-demo.md).
 
 ### R2.1 ASK_TRUE — RequestPoliceReport
 

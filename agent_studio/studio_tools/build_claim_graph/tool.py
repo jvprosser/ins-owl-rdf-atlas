@@ -1,7 +1,7 @@
 """
-CONTENT_ID: INS_CLAIMS_BUILD_JSON_V2
+CONTENT_ID: INS_CLAIMS_BUILD_JSON_V3
 REPO_REF: main
-UPDATED: 2026-08-20
+UPDATED: 2026-08-24
 FILE: agent_studio/studio_tools/build_claim_graph/tool.py
 
 CUSTOM TOOL build_claim_graph — structured claim intake.
@@ -18,7 +18,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-TOOL_FINGERPRINT = "INS_CLAIMS_BUILD_JSON_V2"
+TOOL_FINGERPRINT = "INS_CLAIMS_BUILD_JSON_V3"
 
 
 class UserParameters(BaseModel):
@@ -55,6 +55,7 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
         case = build_case_graph(claim_id, pack=pack, spine=spine, signals=signals)
     else:
         studio_io.assert_spine_has_triangle_fields(spine)
+        studio_io.assert_signals_has_intake_fields(signals)
         case = build_claim_graph(claim_id, spine=spine, signals=signals)
 
     case_path = studio_io.graph_artifact_path(claim_id)
@@ -73,6 +74,9 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
         "unlawful_operation_exclusion": case.get("unlawful_operation_exclusion"),
         "excluded_operator_exclusion": case.get("excluded_operator_exclusion"),
         "policy_not_in_force_on_loss": case.get("policy_not_in_force_on_loss"),
+        "has_police_report": case.get("has_police_report"),
+        "has_incident_report_number": case.get("has_incident_report_number"),
+        "incident_report_number": case.get("incident_report_number"),
         "graph_artifact": str(case_path.resolve()),
         "session_directory": str(studio_io.session_dir()),
         "workflow_data_directory": str(assets),
