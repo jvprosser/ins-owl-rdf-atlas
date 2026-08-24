@@ -50,9 +50,10 @@ results.
    ONCE in order:
    run_named_query {"label":"get_claim_spine","claim_id":"<id>"}
    → run_named_query {"label":"get_claim_routing_signals","claim_id":"<id>"}
-   → build_claim_graph (pass FULL spine_json + signals_json unmodified;
-     the signals object MUST keep has_incident_report_number and
-     incident_report_number — do not drop keys)
+   → build_claim_graph: spine_json = exact get_claim_spine Observation;
+     signals_json = exact get_claim_routing_signals Observation (must
+     include named_op). Never rebuild those objects. Never pass
+     claim_*_case.json as signals_json.
    → validate_claim_graph → route_claim.
    Then STOP. Do not call specialist views or writes. Orchestrator hands
    off using agent_role.

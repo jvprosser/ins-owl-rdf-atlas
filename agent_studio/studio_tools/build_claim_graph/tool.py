@@ -1,5 +1,5 @@
 """
-CONTENT_ID: INS_CLAIMS_BUILD_JSON_V3
+CONTENT_ID: INS_CLAIMS_BUILD_JSON_V4
 REPO_REF: main
 UPDATED: 2026-08-24
 FILE: agent_studio/studio_tools/build_claim_graph/tool.py
@@ -18,7 +18,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-TOOL_FINGERPRINT = "INS_CLAIMS_BUILD_JSON_V3"
+TOOL_FINGERPRINT = "INS_CLAIMS_BUILD_JSON_V4"
 
 
 class UserParameters(BaseModel):
@@ -32,7 +32,10 @@ class ToolParameters(BaseModel):
     )
     signals_json: str = Field(
         default="{}",
-        description="JSON from MCP get_claim_routing_signals (optional but recommended)",
+        description=(
+            "Exact JSON from MCP run_named_query get_claim_routing_signals "
+            "(must include named_op). Do not pass claim_*_case.json or a rebuilt object."
+        ),
     )
     database: Optional[str] = Field(
         default=None,
@@ -49,11 +52,13 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
     assets = studio_io.configure_workflow_assets()
     claim_id = args.claim_id
     spine = studio_io.normalize_spine_payload(args.spine_json)
-    signals = studio_io.normalize_signals_payload(args.signals_json)
     pack = current_pack()
     if pack is not None and pack.graph.get("builder") == "generic":
+        signals = studio_io.normalize_signals_payload(args.signals_json)
         case = build_case_graph(claim_id, pack=pack, spine=spine, signals=signals)
     else:
+        observation = studio_io.assert_signals_json_is_mcp_observation(args.signals_json)
+        signals = studio_io.normalize_signals_payload(observation)
         studio_io.assert_spine_has_triangle_fields(spine)
         studio_io.assert_signals_has_intake_fields(signals)
         case = build_claim_graph(claim_id, spine=spine, signals=signals)
@@ -77,6 +82,7 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
         "has_police_report": case.get("has_police_report"),
         "has_incident_report_number": case.get("has_incident_report_number"),
         "incident_report_number": case.get("incident_report_number"),
+        "signals_named_op": "get_claim_routing_signals",
         "graph_artifact": str(case_path.resolve()),
         "session_directory": str(studio_io.session_dir()),
         "workflow_data_directory": str(assets),

@@ -186,6 +186,39 @@ def assert_signals_has_intake_fields(signals: dict[str, Any]) -> None:
     )
 
 
+def assert_signals_json_is_mcp_observation(raw: Any) -> dict[str, Any]:
+    """Require the raw get_claim_routing_signals Observation, not case JSON.
+
+    Studio Manager often rebuilds a signals object (or passes claim_*_case.json)
+    after MCP already returned has_incident_report_number=true. YAML then sees
+    false/null and steals R2.0. named_op is only on the MCP envelope.
+    """
+    payload = _lower_keys(parse_json_arg(raw, label="signals_json"))
+    if not isinstance(payload, dict):
+        raise ValueError("signals_json must be a JSON object")
+    for wrap_key in ("tool_output", "result", "data", "observation"):
+        inner = payload.get(wrap_key)
+        if isinstance(inner, dict) and inner.get("named_op") == (
+            "get_claim_routing_signals"
+        ):
+            payload = _lower_keys(inner)
+            break
+    named = payload.get("named_op")
+    if named == "get_claim_routing_signals":
+        return payload
+    if "spine" in payload and isinstance(payload.get("signals"), dict):
+        raise ValueError(
+            "signals_json is claim case JSON, not the get_claim_routing_signals "
+            "Observation. Pass that run_named_query JSON unmodified (it must "
+            "include named_op)."
+        )
+    raise ValueError(
+        "signals_json must be the full get_claim_routing_signals Observation "
+        f"(named_op=get_claim_routing_signals). Got named_op={named!r}. "
+        "Do not rebuild, summarize, or pass claim_*_case.json."
+    )
+
+
 def normalize_signals_payload(raw: Any) -> dict[str, Any]:
     """Accept fork MCP envelope or flat signals dict."""
     payload = _lower_keys(parse_json_arg(raw, label="signals_json"))

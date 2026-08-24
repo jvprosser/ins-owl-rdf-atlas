@@ -71,6 +71,94 @@ def test_assert_signals_intake_fields_when_police_missing():
         assert "has_incident_report_number" in str(exc)
 
 
+def test_assert_signals_json_requires_mcp_named_op():
+    from ins_claims_agent.studio_io import (
+        assert_signals_json_is_mcp_observation,
+        normalize_signals_payload,
+    )
+
+    mcp = {
+        "named_op": "get_claim_routing_signals",
+        "named_op_kind": "read",
+        "catalog_version": 1,
+        "signals": {
+            "has_police_report": False,
+            "has_incident_report_number": True,
+            "incident_report_number": "SPD-25-11887",
+        },
+        "injury_ids": [],
+        "offers": [],
+        "payment_ids": [],
+        "recovery_ids": [],
+    }
+    observation = assert_signals_json_is_mcp_observation(mcp)
+    signals = normalize_signals_payload(observation)
+    assert signals["has_incident_report_number"] is True
+    assert signals["incident_report_number"] == "SPD-25-11887"
+
+    wrapped = assert_signals_json_is_mcp_observation({"tool_output": mcp})
+    assert wrapped["named_op"] == "get_claim_routing_signals"
+
+    case = {
+        "has_incident_report_number": False,
+        "incident_report_number": None,
+        "spine": {"claim_id": 401},
+        "signals": {
+            "has_incident_report_number": False,
+            "incident_report_number": None,
+            "has_police_report": False,
+        },
+    }
+    try:
+        assert_signals_json_is_mcp_observation(case)
+        assert False, "expected ValueError"
+    except ValueError as exc:
+        assert "case JSON" in str(exc)
+
+    try:
+        assert_signals_json_is_mcp_observation(
+            {"has_police_report": False, "has_incident_report_number": False}
+        )
+        assert False, "expected ValueError"
+    except ValueError as exc:
+        assert "named_op" in str(exc)
+
+
+def test_mcp_observation_intake_reaches_case_json():
+    from ins_claims_agent.studio_io import (
+        assert_signals_json_is_mcp_observation,
+        normalize_signals_payload,
+    )
+
+    observation = assert_signals_json_is_mcp_observation(
+        {
+            "named_op": "get_claim_routing_signals",
+            "signals": {
+                "has_police_report": False,
+                "has_incident_report_number": True,
+                "incident_report_number": "SPD-25-11887",
+            },
+        }
+    )
+    case = build_claim_graph(
+        401,
+        spine={
+            "claim_id": 401,
+            "claim_status_code": "OPEN",
+            "policy_id": 1001,
+            "insurable_object_id": 201,
+            "policy_covers_vehicle": True,
+            "coverage_type_code": "COLLISION",
+            "roles": [
+                {"claim_party_role_id": 6002, "role_type_code": "ADJUSTER", "party_id": 4}
+            ],
+        },
+        signals=normalize_signals_payload(observation),
+    )
+    assert case["has_incident_report_number"] is True
+    assert case["incident_report_number"] == "SPD-25-11887"
+
+
 def test_normalize_fork_signals_envelope():
     raw = {
         "claim_id": 401,
