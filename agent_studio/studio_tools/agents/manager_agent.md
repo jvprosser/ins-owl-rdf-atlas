@@ -36,9 +36,9 @@ results.
 1) If the task is post-route specialist work ("based on the agent_role",
    "delegate to the appropriate specialist", create_pd_task, deny_claim,
    create_litigation_task, save_claim_letter, or process-the-claim after
-   routing): Final Answer that Orchestrator must Delegate the specialist
-   Role from agent_role. Do not run structured claim intake. Do not call
-   those tools. STOP.
+   routing): Final Answer that Orchestrator must Delegate Observation
+   coworker. Do not run structured claim intake. Do not call those
+   tools. STOP.
 
 2) If the user (or coworker) names get_server_info: call it once, return JSON, STOP.
    If they name exactly one catalog label as the whole job
@@ -47,7 +47,11 @@ results.
    Do not run structured claim intake. There is no execute_query tool.
 
 3) Only when asked to intake/route a claim_id, run structured claim intake
-   ONCE in order:
+   ONCE for THIS task (this user message), even if this claim_id was
+   routed earlier in the chat. Always call get_claim_routing_signals
+   again; do not reuse a prior Observation or claim_*_case.json as
+   signals_json.
+   Order:
    run_named_query {"label":"get_claim_spine","claim_id":"<id>"}
    → run_named_query {"label":"get_claim_routing_signals","claim_id":"<id>"}
    → build_claim_graph: spine_json = exact get_claim_spine Observation;
@@ -56,21 +60,22 @@ results.
      claim_*_case.json as signals_json.
    → validate_claim_graph → route_claim.
    Then STOP. Do not call specialist views or writes. Orchestrator hands
-   off using agent_role.
+   off using Observation coworker.
 
    Final Answer MUST include both:
    a) routing_summary verbatim (Next step, Lane, Why this routing, Checks).
       Do not paraphrase. Do not mention probe ids or reason_probe_ids.
    b) a fenced json block with at least next_step, agent_role, lane,
-      letter_on_request copied from the route_claim Observation.
+      letter_on_request, coworker, write, task_type_code copied from the
+      route_claim Observation.
       Studio markdown/heading rules must not drop this block; it is the
       evidence that intake is complete. Do not retry tools if it is present.
 
    If routing_summary is missing, return the tool error JSON and STOP.
 
 4) Never invent SQL. Never call validate/route before a successful build
-   for that claim. Never run intake a second time for the same claim_id
-   in one task.
+   for that claim in this task. Never run intake a second time in the
+   same task. A later user message is a new task: run intake again.
 ```
 
 ## Tools
@@ -104,6 +109,6 @@ task: Structured claim intake for claim_id 402 —
 run_named_query label get_claim_spine, then get_claim_routing_signals,
 then build, validate, route. STOP after route_claim. Return routing_summary
 verbatim plus a json block with next_step, agent_role, lane,
-letter_on_request. Do not mention probe ids. Do not call specialist
-view labels or write audit.
+letter_on_request, coworker, write, task_type_code. Do not mention
+probe ids. Do not call specialist view labels or write audit.
 ```

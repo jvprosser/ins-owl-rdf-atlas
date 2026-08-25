@@ -1,6 +1,6 @@
 # PD path demo (claim 401)
 
-Repeatable Agent Studio demo of the property-damage probes on seed **401**. Orchestrator chats, with Impala between them. The crew does **not** walk FNOL → payout in one run. Each chat classifies the current lake snapshot.
+Repeatable Agent Studio demo of the property-damage probes on seed **401**. Orchestrator chats, with Impala between them. The crew does **not** walk FNOL → payout in one run. Each **user message** classifies the current lake snapshot (Manager always re-calls `get_claim_routing_signals`). A new message in the same chat is enough; a new chat also works.
 
 Chat the **Orchestrator** as a claims handler would: one sentence and a claim id. Do not mention tools, catalog labels, `run_id`, or `next_step`. Orchestrator supplies `run_id` and the specialist Role; the PD agent Goal owns the catalog write. Leave **402** / **403** / **404** rows alone.
 
@@ -92,7 +92,7 @@ If `DELETE` is rejected, use `TRUNCATE TABLE` only on `pd_task`. Do **not** trun
 
 ## 2. Snapshot A0 — `CollectIncidentReportNumber`
 
-New Orchestrator chat:
+New user message (same Orchestrator chat is fine):
 
 ```text
 Please process claim 401.
@@ -141,7 +141,7 @@ WHERE claim_id = 401;
 
 ## 4. Snapshot A1 — `RequestPoliceReport`
 
-New Orchestrator chat:
+New user message (same Orchestrator chat is fine):
 
 ```text
 Please process claim 401.
@@ -195,7 +195,7 @@ If that `INSERT` duplicates (row 5301 already restored), skip it.
 
 ## 6. Snapshot B — `DetermineFault`
 
-New Orchestrator chat:
+New user message (same Orchestrator chat is fine):
 
 ```text
 Please process claim 401.
@@ -227,7 +227,7 @@ SELECT COUNT(*) FROM car_insurance_claims.fault_determination WHERE claim_id = 4
 
 ## 8. Snapshot C — `PdClaimsReview`
 
-New Orchestrator chat:
+New user message (same Orchestrator chat is fine):
 
 ```text
 Please process claim 401.

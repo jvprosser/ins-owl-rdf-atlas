@@ -1,6 +1,7 @@
 # Post-route agents
 
-After `route_claim`, the decision’s `agent_role` + `allowed_tools` name the next worker.
+After `route_claim`, the decision’s `coworker` + `write` name the next worker and catalog write. `agent_role` is still on the JSON for audits.
+
 **Lake I/O stays on MCP.** Letters are Studio file writes (`save_claim_letter`), not mail send. Playbook `letter_on_request` marks a letter as recommended next work; agents draft it only when the user asks.
 
 ## Playbook tool → MCP tool
@@ -29,7 +30,7 @@ Optional catalog lifecycle labels (not used on the one-shot intake path): `begin
 ### Claims Orchestrator (no tools)
 **Paste-ready definition:** [`agents/orchestrator_agent.md`](agents/orchestrator_agent.md)
 
-NL front door; delegates structured claim intake, unstructured pre-route, and post-route work. Goal is intent + Role map only; specialist Goals own catalog writes. Hard limits: intake at most once per message; never assign post-route work to Manager (Studio Plan/Evaluator has done that).
+NL front door; delegates structured claim intake, unstructured pre-route, and post-route work. Goal is intent only; playbook `coworker` / `write` on the route Observation are the handoff. Specialist Goals own catalog writes. Hard limits: fresh intake once per user message; never assign post-route work to Manager.
 
 **CrewAI coworker names:** `Delegate work to coworker` requires the coworker string to match the agent’s **Role** exactly (see Studio’s “must be one of” error). Prefer short Roles:
 
@@ -62,7 +63,7 @@ NL first-touch triage. Cosine vs a small `LITIGATION` / `GENERAL_CLAIMS` catalog
 
 **Role (exact for CrewAI coworker):** `Manager agent`  
 **Tools:** MCP `get_server_info` / `run_named_query` / `run_named_write`; Studio `build` / `validate` / `route`.  
-**Job:** Structured claim intake when asked to intake/route; **if asked for one MCP identity/spine tool by name, call it once and stop**. After `route_claim`, STOP — return `routing_summary` plus a json block (`next_step`, `agent_role`, `lane`, `letter_on_request`) so Studio’s evidence gate can complete. If the Planner assigns specialist work here, refuse and tell Orchestrator to Delegate the specialist Role. Orchestrator hands off using `agent_role`.
+**Job:** Structured claim intake when asked to intake/route; **if asked for one MCP identity/spine tool by name, call it once and stop**. After `route_claim`, STOP — return `routing_summary` plus a json block (`next_step`, `agent_role`, `lane`, `letter_on_request`, `coworker`, `write`, `task_type_code`) so Studio’s evidence gate can complete. If the Planner assigns specialist work here, refuse and tell Orchestrator to Delegate Observation coworker.
 
 ### Litigation Agent (MCP + `save_claim_letter` on request)
 **Finished paste-ready definition:** [`agents/litigation_agent.md`](agents/litigation_agent.md)
@@ -152,11 +153,11 @@ Paste Orchestrator Goal from [`agents/orchestrator_agent.md`](agents/orchestrato
 Please process claim 402.
 ```
 
-Manager Goal must STOP after `route_claim`. Orchestrator maps `agent_role` → coworker Role (not litigation-only). The specialist Goal owns the view/write. Do not put step 2 on Manager.
+Manager Goal must STOP after `route_claim`. Orchestrator Delegates Observation `coworker` (not a Goal Role map). The specialist Goal owns the view/write. Do not put step 2 on Manager.
 
-1. Orchestrator → Manager: structured claim intake (`run_named_query` spine then signals → build → validate → route). At most once per chat.
-2. Route returns `agent_role` (402: `LitigationAgent` / `EscalateDiscovery`).
-3. Orchestrator → mapped specialist: `claim_id`, `run_id=demo-<claim_id>-e2e`, `next_step`, `agent_role`. Specialist runs its Goal (402: `create_litigation_task`).
+1. Orchestrator → Manager: structured claim intake (`run_named_query` spine then signals → build → validate → route). Once per user message (fresh signals even if this claim_id was routed earlier in the chat).
+2. Route returns `coworker` / `write` / `next_step` (402: `Litigation Agent` / `create_litigation_task` / `EscalateDiscovery`).
+3. Orchestrator → Observation coworker: `claim_id`, `run_id=demo-<claim_id>-e2e`, `next_step`, `write`, `task_type_code`. Specialist runs its Goal (402: `create_litigation_task`).
 4. Orchestrator Final Answer: route decision + specialist summary + write JSON (keep JSON in a fenced block so Studio format overlays do not drop it).
 
 Specialists other than Litigation still need to be configured in Agent Studio in the same Crew, or step 3 ends with coworker-not-found.

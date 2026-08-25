@@ -244,9 +244,12 @@ probes:
       equals: true
 
 # Action matrix: probe result (ASK_TRUE, ASK_FALSE, SELECT_EQUALS) → execution.
-#   agent:     playbook agent_role for Orchestrator handoff (e.g. SiuAgent)
+#   agent:     playbook agent_role (legacy; still on the decision JSON)
+#   coworker:  exact CrewAI Role for Orchestrator Delegate (omit if unmapped)
+#   write:     catalog write label; specialist Goal owns the call
+#   task_type_code: optional event_json for create_pd_task / create_litigation_task
 #   lane/step: operational classification and next action id
-#   tools:     allow-list of MCP catalog labels (and Studio graph tools) for that step
+#   tools:     allow-list of MCP catalog labels (and Studio graph tools)
 #   letter_on_request: a letter is recommended next work; do not auto-draft
 #   letter_note: copied into routing_summary (user-facing; no probe ids)
 actions:
@@ -255,19 +258,23 @@ actions:
       step: FixDataQuality
       agent: DataQualityAgent
       lane: DATA_QUALITY
+      write: write_audit_event
       tools: [build_claim_graph, validate_claim_graph, write_audit_event]
   R0.4:
     - when: ASK_FALSE
       step: FixDataQuality
       agent: DataQualityAgent
       lane: DATA_QUALITY
+      write: write_audit_event
       tools: [build_claim_graph, validate_claim_graph, write_audit_event]
   R1.1:
     - when: SELECT_EQUALS
       match_value: CLOSED
       step: CloseoutAudit
       agent: CloseoutAgent
+      coworker: Closeout Agent
       lane: CLOSEOUT
+      write: write_audit_event
       tools: [write_audit_event, promote_audit_run]
       terminal: true
   R1.1d:
@@ -275,7 +282,9 @@ actions:
       match_value: DENIED
       step: DenyAudit
       agent: DenyAgent
+      coworker: Deny Agent
       lane: DENY
+      write: write_audit_event
       letter_on_request: true
       letter_note: A denial letter is recommended. It will not be drafted unless you ask.
       tools: [get_deny_view, write_audit_event, promote_audit_run, save_claim_letter]
@@ -284,14 +293,18 @@ actions:
     - when: ASK_TRUE
       step: HumanCitationReview
       agent: HumanReviewAgent
+      coworker: Human Review Agent
       lane: GENERAL
+      write: write_audit_event
       tools: [get_deny_view, write_audit_event]
       terminal: true
   R6.1:
     - when: ASK_TRUE
       step: DenyUnlawfulOperation
       agent: DenyAgent
+      coworker: Deny Agent
       lane: DENY
+      write: deny_claim
       letter_on_request: true
       letter_note: A denial letter is recommended. It will not be drafted unless you ask.
       tools: [get_deny_view, deny_claim, save_claim_letter]
@@ -300,7 +313,9 @@ actions:
     - when: ASK_TRUE
       step: DenyExcludedDriver
       agent: DenyAgent
+      coworker: Deny Agent
       lane: DENY
+      write: deny_claim
       letter_on_request: true
       letter_note: A denial letter is recommended. It will not be drafted unless you ask.
       tools: [get_deny_view, deny_claim, save_claim_letter]
@@ -309,7 +324,9 @@ actions:
     - when: ASK_TRUE
       step: DenyLapsedPolicy
       agent: DenyAgent
+      coworker: Deny Agent
       lane: DENY
+      write: deny_claim
       letter_on_request: true
       letter_note: A denial letter is recommended. It will not be drafted unless you ask.
       tools: [get_deny_view, deny_claim, save_claim_letter]
@@ -318,19 +335,27 @@ actions:
     - when: ASK_TRUE
       step: CompleteLitigationFile
       agent: LitigationAgent
+      coworker: Litigation Agent
       lane: LITIGATION
+      write: create_litigation_task
+      task_type_code: COMPLETE_FILE
       tools: [get_litigation_view, create_litigation_task]
   R1.2b:
     - when: ASK_TRUE
       step: EscalateDiscovery
       agent: LitigationAgent
+      coworker: Litigation Agent
       lane: LITIGATION
+      write: create_litigation_task
+      task_type_code: ESCALATE_DISCOVERY
       tools: [get_litigation_view, create_litigation_task]
   R1.2:
     - when: ASK_TRUE
       step: LitigationSupport
       agent: LitigationAgent
+      coworker: Litigation Agent
       lane: LITIGATION
+      write: write_audit_event
       letter_on_request: true
       letter_note: A litigation hold/status letter is recommended. It will not be drafted unless you ask.
       tools: [get_litigation_view, write_audit_event, save_claim_letter]
@@ -339,18 +364,23 @@ actions:
       step: SiuInvestigation
       agent: SiuAgent
       lane: SIU
+      write: write_audit_event
       tools: [write_audit_event]
   R2.3:
     - when: ASK_TRUE
       step: AssignAdjuster
       agent: DataQualityAgent
       lane: DATA_QUALITY
+      write: write_audit_event
       tools: [build_claim_graph, write_audit_event]
   R2.0:
     - when: ASK_TRUE
       step: CollectIncidentReportNumber
       agent: PdClaimsAgent
+      coworker: PD Claims Agent
       lane: PD
+      write: create_pd_task
+      task_type_code: COLLECT_INCIDENT_NUMBER
       letter_on_request: false
       letter_note: An SMS was sent asking the policyholder to enter the incident report number in the app.
       tools: [get_pd_view, create_pd_task, save_claim_letter]
@@ -358,7 +388,10 @@ actions:
     - when: ASK_TRUE
       step: RequestPoliceReport
       agent: PdClaimsAgent
+      coworker: PD Claims Agent
       lane: PD
+      write: create_pd_task
+      task_type_code: REQUEST_POLICE_REPORT
       letter_on_request: true
       letter_note: A police-report request letter for the incident report number is recommended. It will not be drafted unless you ask.
       tools: [get_pd_view, create_pd_task, save_claim_letter]
@@ -366,57 +399,74 @@ actions:
     - when: ASK_TRUE
       step: DetermineFault
       agent: PdClaimsAgent
+      coworker: PD Claims Agent
       lane: PD
+      write: create_pd_task
+      task_type_code: DETERMINE_FAULT
       tools: [get_pd_view, create_pd_task]
   R2.5:
     - when: ASK_TRUE
       step: CaptureInjuryDetails
       agent: BiClaimsAgent
+      coworker: BI Claims Agent
       lane: BI
+      write: write_audit_event
       tools: [get_bi_view, write_audit_event]
   R3.2:
     - when: ASK_TRUE
       step: FollowUpOffer
       agent: SettlementAgent
       lane: GENERAL
+      write: write_audit_event
       tools: [write_audit_event]
   R3.4:
     - when: ASK_TRUE
       step: IssuePayment
       agent: SettlementAgent
       lane: GENERAL
+      write: write_audit_event
       tools: [write_audit_event]
   R4.1:
     - when: ASK_TRUE
       step: OpenSubrogationCase
       agent: SubrogationAgent
+      coworker: Subrogation Agent
       lane: PD
+      write: write_audit_event
       tools: [get_subrogation_view, write_audit_event]
   R4.3:
     - when: ASK_TRUE
       step: PursueSubrogationRecovery
       agent: SubrogationAgent
+      coworker: Subrogation Agent
       lane: PD
+      write: write_audit_event
       tools: [get_subrogation_view, write_audit_event]
   R1.3:
     - when: ASK_TRUE
       step: BiClaimsReview
       agent: BiClaimsAgent
+      coworker: BI Claims Agent
       lane: BI
+      write: write_audit_event
       tools: [get_bi_view, write_audit_event]
   R1.4:
     - when: ASK_TRUE
       step: PdClaimsReview
       agent: PdClaimsAgent
+      coworker: PD Claims Agent
       lane: PD
+      write: create_pd_task
+      task_type_code: PD_REVIEW
       tools: [get_pd_view, create_pd_task]
 
-# Fallback: unhandled or ambiguous cases → HumanReviewAgent, GENERAL lane,
-# terminal: true.
+# Fallback: unhandled or ambiguous cases. No coworker → Orchestrator
+# Final Answers the route JSON (do not invent a Role).
 default_action:
   title: No earlier check assigned work
   step: HumanReviewOrWait
   agent: HumanReviewAgent
   lane: GENERAL
+  write: write_audit_event
   tools: [write_audit_event]
   terminal: true

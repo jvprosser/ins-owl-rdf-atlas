@@ -1,7 +1,7 @@
 """
-CONTENT_ID: INS_CLAIMS_ROUTE_JSON_V4
+CONTENT_ID: INS_CLAIMS_ROUTE_JSON_V5
 REPO_REF: main
-UPDATED: 2026-08-20
+UPDATED: 2026-08-25
 FILE: agent_studio/studio_tools/route_claim/tool.py
 
 CUSTOM TOOL route_claim — structured claim intake.
@@ -19,7 +19,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-TOOL_FINGERPRINT = "INS_CLAIMS_ROUTE_JSON_V4"
+TOOL_FINGERPRINT = "INS_CLAIMS_ROUTE_JSON_V5"
 
 _PIN_HINT = (
     "route_claim returned no routing_reason. Studio is running an ins-claims-agent "
@@ -71,6 +71,9 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
         "lane": decision.get("lane"),
         "next_step": decision.get("next_step"),
         "agent_role": decision.get("agent_role"),
+        "coworker": decision.get("coworker"),
+        "write": decision.get("write"),
+        "task_type_code": decision.get("task_type_code"),
         "allowed_tools": decision.get("allowed_tools"),
         "letter_on_request": decision.get("letter_on_request"),
         "letter_note": decision.get("letter_note"),

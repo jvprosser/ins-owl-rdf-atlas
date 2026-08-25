@@ -1,7 +1,7 @@
-# CONTENT_ID: INS_CLAIMS_ROUTE_REQ_V5
+# CONTENT_ID: INS_CLAIMS_ROUTE_REQ_V6
 # PACKAGE_PIN: main
 # REPO_REF: main
-# UPDATED: 2026-08-20
+# UPDATED: 2026-08-25
 # FILE: agent_studio/studio_tools/route_claim/requirements.txt
 pydantic>=2.0
 ins-claims-agent @ git+https://github.com/jvprosser/ins-owl-rdf-atlas.git@main#subdirectory=agent_studio

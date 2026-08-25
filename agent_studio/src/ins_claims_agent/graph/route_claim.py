@@ -134,6 +134,14 @@ def _trace_entry(
     }
 
 
+def _optional_str(action: dict[str, Any], *keys: str) -> str | None:
+    for key in keys:
+        value = action.get(key)
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    return None
+
+
 def _decision(
     claim_id: int | str,
     action: dict[str, Any],
@@ -171,6 +179,9 @@ def _decision(
         "lane": action.get("lane"),
         "next_step": step,
         "agent_role": action.get("agent"),
+        "coworker": _optional_str(action, "coworker", "coworker_role"),
+        "write": _optional_str(action, "write", "write_label"),
+        "task_type_code": _optional_str(action, "task_type_code"),
         "allowed_tools": list(action.get("tools") or []),
         "letter_on_request": letter_on_request,
         "letter_note": letter_note,

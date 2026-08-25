@@ -56,6 +56,9 @@ def test_route_subrogation_gap():
     decision = route_claim(case, 401)
     assert decision["next_step"] == "OpenSubrogationCase"
     assert decision["agent_role"] == "SubrogationAgent"
+    assert decision["coworker"] == "Subrogation Agent"
+    assert decision["write"] == "write_audit_event"
+    assert decision["task_type_code"] is None
     assert decision["terminal"] is False
 
 
@@ -69,8 +72,9 @@ def test_route_litigation():
     assert case["discovery_aging"] is False
     assert decision["next_step"] == "CompleteLitigationFile"
     assert decision["agent_role"] == "LitigationAgent"
-    assert "needs_llm" not in decision
-    assert "create_litigation_task" in decision["allowed_tools"]
+    assert decision["coworker"] == "Litigation Agent"
+    assert decision["write"] == "create_litigation_task"
+    assert decision["task_type_code"] == "COMPLETE_FILE"
 
 
 def _signals_litigation_file_complete(**overrides: object) -> dict:
@@ -101,7 +105,9 @@ def test_route_litigation_discovery_aging():
     assert case["discovery_aging"] is True
     assert decision["next_step"] == "EscalateDiscovery"
     assert decision["agent_role"] == "LitigationAgent"
-    assert "R1.2b" in decision["reason_probe_ids"]
+    assert decision["coworker"] == "Litigation Agent"
+    assert decision["write"] == "create_litigation_task"
+    assert decision["task_type_code"] == "ESCALATE_DISCOVERY"
     assert decision["routing_reason"] == (
         "Discovery has been open more than 90 days → EscalateDiscovery."
     )
@@ -144,6 +150,8 @@ def test_route_closed_terminal():
     case = build_claim_graph(403, spine=spine, signals={})
     decision = route_claim(case, 403)
     assert decision["next_step"] == "CloseoutAudit"
+    assert decision["coworker"] == "Closeout Agent"
+    assert decision["write"] == "write_audit_event"
     assert decision["terminal"] is True
     assert decision["routing_reason"] == "Claim is closed → CloseoutAudit."
     assert decision["checks"][-1]["status"] == "assigned"
@@ -340,6 +348,9 @@ def test_route_missing_police_report():
     )
     decision = route_claim(case, 401)
     assert decision["next_step"] == "RequestPoliceReport"
+    assert decision["coworker"] == "PD Claims Agent"
+    assert decision["write"] == "create_pd_task"
+    assert decision["task_type_code"] == "REQUEST_POLICE_REPORT"
     assert "get_pd_view" in decision["allowed_tools"]
     assert "create_pd_task" in decision["allowed_tools"]
     assert "save_claim_letter" in decision["allowed_tools"]
@@ -390,6 +401,9 @@ def test_route_collect_incident_report_number():
     decision = route_claim(case, 401)
     assert decision["next_step"] == "CollectIncidentReportNumber"
     assert decision["agent_role"] == "PdClaimsAgent"
+    assert decision["coworker"] == "PD Claims Agent"
+    assert decision["write"] == "create_pd_task"
+    assert decision["task_type_code"] == "COLLECT_INCIDENT_NUMBER"
     assert "create_pd_task" in decision["allowed_tools"]
     assert "save_claim_letter" in decision["allowed_tools"]
     assert decision["letter_on_request"] is False
@@ -411,6 +425,9 @@ def test_route_determine_fault():
     decision = route_claim(case, 401)
     assert decision["next_step"] == "DetermineFault"
     assert decision["agent_role"] == "PdClaimsAgent"
+    assert decision["coworker"] == "PD Claims Agent"
+    assert decision["write"] == "create_pd_task"
+    assert decision["task_type_code"] == "DETERMINE_FAULT"
     assert "get_pd_view" in decision["allowed_tools"]
     assert "create_pd_task" in decision["allowed_tools"]
     assert "save_claim_letter" not in decision["allowed_tools"]
@@ -435,6 +452,8 @@ def test_route_siu_suspected():
     decision = route_claim(case, 401)
     assert decision["next_step"] == "SiuInvestigation"
     assert decision["lane"] == "SIU"
+    assert decision["coworker"] is None
+    assert decision["write"] == "write_audit_event"
 
 
 def test_route_unresolved_offer():
