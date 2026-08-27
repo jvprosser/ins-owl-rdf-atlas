@@ -123,7 +123,7 @@ Routing Agent (optional): `pre_route_text` only; Role exactly `Routing Agent`.
 
 ### Pack: `retirement_distributions`
 
-**Live path (2026-08-18):** register [`iceberg-mcp-server-finserv`](../iceberg-mcp-server-finserv/README.md) in a separate Studio project. Identity `INS_FINSERV_MCP_V2`. Impala database `retirement_distributions`. Do **not** set `PACK_ROOT`. Do **not** register this claims MCP in the distributions project.
+**Live path (2026-08-18):** register [`iceberg-mcp-server-finserv`](../iceberg-mcp-server-finserv/README.md) in a separate Studio project. Identity `INS_FINSERV_MCP_V3`. Impala database `retirement_distributions`. Do **not** set `PACK_ROOT`. Do **not** register this claims MCP in the distributions project.
 
 The `PACK_ROOT` steps below are the **legacy fixture path** (still used by `tests/test_pack_fixtures.py`). Do not use them for the customer demo.
 

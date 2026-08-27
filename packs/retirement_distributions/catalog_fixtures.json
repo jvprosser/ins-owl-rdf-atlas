@@ -25,6 +25,24 @@
       "optional": ["database", "case_id"],
       "fixture_dir": "fixtures/get_rmd_view",
       "summary": "RMD underpayment view"
+    },
+    "get_compliance_view": {
+      "required": ["claim_id"],
+      "optional": ["database", "case_id"],
+      "fixture_dir": "fixtures/get_compliance_view",
+      "summary": "QJSA / spousal consent / loan-mandate plan facts"
+    },
+    "get_loan_summary_view": {
+      "required": ["claim_id"],
+      "optional": ["database", "case_id"],
+      "fixture_dir": "fixtures/get_loan_summary_view",
+      "summary": "Plan loan capacity for hardship precheck"
+    },
+    "get_qdro_details_view": {
+      "required": ["claim_id"],
+      "optional": ["database", "case_id"],
+      "fixture_dir": "fixtures/get_qdro_details_view",
+      "summary": "QDRO holds and pending court orders"
     }
   }
 }

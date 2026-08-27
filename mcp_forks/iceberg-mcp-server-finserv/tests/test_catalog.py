@@ -97,6 +97,32 @@ def test_write_dispatches(monkeypatch):
     assert payload["named_op"] == "write_audit_event"
 
 
+def test_write_dispatches_send_client_notice(monkeypatch):
+    monkeypatch.setattr(
+        catalog.notice_tools,
+        "send_client_notice",
+        lambda run_id, event_json, database=None: json.dumps(
+            {"ok": True, "run_id": run_id, "table": "distribution_outbound_notice"}
+        ),
+    )
+    payload = json.loads(
+        catalog.run_named_write(
+            "send_client_notice",
+            json.dumps(
+                {
+                    "run_id": "demo-7013",
+                    "event_json": {
+                        "claim_id": "7013",
+                        "next_step": "RequestSelfCertification",
+                    },
+                }
+            ),
+        )
+    )
+    assert payload["ok"] is True
+    assert payload["named_op"] == "send_client_notice"
+
+
 def test_list_named_queries_is_distributions_only():
     listing = catalog.list_catalog()
     reads = {row["label"] for row in listing["reads"]}
@@ -106,8 +132,11 @@ def test_list_named_queries_is_distributions_only():
         "get_distribution_routing_signals",
         "get_distribution_exception_view",
         "get_rmd_view",
+        "get_compliance_view",
+        "get_loan_summary_view",
+        "get_qdro_details_view",
         "get_schema",
     } <= reads
-    assert {"write_audit_event", "promote_audit_run"} <= writes
+    assert {"write_audit_event", "promote_audit_run", "send_client_notice"} <= writes
     assert "get_claim_spine" not in reads
     assert "create_litigation_task" not in writes

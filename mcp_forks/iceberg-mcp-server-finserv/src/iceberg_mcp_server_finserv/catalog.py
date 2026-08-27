@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any, Callable
 
-from iceberg_mcp_server_finserv.tools import audit_tools, dist_tools, impala_tools
+from iceberg_mcp_server_finserv.tools import audit_tools, dist_tools, impala_tools, notice_tools
 
 CATALOG_VERSION = 1
 
@@ -21,7 +21,7 @@ READ_OPS: dict[str, dict[str, Any]] = {
     "get_distribution_routing_signals": {
         "required": ("claim_id",),
         "optional": ("database", "case_id"),
-        "summary": "Hardship / hold / RMD routing flags",
+        "summary": "Hardship / hold / RMD / ERISA routing ingredients",
         "handler": lambda p: dist_tools.get_distribution_routing_signals(
             str(p["claim_id"]), p.get("database")
         ),
@@ -39,6 +39,30 @@ READ_OPS: dict[str, dict[str, Any]] = {
         "optional": ("database", "case_id"),
         "summary": "RMD required vs paid amounts",
         "handler": lambda p: dist_tools.get_rmd_view(
+            str(p["claim_id"]), p.get("database")
+        ),
+    },
+    "get_compliance_view": {
+        "required": ("claim_id",),
+        "optional": ("database", "case_id"),
+        "summary": "QJSA / spousal consent / loan-mandate plan facts",
+        "handler": lambda p: dist_tools.get_compliance_view(
+            str(p["claim_id"]), p.get("database")
+        ),
+    },
+    "get_loan_summary_view": {
+        "required": ("claim_id",),
+        "optional": ("database", "case_id"),
+        "summary": "Plan loan capacity for hardship precheck",
+        "handler": lambda p: dist_tools.get_loan_summary_view(
+            str(p["claim_id"]), p.get("database")
+        ),
+    },
+    "get_qdro_details_view": {
+        "required": ("claim_id",),
+        "optional": ("database", "case_id"),
+        "summary": "QDRO holds and pending court orders",
+        "handler": lambda p: dist_tools.get_qdro_details_view(
             str(p["claim_id"]), p.get("database")
         ),
     },
@@ -113,6 +137,16 @@ WRITE_OPS: dict[str, dict[str, Any]] = {
         "summary": "Delete audit rows for run_id",
         "handler": lambda p: audit_tools.abandon_agent_audit_run(
             str(p["run_id"]), p.get("database")
+        ),
+    },
+    "send_client_notice": {
+        "required": ("run_id", "event_json"),
+        "optional": ("database",),
+        "summary": "Insert hardship self-cert notice plus audit receipt",
+        "handler": lambda p: notice_tools.send_client_notice(
+            str(p["run_id"]),
+            _as_json_string(p["event_json"]),
+            p.get("database"),
         ),
     },
 }

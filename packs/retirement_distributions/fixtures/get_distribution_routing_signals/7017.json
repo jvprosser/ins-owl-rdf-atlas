@@ -1,11 +1,11 @@
 {
-  "claim_id": "7001",
-  "case_id": "7001",
+  "claim_id": "7017",
+  "case_id": "7017",
   "signals": {
     "hold_or_aml_flag": false,
     "hardship_reason_codes": [],
     "rmd_shortfall_amount": 0,
-    "requested_amount": 25000,
+    "requested_amount": 10000,
     "hardship_category": "",
     "documented_financial_need_amount": 0,
     "estimated_tax_withholding_amount": 0,
@@ -16,8 +16,13 @@
     "participant_marital_status": "SINGLE",
     "spousal_consent_verified": false,
     "available_plan_loan_capacity": 0,
-    "has_active_qdro_hold": false,
+    "has_active_qdro_hold": true,
     "prior_emergency_distributions_this_year": 0,
-    "pending_court_orders": []
+    "pending_court_orders": [
+      {
+        "court_order_id": 7801,
+        "docket_number": "2026-DR-4412"
+      }
+    ]
   }
 }

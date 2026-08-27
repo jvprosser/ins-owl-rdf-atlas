@@ -1,13 +1,13 @@
 {
-  "claim_id": "7001",
-  "case_id": "7001",
+  "claim_id": "7013",
+  "case_id": "7013",
   "signals": {
     "hold_or_aml_flag": false,
     "hardship_reason_codes": [],
     "rmd_shortfall_amount": 0,
-    "requested_amount": 25000,
-    "hardship_category": "",
-    "documented_financial_need_amount": 0,
+    "requested_amount": 3000,
+    "hardship_category": "TUITION",
+    "documented_financial_need_amount": 3000,
     "estimated_tax_withholding_amount": 0,
     "has_participant_self_certified": false,
     "requires_substantiation_audit": false,

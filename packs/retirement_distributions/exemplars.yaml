@@ -3,6 +3,8 @@ labels:
   - DISTRIBUTION
   - EXCEPTION
   - RMD
+  - COMPLIANCE
+  - COMMUNICATION
 dispatch:
   DISTRIBUTION:
     coworker: Distribution Ops Agent
@@ -19,6 +21,16 @@ dispatch:
     agent_role: RmdOpsAgent
     next_step: RmdReview
     lane: RMD
+  COMPLIANCE:
+    coworker: Compliance Ops Agent
+    agent_role: ComplianceOpsAgent
+    next_step: LegalQdroReview
+    lane: COMPLIANCE
+  COMMUNICATION:
+    coworker: Client Communications Agent
+    agent_role: ClientCommunicationsAgent
+    next_step: RequestSelfCertification
+    lane: CUSTOMER_REMEDIATION
 exemplars:
   - id: D01
     label: DISTRIBUTION
@@ -38,9 +50,33 @@ exemplars:
   - id: E03
     label: EXCEPTION
     text: Hold or AML flag on the distribution; do not process until compliance clears the case.
+  - id: E04
+    label: EXCEPTION
+    text: Hardship category is not an IRS Safe Harbor reason; vacation is not allowed.
+  - id: E05
+    label: EXCEPTION
+    text: Requested hardship amount exceeds documented financial need plus withholding.
   - id: R01
     label: RMD
     text: Required minimum distribution is underpaid for this tax year; shortfall remains.
   - id: R02
     label: RMD
     text: RMD deadline approaching and the paid amount is below the required minimum.
+  - id: C01
+    label: COMPLIANCE
+    text: Qualified domestic relations order hold and a pending court docket on the distribution.
+  - id: C02
+    label: COMPLIANCE
+    text: QJSA plan; married participant is missing signed spousal consent.
+  - id: C03
+    label: COMPLIANCE
+    text: Alternate payee QDRO must be reviewed before any distribution is paid.
+  - id: M01
+    label: COMMUNICATION
+    text: Send the participant a self-certification notice for immediate and heavy financial need.
+  - id: M02
+    label: COMMUNICATION
+    text: Request the hardship self-certification letter so processing can continue.
+  - id: M03
+    label: COMMUNICATION
+    text: Client notice required; participant has not self-certified the hardship.

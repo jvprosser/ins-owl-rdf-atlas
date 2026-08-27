@@ -290,13 +290,20 @@ Expect `HumanReviewOrWait` / `HumanReviewAgent`, terminal. Needs a valid triangl
 
 ## Distributions (`packs/retirement_distributions/playbook/playbook.yaml`)
 
-Separate Studio project. Fixture cases: **7001**, **7002**, **7003**. MCP must serve those labels (`PACK_ID` resume; see [finserv-pattern-pack-status.md](finserv-pattern-pack-status.md)).
+Separate Studio project. Fixture cases: **7001**, **7002**, **7003**, **7011–7017**. MCP identity `INS_FINSERV_MCP_V3` (see [finserv-pattern-pack-status.md](finserv-pattern-pack-status.md)). Crew Roles must exist for Exception Queue, Client Communications, and Compliance Ops.
 
 | Probe | When | `next_step` / `agent_role` / `coworker` | Studio id |
 |---|---|---|---|
-| R0.1 | ASK_FALSE | `FixDataQuality` / `DataQualityAgent` / omit | none (unknown id) |
+| R0.1 | ASK_FALSE | `FixDataQuality` / `DataQualityAgent` / omit | none (unknown id **7999**) |
 | R1.1 | ASK_TRUE CLOSED | `CloseoutAudit` / `CloseoutAgent` / `Closeout Agent` | none (add CLOSED fixture) |
 | R2.1 | ASK_TRUE | `HoldReview` / `ExceptionQueueAgent` / `Exception Queue Agent` | none (add `hold_or_aml_flag`) |
+| R2.10 | ASK_TRUE | `LegalQdroReview` / `ComplianceOpsAgent` / `Compliance Ops Agent` | **7017** |
+| R2.7 | ASK_TRUE | `SpousalConsentValidation` / `ComplianceOpsAgent` / `Compliance Ops Agent` | **7014** |
+| R2.4 | ASK_TRUE | `HardshipCategoryReview` / `ExceptionQueueAgent` / `Exception Queue Agent` | **7011** |
+| R2.5 | ASK_TRUE | `ExcessAmountAudit` / `ExceptionQueueAgent` / `Exception Queue Agent` | **7012** |
+| R2.6 | ASK_TRUE | `RequestSelfCertification` / `ClientCommunicationsAgent` / `Client Communications Agent` | **7013** |
+| R2.8 | ASK_TRUE | `PlanLoanPrecheck` / `ExceptionQueueAgent` / `Exception Queue Agent` | **7015** |
+| R2.9 | ASK_TRUE | `EmergencyLimitCapReview` / `ExceptionQueueAgent` / `Exception Queue Agent` | **7016** |
 | R2.2 | ASK_TRUE | `RequestSubstantiation` / `ExceptionQueueAgent` / `Exception Queue Agent` | **7002** |
 | R2.3 | ASK_TRUE | `RmdReview` / `RmdOpsAgent` / `RMD Ops Agent` | **7003** |
 | default | no match | `ProcessDistribution` / `DistributionOpsAgent` / `Distribution Ops Agent` | **7001** |
@@ -304,10 +311,10 @@ Separate Studio project. Fixture cases: **7001**, **7002**, **7003**. MCP must s
 ### R0.1 ASK_FALSE
 
 ```text
-What's the status of claim 7009?
+What's the status of claim 7999?
 ```
 
-Expect `FixDataQuality` / `DataQualityAgent` (R0.1).
+Expect `FixDataQuality` / `DataQualityAgent` (R0.1). Do not use **7009** (reserved).
 
 ### R1.1 ASK_TRUE CLOSED
 
@@ -325,13 +332,69 @@ Please process claim 7005.
 
 Expect `HoldReview` / `ExceptionQueueAgent` (R2.1). Needs `hold_or_aml_flag: true` and not CLOSED.
 
+### R2.10 ASK_TRUE — LegalQdroReview (7017)
+
+```text
+Please process claim 7017.
+```
+
+Expect `LegalQdroReview` / `Compliance Ops Agent` (R2.10). Offline: `pytest tests/test_packs.py::test_distribution_7017_qdro`.
+
+### R2.7 ASK_TRUE — SpousalConsentValidation (7014)
+
+```text
+Please process claim 7014.
+```
+
+Expect `SpousalConsentValidation` / `Compliance Ops Agent` (R2.7). Offline: `pytest tests/test_packs.py::test_distribution_7014_qjsa`.
+
+### R2.4 ASK_TRUE — HardshipCategoryReview (7011)
+
+```text
+Please process claim 7011.
+```
+
+Expect `HardshipCategoryReview` / `Exception Queue Agent` (R2.4). Offline: `pytest tests/test_packs.py::test_distribution_7011_invalid_category`.
+
+### R2.5 ASK_TRUE — ExcessAmountAudit (7012)
+
+```text
+Please process claim 7012.
+```
+
+Expect `ExcessAmountAudit` / `Exception Queue Agent` (R2.5). Offline: `pytest tests/test_packs.py::test_distribution_7012_excess_amount`.
+
+### R2.6 ASK_TRUE — RequestSelfCertification (7013)
+
+```text
+Please process claim 7013.
+```
+
+Expect `RequestSelfCertification` / `Client Communications Agent`, write `send_client_notice` (R2.6). Offline: `pytest tests/test_packs.py::test_distribution_7013_self_cert`.
+
+### R2.8 ASK_TRUE — PlanLoanPrecheck (7015)
+
+```text
+Please process claim 7015.
+```
+
+Expect `PlanLoanPrecheck` / `Exception Queue Agent` (R2.8). Offline: `pytest tests/test_packs.py::test_distribution_7015_loan_precheck`.
+
+### R2.9 ASK_TRUE — EmergencyLimitCapReview (7016)
+
+```text
+Please process claim 7016.
+```
+
+Expect `EmergencyLimitCapReview` / `Exception Queue Agent` (R2.9). Offline: `pytest tests/test_packs.py::test_distribution_7016_emergency_cap`.
+
 ### R2.2 ASK_TRUE — RequestSubstantiation (7002)
 
 ```text
 Please process claim 7002.
 ```
 
-Expect `RequestSubstantiation` / `ExceptionQueueAgent` (R2.2). Offline: `pytest tests/test_packs.py::test_distribution_7002_exception`.
+Expect `RequestSubstantiation` / `ExceptionQueueAgent` (R2.2). Offline: `pytest tests/test_packs.py::test_distribution_7002_exception`. **7002** uses a valid `MEDICAL` category, matching need, self-cert on file, and `requires_substantiation_audit` so R2.4–R2.6 do not steal this route.
 
 ### R2.3 ASK_TRUE — RmdReview (7003)
 
@@ -347,7 +410,7 @@ Expect `RmdReview` / `RmdOpsAgent` (R2.3). Offline: `pytest tests/test_packs.py:
 Please process claim 7001.
 ```
 
-Expect `ProcessDistribution` / `DistributionOpsAgent`. Offline: `pytest tests/test_packs.py::test_distribution_7001_ops`.
+Expect `ProcessDistribution` / `DistributionOpsAgent`. Offline: `pytest tests/test_packs.py::test_distribution_7001_ops`. Plan `401k-alpha` is not QJSA and does not mandate loan exhaustion.
 
 ---
 

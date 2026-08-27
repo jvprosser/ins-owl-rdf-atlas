@@ -132,4 +132,60 @@ Unstructured (no claim id):
 Hardship withdrawal is missing medical bills and the hardship attestation.
 ```
 
-Operator identity check (not a handler chat): `Call get_server_info once and stop.` Expect `INS_FINSERV_MCP_V2`.
+Invalid hardship category:
+
+```text
+Please process claim 7011.
+```
+
+Expect Exception Queue Agent (`HardshipCategoryReview`).
+
+Excess hardship amount:
+
+```text
+Please process claim 7012.
+```
+
+Expect Exception Queue Agent (`ExcessAmountAudit`).
+
+Self-certification notice:
+
+```text
+Please process claim 7013.
+```
+
+Expect Client Communications Agent (`RequestSelfCertification`, `send_client_notice`).
+
+QJSA / spousal consent:
+
+```text
+Please process claim 7014.
+```
+
+Expect Compliance Ops Agent (`SpousalConsentValidation`).
+
+Plan loan precheck:
+
+```text
+Please process claim 7015.
+```
+
+Expect Exception Queue Agent (`PlanLoanPrecheck`).
+
+SECURE 2.0 emergency cap:
+
+```text
+Please process claim 7016.
+```
+
+Expect Exception Queue Agent (`EmergencyLimitCapReview`).
+
+QDRO / court order:
+
+```text
+Please process claim 7017.
+```
+
+Expect Compliance Ops Agent (`LegalQdroReview`).
+
+Operator identity check (not a handler chat): `Call get_server_info once and stop.` Expect `INS_FINSERV_MCP_V3`.

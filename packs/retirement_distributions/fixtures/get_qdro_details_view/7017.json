@@ -1,0 +1,19 @@
+{
+  "claim_id": "7017",
+  "case_id": "7017",
+  "qdro": [
+    {
+      "qdro_id": 7701,
+      "is_active": true,
+      "order_status_code": "ACTIVE",
+      "alternate_payee_name": "Alternate Payee",
+      "hold_reason": "Domestic relations order hold"
+    }
+  ],
+  "pending_court_orders": [
+    {
+      "court_order_id": 7801,
+      "docket_number": "2026-DR-4412"
+    }
+  ]
+}

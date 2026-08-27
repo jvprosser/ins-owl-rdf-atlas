@@ -4,6 +4,20 @@
   "signals": {
     "hold_or_aml_flag": false,
     "hardship_reason_codes": ["HARDSHIP_SUBSTANTIATION_MISSING"],
-    "rmd_shortfall_amount": 0
+    "rmd_shortfall_amount": 0,
+    "requested_amount": 8000,
+    "hardship_category": "MEDICAL",
+    "documented_financial_need_amount": 8000,
+    "estimated_tax_withholding_amount": 0,
+    "has_participant_self_certified": true,
+    "requires_substantiation_audit": true,
+    "plan_subject_to_qjsa": false,
+    "plan_mandates_loan_exhaustion": false,
+    "participant_marital_status": "SINGLE",
+    "spousal_consent_verified": false,
+    "available_plan_loan_capacity": 0,
+    "has_active_qdro_hold": false,
+    "prior_emergency_distributions_this_year": 0,
+    "pending_court_orders": []
   }
 }

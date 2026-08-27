@@ -55,7 +55,8 @@ def run_named_query(
     Flat Action Input example:
       {"label":"get_distribution_spine","claim_id":"7002"}
     Read labels: get_distribution_spine, get_distribution_routing_signals,
-    get_distribution_exception_view, get_rmd_view, get_schema.
+    get_distribution_exception_view, get_rmd_view, get_compliance_view,
+    get_loan_summary_view, get_qdro_details_view, get_schema.
     """
     return catalog.run_named_query(
         label, params_json, claim_id=claim_id or case_id, case_id=case_id, database=database
@@ -77,7 +78,8 @@ def run_named_write(
     Flat Action Input example:
       {"label":"write_audit_event","run_id":"demo-7002","event_json":"{\\"claim_id\\":\\"7002\\"}"}
     Write labels: write_audit_event, promote_audit_run, begin_agent_audit_run,
-    append_agent_audit_event, append_agent_audit_evidence, abandon_agent_audit_run.
+    append_agent_audit_event, append_agent_audit_evidence, abandon_agent_audit_run,
+    send_client_notice.
     """
     return catalog.run_named_write(
         label,

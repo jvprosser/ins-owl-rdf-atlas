@@ -1,11 +1,11 @@
 {
-  "claim_id": "7002",
-  "case_id": "7002",
+  "claim_id": "7013",
+  "case_id": "7013",
   "spine": {
     "request_status_code": "OPEN",
     "distribution_type_code": "HARDSHIP",
     "plan_id": "401k-alpha",
-    "participant_id": "P-7002",
-    "requested_amount": 8000
+    "participant_id": "P-7013",
+    "requested_amount": 3000
   }
 }

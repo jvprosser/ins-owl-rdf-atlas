@@ -15,6 +15,7 @@ _LIST_KEYS = (
     "insured_operators",
     "offers",
     "hardship_reason_codes",
+    "pending_court_orders",
     "roles",
 )
 _STR_KEYS = (
@@ -31,6 +32,27 @@ _STR_KEYS = (
     "policy_status_code",
     "defense_counsel_party_id",
     "plaintiff_counsel_party_id",
+    "hardship_category",
+    "participant_marital_status",
+    "distribution_type_code",
+    "request_status_code",
+)
+_NUM_KEYS = (
+    "rmd_shortfall_amount",
+    "requested_amount",
+    "documented_financial_need_amount",
+    "estimated_tax_withholding_amount",
+    "available_plan_loan_capacity",
+    "prior_emergency_distributions_this_year",
+)
+_BOOL_KEYS = (
+    "hold_or_aml_flag",
+    "has_participant_self_certified",
+    "requires_substantiation_audit",
+    "plan_subject_to_qjsa",
+    "plan_mandates_loan_exhaustion",
+    "spousal_consent_verified",
+    "has_active_qdro_hold",
 )
 
 
@@ -60,14 +82,21 @@ def flatten_case(case: dict[str, Any]) -> dict[str, Any]:
             out[key] = ""
         elif not isinstance(value, (list, dict, bool)):
             out[key] = str(value).strip()
-    raw_short = out.get("rmd_shortfall_amount")
-    if isinstance(raw_short, bool) or raw_short in (None, ""):
-        out["rmd_shortfall_amount"] = 0
-    elif not isinstance(raw_short, (int, float)):
-        try:
-            out["rmd_shortfall_amount"] = float(raw_short)
-        except (TypeError, ValueError):
-            out["rmd_shortfall_amount"] = 0
+    for key in _NUM_KEYS:
+        raw = out.get(key)
+        if isinstance(raw, bool) or raw in (None, ""):
+            out[key] = 0
+        elif not isinstance(raw, (int, float)):
+            try:
+                out[key] = float(raw)
+            except (TypeError, ValueError):
+                out[key] = 0
+    for key in _BOOL_KEYS:
+        value = out.get(key)
+        if value in (None, ""):
+            out[key] = False
+        elif not isinstance(value, bool):
+            out[key] = str(value).strip().lower() in {"true", "1", "yes"}
     out["eval_date"] = date.today().isoformat()
     return out
 

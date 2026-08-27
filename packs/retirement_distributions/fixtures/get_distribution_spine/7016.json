@@ -1,0 +1,11 @@
+{
+  "claim_id": "7016",
+  "case_id": "7016",
+  "spine": {
+    "request_status_code": "OPEN",
+    "distribution_type_code": "SECURE20_EMERGENCY",
+    "plan_id": "401k-alpha",
+    "participant_id": "P-7016",
+    "requested_amount": 1500
+  }
+}

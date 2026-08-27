@@ -17,6 +17,27 @@ PLAYBOOKS = [
 ]
 
 
+_R24 = (
+    'distribution_type_code == "HARDSHIP" && size(hardship_category) > 0 && '
+    '!(["MEDICAL","PRINCIPAL_RESIDENCE","TUITION","EVICTION_FORECLOSURE",'
+    '"FUNERAL","CASUALTY_REPAIR","FED_DISASTER"].exists(cat, cat == hardship_category))'
+)
+
+
+def test_hardship_category_cel():
+    assert eval_cel(_R24, {"distribution_type_code": "HARDSHIP", "hardship_category": "VACATION"})
+    assert eval_cel(_R24, {"distribution_type_code": "HARDSHIP", "hardship_category": "MEDICAL"}) is False
+    assert eval_cel(_R24, {"distribution_type_code": "TERMINATION", "hardship_category": "VACATION"}) is False
+
+
+def test_flatten_defaults_pending_court_orders():
+    flat = flatten_case({"case_exists": True})
+    assert flat["pending_court_orders"] == []
+    assert flat["hardship_category"] == ""
+    assert flat["requested_amount"] == 0
+    assert flat["has_participant_self_certified"] is False
+
+
 def test_exists_on_missing_coverage_list_is_false():
     assert eval_cel(
         'coverage_type_codes.exists(c, c == "COLLISION")',

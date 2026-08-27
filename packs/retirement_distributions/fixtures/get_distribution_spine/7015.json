@@ -1,0 +1,11 @@
+{
+  "claim_id": "7015",
+  "case_id": "7015",
+  "spine": {
+    "request_status_code": "OPEN",
+    "distribution_type_code": "HARDSHIP",
+    "plan_id": "401k-loan-first",
+    "participant_id": "P-7015",
+    "requested_amount": 6000
+  }
+}

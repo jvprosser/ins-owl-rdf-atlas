@@ -75,10 +75,10 @@ MCP runs as `uvx` stdio from the **workflow engine**, not inside the tool sandbo
 
 **Not** `PACK_ID` fixture bake-in. **Not** rollover labels on this server.
 
-- Clone: `mcp_forks/iceberg-mcp-server-finserv` (`INS_FINSERV_MCP_V2`).
-- Compiled `READ_OPS` / `WRITE_OPS`: `get_distribution_spine`, `get_distribution_routing_signals`, `get_distribution_exception_view`, `get_rmd_view`, `get_schema`, live `write_audit_event` / `promote_audit_run`.
+- Clone: `mcp_forks/iceberg-mcp-server-finserv` (`INS_FINSERV_MCP_V3`).
+- Compiled `READ_OPS` / `WRITE_OPS`: `get_distribution_spine`, `get_distribution_routing_signals`, `get_distribution_exception_view`, `get_rmd_view`, `get_compliance_view`, `get_loan_summary_view`, `get_qdro_details_view`, `get_schema`, live `write_audit_event` / `promote_audit_run` / `send_client_notice`.
 - `list_named_queries` does not list `get_claim_spine` or `get_rollover_*`.
-- Impala DDL + seed: `ddl/hive_iceberg/retirement_distributions_iceberg.sql` and `retirement_distributions_seed_data.sql` (**7001** / **7002** / **7003**). Fixture JSON remains golden for offline `test_packs.py`.
+- Impala DDL + seed: `ddl/hive_iceberg/retirement_distributions_iceberg.sql` and `retirement_distributions_seed_data.sql` (**7001** / **7002** / **7003** / **7011–7017**). Additive hardship/ERISA file: `retirement_distributions_hardship_erisa.sql`. Fixture JSON remains golden for offline `test_packs.py`.
 - Separate Agent Studio project. Register the finserv MCP only. `IMPALA_*` on that server; no `PACK_ROOT`.
 - Still no per-label MCP tools. Still no LLM as the hardship/RMD decision.
 - Workflow Data remains ontology / playbook / `pack.yaml` / `exemplars.yaml`.
@@ -94,7 +94,7 @@ Fallback (do not use): Manager reads spine from Workflow Data and skips `run_nam
 - One pack = one Agent Studio project. Do not mix with 402. Do not register the claims MCP in the distributions project.
 - Manager Role exactly `Manager agent`. CrewAI Delegate matches **Role**.
 - Custom tools: `build_claim_graph`, `validate_claim_graph`, `route_claim`, optional `pre_route_text`.
-- Identity: claims `get_server_info` → `INS_CLAIMS_MCP_V10`. Finserv `get_server_info` → `INS_FINSERV_MCP_V2`.
+- Identity: claims `get_server_info` → `INS_CLAIMS_MCP_V10`. Finserv `get_server_info` → `INS_FINSERV_MCP_V3`.
 - Lead customer prompt: intake **7002**.
 
 ## Tests to re-run on resume

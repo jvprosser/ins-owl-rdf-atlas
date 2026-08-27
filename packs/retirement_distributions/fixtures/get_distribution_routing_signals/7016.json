@@ -1,11 +1,11 @@
 {
-  "claim_id": "7001",
-  "case_id": "7001",
+  "claim_id": "7016",
+  "case_id": "7016",
   "signals": {
     "hold_or_aml_flag": false,
     "hardship_reason_codes": [],
     "rmd_shortfall_amount": 0,
-    "requested_amount": 25000,
+    "requested_amount": 1500,
     "hardship_category": "",
     "documented_financial_need_amount": 0,
     "estimated_tax_withholding_amount": 0,

@@ -1,0 +1,12 @@
+{
+  "claim_id": "7014",
+  "case_id": "7014",
+  "compliance": {
+    "plan_id": "401k-qjsa",
+    "participant_id": "P-7014",
+    "plan_subject_to_qjsa": true,
+    "plan_mandates_loan_exhaustion": false,
+    "participant_marital_status": "MARRIED",
+    "spousal_consent_verified": false
+  }
+}

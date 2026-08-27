@@ -6,7 +6,7 @@ Do **not** move `ontology/` / `playbook/` at the repo root. Claim **402** still 
 
 | Pack | Demo | Cases |
 |---|---|---|
-| [`retirement_distributions/`](retirement_distributions/) | Request classification + exception handling | **7001** clean termination → Distribution Ops; **7002** hardship missing substantiation → Exception Queue; **7003** RMD underpaid → RMD Ops |
+| [`retirement_distributions/`](retirement_distributions/) | Request classification + exception handling | **7001** clean termination → Distribution Ops; **7002** hardship missing substantiation → Exception Queue; **7003** RMD underpaid → RMD Ops; **7011–7017** hardship / ERISA / SECURE 2.0 / QDRO |
 | [`retirement_rollovers/`](retirement_rollovers/) | Document processing / ERISA | **8001** missing spousal consent → ERISA Review; **8002** complete direct rollover → Rollover Ops |
 
 ## Studio setup (one pack at a time)
@@ -68,10 +68,13 @@ Each subdirectory matches one catalog **label**. The filename is the case id.
 
 | Folder | Label | Role |
 |---|---|---|
-| `fixtures/get_distribution_spine/` | `get_distribution_spine` | Request status, type, plan, participant (like `get_claim_spine`) |
-| `fixtures/get_distribution_routing_signals/` | `get_distribution_routing_signals` | Hold flag, hardship reason codes, RMD shortfall (like `get_claim_routing_signals`) |
+| `fixtures/get_distribution_spine/` | `get_distribution_spine` | Request status, type, plan, participant, requested amount |
+| `fixtures/get_distribution_routing_signals/` | `get_distribution_routing_signals` | Hold flag, hardship/ERISA/RMD ingredients for CEL |
 | `fixtures/get_distribution_exception_view/` | `get_distribution_exception_view` | Post-route view for Exception Queue (**7002**) |
 | `fixtures/get_rmd_view/` | `get_rmd_view` | Post-route view for RMD Ops (**7003**) |
+| `fixtures/get_compliance_view/` | `get_compliance_view` | QJSA / spousal consent (**7014**) |
+| `fixtures/get_loan_summary_view/` | `get_loan_summary_view` | Plan loan capacity (**7015**) |
+| `fixtures/get_qdro_details_view/` | `get_qdro_details_view` | QDRO holds and pending court orders (**7017**) |
 
 **Rollovers**
 

@@ -10,6 +10,20 @@
     "participant_id": { "type": "string" },
     "hold_or_aml_flag": { "type": "boolean" },
     "hardship_reason_codes": { "type": "string[]" },
-    "rmd_shortfall_amount": { "type": "number" }
+    "rmd_shortfall_amount": { "type": "number" },
+    "requested_amount": { "type": "number" },
+    "hardship_category": { "type": "string" },
+    "documented_financial_need_amount": { "type": "number" },
+    "estimated_tax_withholding_amount": { "type": "number" },
+    "has_participant_self_certified": { "type": "boolean" },
+    "requires_substantiation_audit": { "type": "boolean" },
+    "plan_subject_to_qjsa": { "type": "boolean" },
+    "plan_mandates_loan_exhaustion": { "type": "boolean" },
+    "participant_marital_status": { "type": "string" },
+    "spousal_consent_verified": { "type": "boolean" },
+    "available_plan_loan_capacity": { "type": "number" },
+    "has_active_qdro_hold": { "type": "boolean" },
+    "prior_emergency_distributions_this_year": { "type": "number" },
+    "pending_court_orders": { "type": "object[]" }
   }
 }

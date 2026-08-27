@@ -107,6 +107,105 @@ def test_rollover_8002_ops(monkeypatch):
     assert decision["task_type_code"] is None
 
 
+def _assert_route(monkeypatch, case_id, next_step, agent_role, coworker, write, probe_id=None):
+    _, decision = _route_case(
+        monkeypatch, DIST, case_id, "get_distribution_spine", "get_distribution_routing_signals"
+    )
+    assert decision["next_step"] == next_step
+    assert decision["agent_role"] == agent_role
+    assert decision["coworker"] == coworker
+    assert decision["write"] == write
+    if probe_id:
+        assert probe_id in decision["reason_probe_ids"]
+        assert decision["checks"][-1]["probe_id"] == probe_id
+        assert decision["checks"][-1]["status"] == "assigned"
+    return decision
+
+
+def test_distribution_7011_invalid_category(monkeypatch):
+    _assert_route(
+        monkeypatch,
+        "7011",
+        "HardshipCategoryReview",
+        "ExceptionQueueAgent",
+        "Exception Queue Agent",
+        "write_audit_event",
+        "R2.4",
+    )
+
+
+def test_distribution_7012_excess_amount(monkeypatch):
+    _assert_route(
+        monkeypatch,
+        "7012",
+        "ExcessAmountAudit",
+        "ExceptionQueueAgent",
+        "Exception Queue Agent",
+        "write_audit_event",
+        "R2.5",
+    )
+
+
+def test_distribution_7013_self_cert(monkeypatch):
+    _assert_route(
+        monkeypatch,
+        "7013",
+        "RequestSelfCertification",
+        "ClientCommunicationsAgent",
+        "Client Communications Agent",
+        "send_client_notice",
+        "R2.6",
+    )
+
+
+def test_distribution_7014_qjsa(monkeypatch):
+    _assert_route(
+        monkeypatch,
+        "7014",
+        "SpousalConsentValidation",
+        "ComplianceOpsAgent",
+        "Compliance Ops Agent",
+        "write_audit_event",
+        "R2.7",
+    )
+
+
+def test_distribution_7015_loan_precheck(monkeypatch):
+    _assert_route(
+        monkeypatch,
+        "7015",
+        "PlanLoanPrecheck",
+        "ExceptionQueueAgent",
+        "Exception Queue Agent",
+        "write_audit_event",
+        "R2.8",
+    )
+
+
+def test_distribution_7016_emergency_cap(monkeypatch):
+    _assert_route(
+        monkeypatch,
+        "7016",
+        "EmergencyLimitCapReview",
+        "ExceptionQueueAgent",
+        "Exception Queue Agent",
+        "write_audit_event",
+        "R2.9",
+    )
+
+
+def test_distribution_7017_qdro(monkeypatch):
+    _assert_route(
+        monkeypatch,
+        "7017",
+        "LegalQdroReview",
+        "ComplianceOpsAgent",
+        "Compliance Ops Agent",
+        "write_audit_event",
+        "R2.10",
+    )
+
+
 def test_distribution_cosine_exception():
     result = route_unstructured(
         "Hardship withdrawal is missing medical bills and the hardship attestation.",

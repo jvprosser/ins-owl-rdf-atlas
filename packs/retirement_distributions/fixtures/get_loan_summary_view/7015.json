@@ -1,0 +1,9 @@
+{
+  "claim_id": "7015",
+  "case_id": "7015",
+  "loan": {
+    "available_plan_loan_capacity": 5000,
+    "outstanding_loan_balance": 0,
+    "max_loan_amount": 50000
+  }
+}

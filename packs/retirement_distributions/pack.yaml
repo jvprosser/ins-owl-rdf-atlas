@@ -7,6 +7,8 @@ cosine_labels:
   - DISTRIBUTION
   - EXCEPTION
   - RMD
+  - COMPLIANCE
+  - COMMUNICATION
 graph:
   builder: generic
   case_class: DistributionRequest
@@ -15,8 +17,16 @@ graph:
     - distribution_type_code
     - plan_id
     - participant_id
+    - hardship_category
+    - participant_marital_status
   booleans:
     - hold_or_aml_flag
+    - has_participant_self_certified
+    - requires_substantiation_audit
+    - plan_subject_to_qjsa
+    - plan_mandates_loan_exhaustion
+    - spousal_consent_verified
+    - has_active_qdro_hold
 catalog:
   mcp: iceberg-mcp-server-finserv
   database: retirement_distributions
@@ -35,3 +45,12 @@ catalog:
     get_rmd_view:
       required: [claim_id]
       fixture_dir: fixtures/get_rmd_view
+    get_compliance_view:
+      required: [claim_id]
+      fixture_dir: fixtures/get_compliance_view
+    get_loan_summary_view:
+      required: [claim_id]
+      fixture_dir: fixtures/get_loan_summary_view
+    get_qdro_details_view:
+      required: [claim_id]
+      fixture_dir: fixtures/get_qdro_details_view

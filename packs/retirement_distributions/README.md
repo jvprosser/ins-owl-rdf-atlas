@@ -9,10 +9,17 @@ Live lake + MCP: `ddl/hive_iceberg/retirement_distributions_*.sql` and [`mcp_for
 | **7001** | Termination, documents complete | `ProcessDistribution` / `DistributionOpsAgent` |
 | **7002** | Hardship, substantiation missing | `RequestSubstantiation` / `ExceptionQueueAgent` |
 | **7003** | RMD underpaid | `RmdReview` / `RmdOpsAgent` |
+| **7011** | Hardship, invalid Safe Harbor category (`VACATION`) | `HardshipCategoryReview` / `ExceptionQueueAgent` |
+| **7012** | Hardship amount exceeds documented need | `ExcessAmountAudit` / `ExceptionQueueAgent` |
+| **7013** | Hardship missing self-certification | `RequestSelfCertification` / `ClientCommunicationsAgent` |
+| **7014** | QJSA plan, married, no spousal consent | `SpousalConsentValidation` / `ComplianceOpsAgent` |
+| **7015** | Plan mandates loan exhaustion; capacity remains | `PlanLoanPrecheck` / `ExceptionQueueAgent` |
+| **7016** | SECURE 2.0 emergency over $1,000 | `EmergencyLimitCapReview` / `ExceptionQueueAgent` |
+| **7017** | Termination with active QDRO + pending court order | `LegalQdroReview` / `ComplianceOpsAgent` |
 
 ## Agent Studio workflow + tests
 
-Register **`iceberg-mcp-server-finserv`**, not the claims MCP. Identity: `INS_FINSERV_MCP_V2`. Do **not** set `PACK_ROOT`.
+Register **`iceberg-mcp-server-finserv`**, not the claims MCP. Identity: `INS_FINSERV_MCP_V3`. Do **not** set `PACK_ROOT`.
 
 Setup (MCP `uvx`, crew, e2e prompts): [`mcp_forks/iceberg-mcp-server-finserv/README.md`](../../mcp_forks/iceberg-mcp-server-finserv/README.md).
 
@@ -84,17 +91,17 @@ Paste this as the MCP registration (same `IMPALA_*` keys as claims, different da
 
 ## Catalog labels
 
-Read: `get_distribution_spine`, `get_distribution_routing_signals`, `get_distribution_exception_view`, `get_rmd_view`, `get_schema`.
+Read: `get_distribution_spine`, `get_distribution_routing_signals`, `get_distribution_exception_view`, `get_rmd_view`, `get_compliance_view`, `get_loan_summary_view`, `get_qdro_details_view`, `get_schema`.
 
-Write: `write_audit_event`, `promote_audit_run`, `begin_agent_audit_run`, `append_agent_audit_event`, `append_agent_audit_evidence`, `abandon_agent_audit_run`.
+Write: `write_audit_event`, `promote_audit_run`, `begin_agent_audit_run`, `append_agent_audit_event`, `append_agent_audit_evidence`, `abandon_agent_audit_run`, `send_client_notice`.
 
-Studio `claim_id` is `distribution_request.distribution_request_id` (seed **7001**, **7002**, **7003**).
+Studio `claim_id` is `distribution_request.distribution_request_id` (seed **7001**, **7002**, **7003**, **7011–7017**).
 
-Check: Delegate Manager `get_server_info` → `content_id=INS_FINSERV_MCP_V2`. Then `list_named_queries` must include `get_distribution_spine` and must **not** include `get_claim_spine`.
+Check: Delegate Manager `get_server_info` → `content_id=INS_FINSERV_MCP_V3`. Then `list_named_queries` must include `get_distribution_spine` and must **not** include `get_claim_spine`.
 
 ## Studio prompt (lead with 7002)
 
-Paste Orchestrator / Manager / Exception Queue from `agents/`. Then chat Orchestrator:
+Paste Orchestrator / Manager / Exception Queue / Client Communications / Compliance Ops from `agents/`. Then chat Orchestrator:
 
 ```text
 Please process claim 7002.

@@ -17,7 +17,7 @@ Fork two MCP servers to close platform gaps for claim-graph agents, while keepin
 | Fork working name | Upstream | Owns | Status |
 |---|---|---|---|
 | `iceberg-mcp-server-claims` | [cloudera/iceberg-mcp-server](https://github.com/cloudera/iceberg-mcp-server) (Impala) | Iceberg read + claim spine/signals + audit helpers | **In-repo** — `mcp_forks/iceberg-mcp-server-claims/` |
-| `iceberg-mcp-server-finserv` | Clone of claims fork | Distribution spine/signals/views + audit (compiled catalog, distributions only) | **In-repo** — `mcp_forks/iceberg-mcp-server-finserv/` (`INS_FINSERV_MCP_V2`) |
+| `iceberg-mcp-server-finserv` | Clone of claims fork | Distribution spine/signals/views + audit (compiled catalog, distributions only) | **In-repo** — `mcp_forks/iceberg-mcp-server-finserv/` (`INS_FINSERV_MCP_V3`) |
 | `iceberg-mcp-server-hive-claims` | [frothkoetter/iceberg-mcp-server-hive](https://github.com/frothkoetter/iceberg-mcp-server-hive) | Same claim helpers + true WAP branches | Optional later if Hive branch API is required |
 | `data-contract-mcp-server-claims` | [frothkoetter/data-contract-mcp-server](https://github.com/frothkoetter/data-contract-mcp-server) | Atlas catalog + ODCS contracts + ontology-binding helpers | Deferred |
 

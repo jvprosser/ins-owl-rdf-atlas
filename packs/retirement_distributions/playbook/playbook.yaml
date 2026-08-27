@@ -13,13 +13,21 @@ schema_relpath: ontology/distributions.json
 # Priority evaluation order (first-match-wins):
 #   Data integrity:  R0.1 request exists as DistributionRequest
 #   Fast-path:       R1.1 closed → closeout audit
-#   Exceptions:      R2.1 hold/AML, R2.2 hardship substantiation missing,
-#                    R2.3 RMD underpaid
+#   Exceptions:      R2.1 hold/AML, R2.10 QDRO, R2.7 QJSA,
+#                    R2.4–R2.6 / R2.8 hardship, R2.9 SECURE 2.0 emergency,
+#                    R2.2 substantiation, R2.3 RMD
 # Unmatched open requests fall through to ProcessDistribution.
 priorities:
   - R0.1
   - R1.1
   - R2.1
+  - R2.10
+  - R2.7
+  - R2.4
+  - R2.5
+  - R2.6
+  - R2.8
+  - R2.9
   - R2.2
   - R2.3
 
@@ -44,6 +52,48 @@ probes:
     when_true: A hold or AML flag is set
     when_false: No hold or AML flag is set
     cel: 'hold_or_aml_flag == true'
+  R2.10:
+    form: ASK
+    title: QDRO or pending court order
+    when_true: An active QDRO hold and a pending court order are on file
+    when_false: No active QDRO hold with a pending court order
+    cel: 'has_active_qdro_hold == true && size(pending_court_orders) > 0'
+  R2.7:
+    form: ASK
+    title: QJSA spousal consent
+    when_true: The plan is subject to QJSA and spousal consent is missing
+    when_false: QJSA spousal consent is not required or is on file
+    cel: 'plan_subject_to_qjsa == true && participant_marital_status == "MARRIED" && spousal_consent_verified == false'
+  R2.4:
+    form: ASK
+    title: IRS hardship Safe Harbor category
+    when_true: The hardship category is not an IRS Safe Harbor reason
+    when_false: The hardship category is an IRS Safe Harbor reason or this is not a hardship
+    cel: 'distribution_type_code == "HARDSHIP" && size(hardship_category) > 0 && !(["MEDICAL","PRINCIPAL_RESIDENCE","TUITION","EVICTION_FORECLOSURE","FUNERAL","CASUALTY_REPAIR","FED_DISASTER"].exists(cat, cat == hardship_category))'
+  R2.5:
+    form: ASK
+    title: Hardship amount versus documented need
+    when_true: The requested hardship amount exceeds documented financial need plus withholding
+    when_false: The requested hardship amount does not exceed documented need plus withholding
+    cel: 'distribution_type_code == "HARDSHIP" && requested_amount > (documented_financial_need_amount + estimated_tax_withholding_amount)'
+  R2.6:
+    form: ASK
+    title: Hardship self-certification
+    when_true: Participant self-certification of immediate and heavy financial need is missing
+    when_false: Self-certification is on file or a documentary audit is required
+    cel: 'distribution_type_code == "HARDSHIP" && has_participant_self_certified == false && requires_substantiation_audit == false'
+  R2.8:
+    form: ASK
+    title: Plan loan exhaustion
+    when_true: The plan requires loan exhaustion and loan capacity remains
+    when_false: Loan exhaustion is not required or no loan capacity remains
+    cel: 'distribution_type_code == "HARDSHIP" && plan_mandates_loan_exhaustion == true && available_plan_loan_capacity > 0'
+  R2.9:
+    form: ASK
+    title: SECURE 2.0 emergency distribution cap
+    when_true: The emergency distribution exceeds the $1,000 cap or a prior emergency was taken this year
+    when_false: This is not a SECURE 2.0 emergency over the annual cap
+    cel: 'distribution_type_code == "SECURE20_EMERGENCY" && (requested_amount > 1000 || prior_emergency_distributions_this_year >= 1)'
   R2.2:
     form: ASK
     title: Hardship substantiation
@@ -88,6 +138,62 @@ actions:
       lane: EXCEPTION
       write: write_audit_event
       tools: [get_distribution_exception_view, write_audit_event]
+  R2.10:
+    - when: ASK_TRUE
+      step: LegalQdroReview
+      agent: ComplianceOpsAgent
+      coworker: Compliance Ops Agent
+      lane: COMPLIANCE
+      write: write_audit_event
+      tools: [get_qdro_details_view, write_audit_event]
+  R2.7:
+    - when: ASK_TRUE
+      step: SpousalConsentValidation
+      agent: ComplianceOpsAgent
+      coworker: Compliance Ops Agent
+      lane: COMPLIANCE
+      write: write_audit_event
+      tools: [get_compliance_view, write_audit_event]
+  R2.4:
+    - when: ASK_TRUE
+      step: HardshipCategoryReview
+      agent: ExceptionQueueAgent
+      coworker: Exception Queue Agent
+      lane: EXCEPTION
+      write: write_audit_event
+      tools: [get_distribution_exception_view, write_audit_event]
+  R2.5:
+    - when: ASK_TRUE
+      step: ExcessAmountAudit
+      agent: ExceptionQueueAgent
+      coworker: Exception Queue Agent
+      lane: EXCEPTION
+      write: write_audit_event
+      tools: [get_distribution_exception_view, write_audit_event]
+  R2.6:
+    - when: ASK_TRUE
+      step: RequestSelfCertification
+      agent: ClientCommunicationsAgent
+      coworker: Client Communications Agent
+      lane: CUSTOMER_REMEDIATION
+      write: send_client_notice
+      tools: [send_client_notice]
+  R2.8:
+    - when: ASK_TRUE
+      step: PlanLoanPrecheck
+      agent: ExceptionQueueAgent
+      coworker: Exception Queue Agent
+      lane: EXCEPTION
+      write: write_audit_event
+      tools: [get_loan_summary_view, write_audit_event]
+  R2.9:
+    - when: ASK_TRUE
+      step: EmergencyLimitCapReview
+      agent: ExceptionQueueAgent
+      coworker: Exception Queue Agent
+      lane: EXCEPTION
+      write: write_audit_event
+      tools: [write_audit_event]
   R2.2:
     - when: ASK_TRUE
       step: RequestSubstantiation

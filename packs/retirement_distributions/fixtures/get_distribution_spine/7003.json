@@ -5,6 +5,7 @@
     "request_status_code": "OPEN",
     "distribution_type_code": "RMD",
     "plan_id": "401k-alpha",
-    "participant_id": "P-7003"
+    "participant_id": "P-7003",
+    "requested_amount": 4500
   }
 }

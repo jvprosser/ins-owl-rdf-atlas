@@ -1,34 +1,129 @@
 -- =============================================================================
--- Retirement distributions — seed (demo 7001 / 7002 / 7003 / 7011–7017)
--- Prerequisite: retirement_distributions_iceberg.sql
--- =============================================================================
--- 7001 TERMINATION, no exceptions → ProcessDistribution
--- 7002 HARDSHIP missing substantiation → RequestSubstantiation (R2.2)
--- 7003 RMD underpaid → RmdReview (R2.3)
--- 7011 HARDSHIP invalid Safe Harbor category → HardshipCategoryReview (R2.4)
--- 7012 HARDSHIP amount exceeds need → ExcessAmountAudit (R2.5)
--- 7013 HARDSHIP missing self-cert → RequestSelfCertification (R2.6)
--- 7014 HARDSHIP QJSA / spousal consent missing → SpousalConsentValidation (R2.7)
--- 7015 HARDSHIP loan capacity remains → PlanLoanPrecheck (R2.8)
--- 7016 SECURE 2.0 emergency over $1,000 → EmergencyLimitCapReview (R2.9)
--- 7017 TERMINATION with active QDRO → LegalQdroReview (R2.10)
+-- Additive: hardship / ERISA / SECURE 2.0 / QDRO tables + 7011–7017 seeds
+-- Prerequisite: retirement_distributions_iceberg.sql already applied
+-- For lakes that already have 7001–7003 without requested_amount.
+-- Fresh installs: skip this file; use the updated iceberg.sql + seed_data.sql.
 -- =============================================================================
 
 USE retirement_distributions;
 
--- Optional cleanup (uncomment for re-seed)
--- TRUNCATE TABLE distribution_outbound_notice;
--- TRUNCATE TABLE distribution_emergency_ytd;
--- TRUNCATE TABLE distribution_court_order;
--- TRUNCATE TABLE distribution_qdro;
--- TRUNCATE TABLE distribution_loan;
--- TRUNCATE TABLE distribution_hardship;
--- TRUNCATE TABLE distribution_rmd;
--- TRUNCATE TABLE distribution_exception;
--- TRUNCATE TABLE distribution_participant;
--- TRUNCATE TABLE distribution_plan;
--- TRUNCATE TABLE distribution_request;
+ALTER TABLE retirement_distributions.distribution_request ADD COLUMNS (
+  requested_amount DECIMAL(18,2) COMMENT 'Requested distribution amount.'
+);
 
+-- New tables (CREATE IF NOT EXISTS matches iceberg.sql; safe if already created)
+-- Copy from retirement_distributions_iceberg.sql if this file is run alone on
+-- an old lake that never received the new CREATE TABLE statements.
+
+CREATE TABLE IF NOT EXISTS retirement_distributions.distribution_plan (
+  plan_id                       STRING    COMMENT 'PK. Plan identifier (e.g. 401k-alpha).',
+  plan_subject_to_qjsa          BOOLEAN   COMMENT 'True when ERISA QJSA / spousal consent applies.',
+  plan_mandates_loan_exhaustion BOOLEAN   COMMENT 'True when available loans must be exhausted before hardship.',
+  created_at                    TIMESTAMP COMMENT 'Row creation timestamp.'
+)
+COMMENT 'Plan-level ERISA / hardship loan rules.'
+PARTITIONED BY SPEC (plan_id)
+STORED BY ICEBERG
+STORED AS PARQUET
+TBLPROPERTIES ('format-version' = '2');
+
+CREATE TABLE IF NOT EXISTS retirement_distributions.distribution_participant (
+  participant_id                STRING    COMMENT 'PK. Participant business key.',
+  participant_marital_status    STRING    COMMENT 'SINGLE | MARRIED | DIVORCED | WIDOWED.',
+  spousal_consent_verified      BOOLEAN   COMMENT 'True when signed spousal consent is on file.',
+  created_at                    TIMESTAMP COMMENT 'Row creation timestamp.'
+)
+COMMENT 'Participant marital / QJSA consent facts.'
+PARTITIONED BY SPEC (participant_marital_status)
+STORED BY ICEBERG
+STORED AS PARQUET
+TBLPROPERTIES ('format-version' = '2');
+
+CREATE TABLE IF NOT EXISTS retirement_distributions.distribution_hardship (
+  distribution_request_id             BIGINT,
+  hardship_category                   STRING,
+  documented_financial_need_amount    DECIMAL(18,2),
+  estimated_tax_withholding_amount    DECIMAL(18,2),
+  has_participant_self_certified      BOOLEAN,
+  requires_substantiation_audit       BOOLEAN,
+  created_at                          TIMESTAMP
+)
+COMMENT 'Hardship facts for playbook CEL.'
+PARTITIONED BY SPEC (hardship_category)
+STORED BY ICEBERG
+STORED AS PARQUET
+TBLPROPERTIES ('format-version' = '2');
+
+CREATE TABLE IF NOT EXISTS retirement_distributions.distribution_loan (
+  distribution_request_id       BIGINT,
+  available_plan_loan_capacity  DECIMAL(18,2),
+  outstanding_loan_balance      DECIMAL(18,2),
+  max_loan_amount               DECIMAL(18,2),
+  created_at                    TIMESTAMP
+)
+COMMENT 'Plan loan capacity for hardship loan-exhaustion probe.'
+PARTITIONED BY SPEC (distribution_request_id)
+STORED BY ICEBERG
+STORED AS PARQUET
+TBLPROPERTIES ('format-version' = '2');
+
+CREATE TABLE IF NOT EXISTS retirement_distributions.distribution_qdro (
+  qdro_id                     BIGINT,
+  distribution_request_id     BIGINT,
+  is_active                   BOOLEAN,
+  order_status_code           STRING,
+  alternate_payee_name        STRING,
+  hold_reason                 STRING,
+  created_at                  TIMESTAMP
+)
+COMMENT 'QDRO hold on a distribution request.'
+PARTITIONED BY SPEC (order_status_code)
+STORED BY ICEBERG
+STORED AS PARQUET
+TBLPROPERTIES ('format-version' = '2');
+
+CREATE TABLE IF NOT EXISTS retirement_distributions.distribution_court_order (
+  court_order_id              BIGINT,
+  distribution_request_id     BIGINT,
+  docket_number               STRING,
+  status_code                 STRING,
+  created_at                  TIMESTAMP
+)
+COMMENT 'Pending court orders on a distribution request.'
+PARTITIONED BY SPEC (status_code)
+STORED BY ICEBERG
+STORED AS PARQUET
+TBLPROPERTIES ('format-version' = '2');
+
+CREATE TABLE IF NOT EXISTS retirement_distributions.distribution_emergency_ytd (
+  distribution_request_id     BIGINT,
+  tax_year                    INT,
+  prior_count                 INT,
+  created_at                  TIMESTAMP
+)
+COMMENT 'Year-to-date emergency distribution count.'
+PARTITIONED BY SPEC (tax_year)
+STORED BY ICEBERG
+STORED AS PARQUET
+TBLPROPERTIES ('format-version' = '2');
+
+CREATE TABLE IF NOT EXISTS retirement_distributions.distribution_outbound_notice (
+  notice_id                   BIGINT,
+  distribution_request_id     BIGINT,
+  purpose_code                STRING,
+  channel_code                STRING,
+  body_text                   STRING,
+  run_id                      STRING,
+  created_at                  TIMESTAMP
+)
+COMMENT 'Outbound client notice written by send_client_notice.'
+PARTITIONED BY SPEC (purpose_code)
+STORED BY ICEBERG
+STORED AS PARQUET
+TBLPROPERTIES ('format-version' = '2');
+
+-- Backfill existing 7001–7003 amounts; insert remaining demo rows.
+-- Skip INSERTs that already exist if re-running.
 
 INSERT INTO TABLE retirement_distributions.distribution_plan
 SELECT * FROM (
@@ -40,7 +135,6 @@ SELECT * FROM (
   UNION ALL
   SELECT '401k-loan-first', FALSE, TRUE, CAST('2026-01-01 00:00:00' AS TIMESTAMP)
 ) s;
-
 
 INSERT INTO TABLE retirement_distributions.distribution_participant
 SELECT * FROM (
@@ -67,26 +161,16 @@ SELECT * FROM (
   SELECT 'P-7017', 'SINGLE', FALSE, CAST('2026-01-01 00:00:00' AS TIMESTAMP)
 ) s;
 
-
 INSERT INTO TABLE retirement_distributions.distribution_request
 SELECT * FROM (
-  SELECT CAST(7001 AS BIGINT) AS distribution_request_id,
+  SELECT CAST(7011 AS BIGINT) AS distribution_request_id,
          'OPEN' AS request_status_code,
-         'TERMINATION' AS distribution_type_code,
+         'HARDSHIP' AS distribution_type_code,
          '401k-alpha' AS plan_id,
-         'P-7001' AS participant_id,
+         'P-7011' AS participant_id,
          FALSE AS hold_or_aml_flag,
-         CAST(25000.00 AS DECIMAL(18,2)) AS requested_amount,
-         CAST('2026-01-15 10:00:00' AS TIMESTAMP) AS created_at
-  UNION ALL
-  SELECT 7002, 'OPEN', 'HARDSHIP', '401k-alpha', 'P-7002', FALSE,
-         CAST(8000.00 AS DECIMAL(18,2)), CAST('2026-02-01 09:30:00' AS TIMESTAMP)
-  UNION ALL
-  SELECT 7003, 'OPEN', 'RMD', '401k-alpha', 'P-7003', FALSE,
-         CAST(4500.00 AS DECIMAL(18,2)), CAST('2026-03-01 11:00:00' AS TIMESTAMP)
-  UNION ALL
-  SELECT 7011, 'OPEN', 'HARDSHIP', '401k-alpha', 'P-7011', FALSE,
-         CAST(5000.00 AS DECIMAL(18,2)), CAST('2026-04-01 09:00:00' AS TIMESTAMP)
+         CAST(5000.00 AS DECIMAL(18,2)) AS requested_amount,
+         CAST('2026-04-01 09:00:00' AS TIMESTAMP) AS created_at
   UNION ALL
   SELECT 7012, 'OPEN', 'HARDSHIP', '401k-alpha', 'P-7012', FALSE,
          CAST(20000.00 AS DECIMAL(18,2)), CAST('2026-04-02 09:00:00' AS TIMESTAMP)
@@ -106,31 +190,6 @@ SELECT * FROM (
   SELECT 7017, 'OPEN', 'TERMINATION', '401k-alpha', 'P-7017', FALSE,
          CAST(10000.00 AS DECIMAL(18,2)), CAST('2026-04-07 09:00:00' AS TIMESTAMP)
 ) s;
-
-
-INSERT INTO TABLE retirement_distributions.distribution_exception
-SELECT * FROM (
-  SELECT 'EX-7002' AS exception_id,
-         CAST(7002 AS BIGINT) AS distribution_request_id,
-         'HARDSHIP_SUBSTANTIATION_MISSING' AS reason_code,
-         'ExceptionQueue' AS queue,
-         '["medical_bills","hardship_attestation"]' AS required_docs,
-         CAST('2026-02-01 09:35:00' AS TIMESTAMP) AS created_at
-) s;
-
-
-INSERT INTO TABLE retirement_distributions.distribution_rmd
-SELECT * FROM (
-  SELECT CAST(7301 AS BIGINT) AS rmd_id,
-         CAST(7003 AS BIGINT) AS distribution_request_id,
-         CAST(2026 AS INT) AS tax_year,
-         CAST(12500.00 AS DECIMAL(18,2)) AS required_amount,
-         CAST(8000.00 AS DECIMAL(18,2)) AS paid_amount,
-         CAST(4500.00 AS DECIMAL(18,2)) AS shortfall_amount,
-         CAST('2026-12-31' AS DATE) AS deadline,
-         CAST('2026-03-01 11:05:00' AS TIMESTAMP) AS created_at
-) s;
-
 
 INSERT INTO TABLE retirement_distributions.distribution_hardship
 SELECT * FROM (
@@ -158,7 +217,6 @@ SELECT * FROM (
          TRUE, FALSE, CAST('2026-04-05 09:05:00' AS TIMESTAMP)
 ) s;
 
-
 INSERT INTO TABLE retirement_distributions.distribution_loan
 SELECT * FROM (
   SELECT CAST(7015 AS BIGINT) AS distribution_request_id,
@@ -167,7 +225,6 @@ SELECT * FROM (
          CAST(50000.00 AS DECIMAL(18,2)) AS max_loan_amount,
          CAST('2026-04-05 09:06:00' AS TIMESTAMP) AS created_at
 ) s;
-
 
 INSERT INTO TABLE retirement_distributions.distribution_qdro
 SELECT * FROM (
@@ -180,7 +237,6 @@ SELECT * FROM (
          CAST('2026-04-07 09:06:00' AS TIMESTAMP) AS created_at
 ) s;
 
-
 INSERT INTO TABLE retirement_distributions.distribution_court_order
 SELECT * FROM (
   SELECT CAST(7801 AS BIGINT) AS court_order_id,
@@ -189,7 +245,6 @@ SELECT * FROM (
          'PENDING' AS status_code,
          CAST('2026-04-07 09:07:00' AS TIMESTAMP) AS created_at
 ) s;
-
 
 INSERT INTO TABLE retirement_distributions.distribution_emergency_ytd
 SELECT * FROM (
