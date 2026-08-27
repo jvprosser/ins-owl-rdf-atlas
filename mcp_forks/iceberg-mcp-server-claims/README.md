@@ -17,7 +17,7 @@ Claims fork of Cloudera’s Impala Iceberg MCP for the car-insurance claims agen
 
 | Tool | Notes |
 |---|---|
-| `get_server_info()` | One-shot identity. Expect **`INS_CLAIMS_MCP_V9`** / **`0.3.9`**. Prompt: “Call get_server_info once and stop.” |
+| `get_server_info()` | One-shot identity. Expect **`INS_CLAIMS_MCP_V10`** / **`0.4.0`**. Prompt: “Call get_server_info once and stop.” |
 
 ### Named catalog (only lake I/O)
 
@@ -123,7 +123,7 @@ Routing Agent (optional): `pre_route_text` only; Role exactly `Routing Agent`.
 
 ### Pack: `retirement_distributions`
 
-**Live path (2026-08-18):** register [`iceberg-mcp-server-finserv`](../iceberg-mcp-server-finserv/README.md) in a separate Studio project. Identity `INS_FINSERV_MCP_V1`. Impala database `retirement_distributions`. Do **not** set `PACK_ROOT`. Do **not** register this claims MCP in the distributions project.
+**Live path (2026-08-18):** register [`iceberg-mcp-server-finserv`](../iceberg-mcp-server-finserv/README.md) in a separate Studio project. Identity `INS_FINSERV_MCP_V2`. Impala database `retirement_distributions`. Do **not** set `PACK_ROOT`. Do **not** register this claims MCP in the distributions project.
 
 The `PACK_ROOT` steps below are the **legacy fixture path** (still used by `tests/test_pack_fixtures.py`). Do not use them for the customer demo.
 
@@ -202,7 +202,7 @@ cd agent_studio && python -m pytest tests/test_packs.py -q
 cd ../mcp_forks/iceberg-mcp-server-claims && uv run pytest tests/test_pack_fixtures.py -q
 ```
 
-Expect 7002 → `RequestSubstantiation` / `ExceptionQueueAgent`; 7001 → `ProcessDistribution`; 7003 → `RmdReview`.
+Expect 7002 → `RequestSubstantiation` / `Exception Queue Agent`; 7001 → `ProcessDistribution` / `Distribution Ops Agent`; 7003 → `RmdReview` / `RMD Ops Agent`.
 
 #### Test — MCP in Studio (Manager, one-shot)
 
@@ -212,7 +212,7 @@ Operator checks (not handler chats). Chat Orchestrator. Do not run intake.
 Call get_server_info once and stop.
 ```
 
-Expect `content_id` = `INS_CLAIMS_MCP_V9`. Then:
+Expect `content_id` = `INS_CLAIMS_MCP_V10`. Then:
 
 ```text
 Call list_named_queries once and stop.
@@ -239,8 +239,10 @@ Please process claim 7002.
 | `next_step` | `RequestSubstantiation` |
 | `lane` | `EXCEPTION` |
 | `agent_role` | `ExceptionQueueAgent` |
+| `coworker` | `Exception Queue Agent` |
+| `write` | `write_audit_event` |
 | `routing_reason` | Hardship substantiation is missing → RequestSubstantiation. |
-| write | `fixture: true` (Orchestrator Goal supplies `run_id`) |
+| write JSON | `fixture: true` (Orchestrator Goal supplies `run_id`) |
 
 **7001** — `Please process claim 7001.` Expect Distribution Ops Agent, write only (no view). Expect `ProcessDistribution` / `DistributionOpsAgent`.
 
@@ -325,7 +327,7 @@ Catalog labels (fixture): `get_rollover_spine`, `get_rollover_routing_signals`, 
 
 #### Test — offline
 
-Same pytest commands as distributions (`tests/test_packs.py` covers 8001 / 8002). Expect 8001 → `ErisaReview` / `ErisaReviewAgent`; 8002 → `ProcessRollover` / `RolloverOpsAgent`.
+Same pytest commands as distributions (`tests/test_packs.py` covers 8001 / 8002). Expect 8001 → `ErisaReview` / `ERISA Review Agent`; 8002 → `ProcessRollover` / `Rollover Ops Agent`.
 
 #### Test — MCP in Studio (Manager, one-shot)
 
@@ -350,8 +352,10 @@ Please process claim 8001.
 | `next_step` | `ErisaReview` |
 | `lane` | `ERISA` |
 | `agent_role` | `ErisaReviewAgent` |
+| `coworker` | `ERISA Review Agent` |
+| `write` | `write_audit_event` |
 | `routing_reason` | Required spousal consent is missing → ErisaReview. |
-| write | `fixture: true` (Orchestrator Goal supplies `run_id`) |
+| write JSON | `fixture: true` (Orchestrator Goal supplies `run_id`) |
 
 **8002** — `Please process claim 8002.` Expect Rollover Ops Agent, write only. Expect `ProcessRollover` / `RolloverOpsAgent`.
 

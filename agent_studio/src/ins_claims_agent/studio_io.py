@@ -238,6 +238,7 @@ def normalize_signals_payload(raw: Any) -> dict[str, Any]:
         for key in (
             "injury_ids",
             "offers",
+            "insured_operators",
             "payment_ids",
             "recovery_ids",
             "document_ids",

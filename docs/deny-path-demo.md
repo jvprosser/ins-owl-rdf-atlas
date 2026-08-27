@@ -23,13 +23,13 @@ Coworker Role must be exactly `Deny Agent`. Playbook `agent_role` is `DenyAgent`
 
 Skip if already done this session. These checks are for the operator, not the handler chats below.
 
-1. Claims MCP on **0.3.9** or later (`INS_CLAIMS_MCP_V9`). Studio `uvx` from GitHub `main` only sees `get_deny_view` / `deny_claim` after that commit is on the remote.
+1. Claims MCP on **0.4.0** or later (`INS_CLAIMS_MCP_V10`). Studio `uvx` from GitHub `main` only sees `get_deny_view` / `deny_claim` after that commit is on the remote.
 2. Restart `iceberg-mcp-server-claims`.
-3. Operator chat: `Call get_server_info once and stop.` Expect `INS_CLAIMS_MCP_V9` / **`0.3.9`** or newer.
+3. Operator chat: `Call get_server_info once and stop.` Expect `INS_CLAIMS_MCP_V10` / **`0.4.0`** or newer.
 4. Operator chat: `Call list_named_queries once and stop.` Must include `get_deny_view` and `deny_claim`.
 5. Workflow Data includes the playbook whose R6.* actions list `get_deny_view` / `deny_claim` (and `save_claim_letter`, drafted only if the handler asks).
 6. Same Crew, Roles **exactly**: `Manager agent`, `Deny Agent`. Re-paste Orchestrator Goal from [`agent_studio/studio_tools/agents/orchestrator_agent.md`](../agent_studio/studio_tools/agents/orchestrator_agent.md) so the Deny handoff is in it. Paste [`deny_agent.md`](../agent_studio/studio_tools/agents/deny_agent.md). Attach MCP + Studio `save_claim_letter` on the Deny agent (used only if the handler asks to write the letter).
-7. Studio custom tools must **not** pin `ins-claims-agent` to `8f60419`. Re-upload `build_claim_graph` and `route_claim` `tool.py` + `requirements.txt` from this repo (`PACKAGE_PIN: main`). That pin never copied deny flags onto the case JSON, so MCP `unlawful_operation_exclusion: true` still routed `PdClaimsReview`.
+7. Studio custom tools must **not** pin `ins-claims-agent` to `8f60419`. Re-upload `build_claim_graph` (`INS_CLAIMS_BUILD_JSON_V5`) and `route_claim` `tool.py` + `requirements.txt` from this repo (`PACKAGE_PIN: main`). That pin never copied `insured_operators` onto the case JSON, so R6.1 still routed `PdClaimsReview`.
 8. Claim **404** must exist. Fresh full seed: [`ddl/hive_iceberg/car_insurance_claims_seed_data.sql`](../ddl/hive_iceberg/car_insurance_claims_seed_data.sql). Already-loaded 401/402/403 lake: run [`ddl/hive_iceberg/car_insurance_claims_seed_404.sql`](../ddl/hive_iceberg/car_insurance_claims_seed_404.sql) once.
 
 Do **not** paste Closeout for this demo. CLOSED **403** is a different story.
@@ -67,7 +67,7 @@ If `was_cited_indicator` is TRUE, Human Review (R5.2) wins **before** R6.1. Set 
 
 Insured-operator impairment on **404**'s `loss_driver` row. Not narrative. Not police `citation_issued_indicator`. Do **not** flip 401. Do **not** change `driver.license_status_code` on driver 501 (that person is also 401's operator).
 
-Do **not** `UPDATE` this Iceberg table. Impala often keeps serving the old snapshot to the Studio MCP, so R6.1 still sees `unlawful_operation_exclusion=false` and you get `PdClaimsReview`. Rewrite the row the same way the PD demo writes police/fault:
+Do **not** `UPDATE` this Iceberg table. Impala often keeps serving the old snapshot to the Studio MCP, so R6.1 still sees no impairment and you get `PdClaimsReview`. Rewrite the row the same way the PD demo writes police/fault:
 
 ```sql
 DELETE FROM car_insurance_claims.loss_driver
@@ -102,7 +102,7 @@ Hue `true` with Studio `PdClaimsReview` means the **MCP Impala coordinator** sti
 Call run_named_query once with label get_claim_routing_signals and claim_id 404 and stop.
 ```
 
-Expect `unlawful_operation_exclusion: true`. If that JSON is still false, MCP is not reading 5204. If it is true but `route_claim` still says **No unlawful-operation exclusion** / `PdClaimsReview`, Studio `build_claim_graph` is pinned to `8f60419`. That pin nested the MCP `signals` object but never copied `unlawful_operation_exclusion` onto the case JSON root, so R6.1 reads false. Re-upload `studio_tools/build_claim_graph/requirements.txt` **and** `route_claim/requirements.txt` (`PACKAGE_PIN: main`, not `8f60419`). Confirm `build_claim_graph` Observation includes `unlawful_operation_exclusion: true`. Then a **new** Orchestrator chat.
+Expect `insured_operators` with `impairment_suspected_indicator: true`. If that JSON is still false, MCP is not reading 5204. If operators are impaired but `route_claim` still says **No unlawful-operation exclusion** / `PdClaimsReview`, Studio `build_claim_graph` is pinned to `8f60419`. Re-upload `studio_tools/build_claim_graph/requirements.txt` **and** `route_claim/requirements.txt` (`PACKAGE_PIN: main`, not `8f60419`). Confirm `build_claim_graph` Observation includes the impaired operator. Then a **new** Orchestrator chat.
 
 ---
 
@@ -129,9 +129,9 @@ ORDER BY event_ts DESC
 LIMIT 5;
 ```
 
-`deny_claim` refuses CLOSED (approved) and already-DENIED. This snapshot must be the first deny write on 404.
+`deny_claim` UPDATE is a no-op on CLOSED and already-DENIED (`NOT IN`). Playbook must not assign a deny step on those statuses. This snapshot must be the first deny write on 404.
 
-If you see `RequestPoliceReport`, you processed **401** (or 404 has no police row). If you see `PdClaimsReview` while MCP already showed `unlawful_operation_exclusion: true`, the case JSON was built by pin `8f60419` (or a stale session file) — re-upload the Studio tool pins in step 0, then a **new** Orchestrator chat. If MCP itself is still false, repeat step 2 SELECT / `INVALIDATE METADATA`.
+If you see `RequestPoliceReport`, you processed **401** (or 404 has no police row). If you see `PdClaimsReview` while MCP already showed an impaired insured operator, the case JSON was built by pin `8f60419` (or a stale session file) — re-upload the Studio tool pins in step 0, then a **new** Orchestrator chat. If MCP itself still has `impairment_suspected_indicator` false, repeat step 2 SELECT / `INVALIDATE METADATA`.
 
 ---
 
@@ -207,7 +207,7 @@ WHERE claim_id = 404 AND driver_role_code = 'INSURED_OPERATOR';
 
 ## 7. Repeat from a clean slate
 
-Run **step 1**, then 2 → 4 again. If `deny_claim` says already DENIED, you skipped restore.
+Run **step 1**, then 2 → 4 again. If status is still `DENIED`, you skipped restore.
 
 ---
 

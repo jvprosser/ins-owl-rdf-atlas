@@ -1,4 +1,4 @@
-"""First-match YAML probes + playbook actions on a case JSON document."""
+"""First-match playbook probes (CEL, with YAML match/SELECT fallback) + actions."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from typing import Any
 
 import yaml
 
+from ins_claims_agent.graph.cel_rules import eval_cel
 from ins_claims_agent.graph.yaml_rules import eval_match, get_path
 from ins_claims_agent.paths import default_playbook_path
 
@@ -20,7 +21,7 @@ def route_claim(
     *,
     playbook_path: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Run YAML probes in priority order; return next step / agent / tools."""
+    """Run playbook probes in priority order; return next step / agent / tools."""
     if not isinstance(case, dict):
         raise TypeError("route_claim expects a case JSON dict")
     playbook = _load_playbook(playbook_path)
@@ -30,6 +31,8 @@ def route_claim(
     for idx, probe_id in enumerate(priorities):
         probe_cfg = probes[probe_id]
         form = str(probe_cfg.get("form") or "ASK").upper()
+        if str(probe_cfg.get("cel") or "").strip():
+            form = "ASK"
         result = _exec_probe(case, probe_cfg, form)
         action = _match_action(playbook, probe_id, form, result)
         assigned = action is not None
@@ -60,6 +63,9 @@ def _load_playbook(playbook_path: str | Path | None) -> dict[str, Any]:
 
 
 def _exec_probe(case: dict[str, Any], probe_cfg: dict[str, Any], form: str) -> Any:
+    cel = probe_cfg.get("cel")
+    if cel is not None and str(cel).strip():
+        return eval_cel(str(cel), case)
     if form == "ASK":
         return eval_match(probe_cfg.get("match") or {}, case)
     if form == "SELECT":

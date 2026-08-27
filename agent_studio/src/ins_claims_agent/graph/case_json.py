@@ -1,4 +1,4 @@
-"""Normalize MCP spine/signals into one case JSON document for YAML probes."""
+"""Normalize MCP spine/signals into one case JSON document for playbook probes."""
 
 from __future__ import annotations
 
@@ -8,8 +8,6 @@ from typing import Any
 from ins_claims_agent.mcp_facade import IcebergFacade
 from ins_claims_agent.pack import Pack
 from ins_claims_agent.studio_io import normalize_signals_payload, normalize_spine_payload
-
-DISCOVERY_AGING_DAYS = 90
 
 
 def build_claim_graph(
@@ -68,6 +66,7 @@ def build_claim_case(
     injury_ids = list(signals.get("injury_ids") or [])
     payment_ids = list(signals.get("payment_ids") or [])
     recovery_ids = list(signals.get("recovery_ids") or [])
+    insured_operators = _normalize_operators(signals.get("insured_operators"))
 
     fraud_code = signals.get("fraud_outcome_code")
     if signals.get("has_siu_suspected") and not fraud_code:
@@ -88,10 +87,6 @@ def build_claim_case(
     has_litigation_case = bool(
         signals.get("has_litigation_case") or signals.get("litigation_case_id") is not None
     )
-    missing_docket_or_counsel, discovery_aging = _litigation_probe_flags(
-        signals,
-        in_litigation=litigation_indicator or has_litigation_case,
-    )
     has_injury = bool(signals.get("has_injury") or injury_ids)
     has_loss_payment = bool(signals.get("has_loss_payment") or payment_ids)
     has_recovery = bool(signals.get("has_recovery") or recovery_ids)
@@ -104,20 +99,23 @@ def build_claim_case(
         "litigation_indicator": litigation_indicator,
         "has_litigation_case": has_litigation_case,
         "litigation_case_id": signals.get("litigation_case_id"),
-        "docket_number": signals.get("docket_number"),
-        "defense_counsel_party_id": signals.get("defense_counsel_party_id"),
-        "plaintiff_counsel_party_id": signals.get("plaintiff_counsel_party_id"),
-        "served_date": signals.get("served_date"),
-        "filed_date": signals.get("filed_date"),
-        "closed_date": signals.get("closed_date"),
-        "litigation_status_code": signals.get("litigation_status_code"),
-        "missing_docket_or_counsel": missing_docket_or_counsel,
-        "discovery_aging": discovery_aging,
+        "docket_number": _iso_date_or_str(signals.get("docket_number")),
+        "defense_counsel_party_id": _id_str(signals.get("defense_counsel_party_id")),
+        "plaintiff_counsel_party_id": _id_str(signals.get("plaintiff_counsel_party_id")),
+        "served_date": _iso_date_or_str(signals.get("served_date")),
+        "filed_date": _iso_date_or_str(signals.get("filed_date")),
+        "closed_date": _iso_date_or_str(signals.get("closed_date")),
+        "litigation_status_code": _iso_date_or_str(signals.get("litigation_status_code")),
         "subrogation_indicator": _as_bool(spine.get("subrogation_indicator")),
         "fraudulent_claim_indicator": _as_bool(spine.get("fraudulent_claim_indicator")),
         "total_loss_indicator": _as_bool(spine.get("total_loss_indicator")),
         "policy_id": policy_id,
         "policy_number": spine.get("policy_number"),
+        "policy_status_code": _iso_date_or_str(spine.get("policy_status_code")),
+        "effective_date": _iso_date_or_str(spine.get("effective_date")),
+        "expiration_date": _iso_date_or_str(spine.get("expiration_date")),
+        "cancellation_date": _iso_date_or_str(spine.get("cancellation_date")),
+        "loss_date": _iso_date_or_str(spine.get("loss_date")),
         "insurable_object_id": vehicle_id,
         "vin": spine.get("vin"),
         "policy_covers_vehicle": _as_bool(covers),
@@ -137,9 +135,10 @@ def build_claim_case(
             signals.get("has_incident_report_number")
             or signals.get("incident_report_number")
         ),
-        "incident_report_number": signals.get("incident_report_number"),
+        "incident_report_number": _iso_date_or_str(signals.get("incident_report_number")),
         "injury_ids": injury_ids,
         "has_injury": has_injury,
+        "insured_operators": insured_operators,
         "offers": offers,
         "offer_status_codes": offer_status_codes,
         "has_extended_offer": "EXTENDED" in offer_status_codes,
@@ -153,16 +152,6 @@ def build_claim_case(
         "subrogation_status_code": signals.get("subrogation_status_code"),
         "fraud_outcome_code": fraud_code,
         "has_siu_suspected": fraud_code in ("SUSPECTED", "PENDING"),
-        "insured_operator_cited": _as_bool(signals.get("insured_operator_cited")),
-        "unlawful_operation_exclusion": _as_bool(
-            signals.get("unlawful_operation_exclusion")
-        ),
-        "excluded_operator_exclusion": _as_bool(
-            signals.get("excluded_operator_exclusion")
-        ),
-        "policy_not_in_force_on_loss": _as_bool(
-            signals.get("policy_not_in_force_on_loss")
-        ),
         "spine": spine,
         "signals": signals,
     }
@@ -217,61 +206,37 @@ def _as_bool(value: Any) -> bool:
     return str(value).strip().lower() in {"true", "1", "yes"}
 
 
-def _blank(value: Any) -> bool:
-    return value in (None, "", [], {})
-
-
-def _days_since(value: Any) -> int | None:
-    if _blank(value):
-        return None
+def _iso_date_or_str(value: Any) -> str:
+    if value in (None, ""):
+        return ""
     if isinstance(value, datetime):
-        filed = value.date()
-    elif isinstance(value, date):
-        filed = value
-    else:
-        try:
-            filed = date.fromisoformat(str(value)[:10])
-        except ValueError:
-            return None
-    return (date.today() - filed).days
+        return value.date().isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    return str(value).strip()
 
 
-def _litigation_probe_flags(
-    signals: dict[str, Any],
-    *,
-    in_litigation: bool,
-) -> tuple[bool, bool]:
-    """Compute R1.2a / R1.2b flags from routing signals (not specialist Goal)."""
-    has_file_fields = any(
-        key in signals
-        for key in (
-            "docket_number",
-            "defense_counsel_party_id",
-            "plaintiff_counsel_party_id",
-            "filed_date",
-            "closed_date",
-            "litigation_status_code",
-        )
-    )
-    if has_file_fields or in_litigation:
-        missing_docket = _blank(signals.get("docket_number"))
-        missing_counsel = _blank(signals.get("defense_counsel_party_id")) and _blank(
-            signals.get("plaintiff_counsel_party_id")
-        )
-        missing = in_litigation and (missing_docket or missing_counsel)
-    else:
-        missing = _as_bool(signals.get("missing_docket_or_counsel"))
+def _id_str(value: Any) -> str:
+    if value in (None, ""):
+        return ""
+    return str(value).strip()
 
-    if has_file_fields:
-        status = str(signals.get("litigation_status_code") or "").strip().upper()
-        days = _days_since(signals.get("filed_date"))
-        aging = (
-            in_litigation
-            and status == "IN_DISCOVERY"
-            and _blank(signals.get("closed_date"))
-            and days is not None
-            and days > DISCOVERY_AGING_DAYS
+
+def _normalize_operators(raw: Any) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for row in raw or []:
+        if not isinstance(row, dict):
+            continue
+        out.append(
+            {
+                "driver_id": row.get("driver_id"),
+                "was_cited_indicator": _as_bool(row.get("was_cited_indicator")),
+                "impairment_suspected_indicator": _as_bool(
+                    row.get("impairment_suspected_indicator")
+                ),
+                "license_status_code": _iso_date_or_str(row.get("license_status_code")),
+                "on_policy": _as_bool(row.get("on_policy")),
+                "is_excluded_driver": _as_bool(row.get("is_excluded_driver")),
+            }
         )
-    else:
-        aging = _as_bool(signals.get("discovery_aging"))
-    return missing, aging
+    return out

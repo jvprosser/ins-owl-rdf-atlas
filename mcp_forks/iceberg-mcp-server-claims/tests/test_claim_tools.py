@@ -21,17 +21,18 @@ def test_claim_routing_signals_sql_uses_cte_not_scalar_count_gt():
     assert "CROSS JOIN" in sql
     assert "claim_id = 402" in sql
     assert "docket_number" in sql
-    assert "missing_docket_or_counsel" in sql
-    assert "discovery_aging" in sql
-    assert "DATEDIFF" in sql
-    assert "insured_operator_cited" in sql
-    assert "unlawful_operation_exclusion" in sql
-    assert "CAST(ld.impairment_suspected_indicator AS STRING)" in sql
-    assert "excluded_operator_exclusion" in sql
-    assert "policy_not_in_force_on_loss" in sql
+    assert "missing_docket_or_counsel" not in sql
+    assert "discovery_aging" not in sql
+    assert "DATEDIFF" not in sql
+    assert "insured_operator_cited" not in sql
+    assert "unlawful_operation_exclusion" not in sql
+    assert "excluded_operator_exclusion" not in sql
+    assert "policy_not_in_force_on_loss" not in sql
     assert "has_incident_report_number" in sql
     assert "claim_police_intake" in sql
-    assert "INSURED_OPERATOR" in sql
+    ops = claim_sql.claim_insured_operators_sql(402, "car_insurance_claims")
+    assert "INSURED_OPERATOR" in ops
+    assert "was_cited_indicator" in ops
 
 
 def test_get_claim_spine_shapes_payload():
@@ -96,6 +97,17 @@ def test_get_claim_routing_signals_shapes_payload():
             return [{"claim_payment_id": 31}]
         if sql.strip().startswith("SELECT claim_recovery_id"):
             return []
+        if "was_cited_indicator" in sql:
+            return [
+                {
+                    "driver_id": 1,
+                    "was_cited_indicator": False,
+                    "impairment_suspected_indicator": False,
+                    "license_status_code": "VALID",
+                    "on_policy": True,
+                    "is_excluded_driver": False,
+                }
+            ]
         assert "has_subrogation_case" in sql
         return [
             {
@@ -131,6 +143,7 @@ def test_get_claim_routing_signals_shapes_payload():
     assert payload["injury_ids"] == [11]
     assert payload["payment_ids"] == [31]
     assert payload["offers"][0]["offer_status_code"] == "EXTENDED"
+    assert payload["insured_operators"][0]["on_policy"] is True
 
 
 def test_invalid_database_rejected():

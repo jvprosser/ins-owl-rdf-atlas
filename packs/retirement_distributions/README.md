@@ -12,7 +12,7 @@ Live lake + MCP: `ddl/hive_iceberg/retirement_distributions_*.sql` and [`mcp_for
 
 ## Agent Studio workflow + tests
 
-Register **`iceberg-mcp-server-finserv`**, not the claims MCP. Identity: `INS_FINSERV_MCP_V1`. Do **not** set `PACK_ROOT`.
+Register **`iceberg-mcp-server-finserv`**, not the claims MCP. Identity: `INS_FINSERV_MCP_V2`. Do **not** set `PACK_ROOT`.
 
 Setup (MCP `uvx`, crew, e2e prompts): [`mcp_forks/iceberg-mcp-server-finserv/README.md`](../../mcp_forks/iceberg-mcp-server-finserv/README.md).
 
@@ -90,7 +90,7 @@ Write: `write_audit_event`, `promote_audit_run`, `begin_agent_audit_run`, `appen
 
 Studio `claim_id` is `distribution_request.distribution_request_id` (seed **7001**, **7002**, **7003**).
 
-Check: Delegate Manager `get_server_info` → `content_id=INS_FINSERV_MCP_V1`. Then `list_named_queries` must include `get_distribution_spine` and must **not** include `get_claim_spine`.
+Check: Delegate Manager `get_server_info` → `content_id=INS_FINSERV_MCP_V2`. Then `list_named_queries` must include `get_distribution_spine` and must **not** include `get_claim_spine`.
 
 ## Studio prompt (lead with 7002)
 
@@ -100,4 +100,6 @@ Paste Orchestrator / Manager / Exception Queue from `agents/`. Then chat Orchest
 Please process claim 7002.
 ```
 
-Expect `next_step=RequestSubstantiation`, `lane=EXCEPTION`, probe **R2.2**.
+Expect `next_step=RequestSubstantiation`, `lane=EXCEPTION`, `coworker=Exception Queue Agent`, `write=write_audit_event`, probe **R2.2**.
+
+After a playbook or Goal change: re-upload `playbook.yaml`, re-upload Studio `route_claim` (`INS_CLAIMS_ROUTE_JSON_V6`), re-paste Orchestrator and Manager Goals. Do **not** mix claims MCP into this project.

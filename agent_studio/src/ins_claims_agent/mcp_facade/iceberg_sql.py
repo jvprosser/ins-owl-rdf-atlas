@@ -96,8 +96,13 @@ SELECT
   c.total_loss_indicator,
   c.loss_event_id,
   le.loss_cause_code,
+  le.loss_date,
   c.policy_id,
   p.policy_number,
+  p.policy_status_code,
+  p.effective_date,
+  p.expiration_date,
+  p.cancellation_date,
   c.insurable_object_id,
   v.vin,
   CASE WHEN pio.policy_id IS NOT NULL THEN TRUE ELSE FALSE END AS policy_covers_vehicle,
@@ -128,6 +133,30 @@ SELECT claim_party_role_id, party_id, role_type_code, is_current_assignment
 FROM {db}.claim_party_role
 WHERE claim_id = {cid}
   AND is_current_assignment = TRUE
+""".strip()
+
+
+def claim_insured_operators_sql(claim_id: int | str, database: str) -> str:
+    """Insured-operator rows for playbook CEL (citation / exclusion / unlawful)."""
+    db = validate_ident(database, "database")
+    cid = int(claim_id)
+    return f"""
+SELECT
+  ld.driver_id,
+  ld.was_cited_indicator,
+  ld.impairment_suspected_indicator,
+  d.license_status_code,
+  CASE WHEN pd.driver_id IS NOT NULL THEN TRUE ELSE FALSE END AS on_policy,
+  pd.is_excluded_driver
+FROM {db}.loss_driver ld
+LEFT JOIN {db}.driver d ON d.driver_id = ld.driver_id
+INNER JOIN {db}.claim c ON c.claim_id = ld.claim_id
+LEFT JOIN {db}.policy_driver pd
+  ON pd.policy_id = c.policy_id
+ AND pd.driver_id = ld.driver_id
+ AND pd.expiration_date IS NULL
+WHERE ld.claim_id = {cid}
+  AND ld.driver_role_code = 'INSURED_OPERATOR'
 """.strip()
 
 
@@ -199,56 +228,6 @@ fa AS (
 ),
 doc AS (
   SELECT COUNT(*) AS cnt FROM {db}.claim_document WHERE claim_id = {cid}
-),
-cited AS (
-  SELECT COUNT(*) AS cnt
-  FROM {db}.loss_driver
-  WHERE claim_id = {cid}
-    AND driver_role_code = 'INSURED_OPERATOR'
-    AND {sql_bool_truthy("was_cited_indicator")}
-),
-unlawful AS (
-  SELECT COUNT(*) AS cnt
-  FROM {db}.loss_driver ld
-  LEFT JOIN {db}.driver d ON d.driver_id = ld.driver_id
-  WHERE ld.claim_id = {cid}
-    AND ld.driver_role_code = 'INSURED_OPERATOR'
-    AND (
-      {sql_bool_truthy("ld.impairment_suspected_indicator")}
-      OR UPPER(COALESCE(d.license_status_code, '')) IN (
-        'SUSPENDED', 'REVOKED', 'UNLICENSED'
-      )
-    )
-),
-excl AS (
-  SELECT COUNT(*) AS cnt
-  FROM {db}.loss_driver ld
-  INNER JOIN {db}.claim c ON c.claim_id = ld.claim_id
-  LEFT JOIN {db}.policy_driver pd
-    ON pd.policy_id = c.policy_id
-   AND pd.driver_id = ld.driver_id
-   AND pd.expiration_date IS NULL
-  WHERE ld.claim_id = {cid}
-    AND ld.driver_role_code = 'INSURED_OPERATOR'
-    AND (pd.driver_id IS NULL OR {sql_bool_truthy("pd.is_excluded_driver")})
-),
-lapse AS (
-  SELECT COUNT(*) AS cnt
-  FROM {db}.claim c
-  INNER JOIN {db}.loss_event le ON le.loss_event_id = c.loss_event_id
-  INNER JOIN {db}.insurance_policy p ON p.policy_id = c.policy_id
-  WHERE c.claim_id = {cid}
-    AND (
-      UPPER(COALESCE(p.policy_status_code, '')) IN (
-        'LAPSED', 'CANCELLED', 'EXPIRED'
-      )
-      OR (p.effective_date IS NOT NULL AND le.loss_date < p.effective_date)
-      OR (p.expiration_date IS NOT NULL AND le.loss_date > p.expiration_date)
-      OR (
-        p.cancellation_date IS NOT NULL
-        AND p.cancellation_date <= le.loss_date
-      )
-    )
 )
 SELECT
   (sub.cnt > 0) AS has_subrogation_case,
@@ -263,23 +242,6 @@ SELECT
   lit.filed_date,
   lit.closed_date,
   lit.litigation_status_code,
-  (
-    lit.cnt > 0
-    AND (
-      lit.docket_number IS NULL OR TRIM(lit.docket_number) = ''
-      OR (
-        lit.defense_counsel_party_id IS NULL
-        AND lit.plaintiff_counsel_party_id IS NULL
-      )
-    )
-  ) AS missing_docket_or_counsel,
-  (
-    lit.cnt > 0
-    AND lit.litigation_status_code = 'IN_DISCOVERY'
-    AND lit.closed_date IS NULL
-    AND lit.filed_date IS NOT NULL
-    AND DATEDIFF(CURRENT_DATE(), lit.filed_date) > 90
-  ) AS discovery_aging,
   (inj.cnt > 0) AS has_injury,
   (pr.cnt > 0) AS has_police_report,
   pr.police_report_id,
@@ -296,11 +258,7 @@ SELECT
   (fa.cnt > 0) AS has_siu_suspected,
   fa.fraud_assessment_id,
   fa.fraud_outcome_code,
-  (doc.cnt > 0) AS has_document,
-  (cited.cnt > 0) AS insured_operator_cited,
-  (unlawful.cnt > 0) AS unlawful_operation_exclusion,
-  (excl.cnt > 0) AS excluded_operator_exclusion,
-  (lapse.cnt > 0) AS policy_not_in_force_on_loss
+  (doc.cnt > 0) AS has_document
 FROM sub
 CROSS JOIN lit
 CROSS JOIN inj
@@ -313,10 +271,6 @@ CROSS JOIN rec
 CROSS JOIN res
 CROSS JOIN fa
 CROSS JOIN doc
-CROSS JOIN cited
-CROSS JOIN unlawful
-CROSS JOIN excl
-CROSS JOIN lapse
 """.strip()
 
 

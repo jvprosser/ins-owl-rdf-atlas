@@ -26,13 +26,9 @@ If Hue prompts for `var:database` on the SELECTs, turn off parameterized / “re
 
 Other write fields (`{run_id}`, `{event_type}`, …) are still markdown placeholders. Fill those per statement.
 
-Boolean columns from Hive-written Iceberg are matched with:
-
-```sql
-UPPER(TRIM(CAST(<expr> AS STRING))) IN ('TRUE', '1', 'T')
-```
-
-That predicate is written out in full below wherever the Python helper `sql_bool_truthy` is used.
+Boolean columns from Hive-written Iceberg are coerced in Python after SELECT
+(`TRUE` / `1` / `"true"`). Playbook CEL evaluates projected columns; the catalog
+does not emit derived predicates such as `discovery_aging`.
 
 Distributions live on a separate MCP (`iceberg-mcp-server-finserv`). They are not listed here.
 
@@ -45,7 +41,7 @@ Distributions live on a separate MCP (`iceberg-mcp-server-finserv`). They are no
 | Label | Params | SQL |
 |---|---|---|
 | [`get_claim_spine`](#get_claim_spine) | `claim_id` | two SELECTs (spine + roles) |
-| [`get_claim_routing_signals`](#get_claim_routing_signals) | `claim_id` | REFRESH + signals SELECT + four id lists |
+| [`get_claim_routing_signals`](#get_claim_routing_signals) | `claim_id` | REFRESH + signals SELECT + injury/offers/operators/payment/recovery lists |
 | [`get_litigation_view`](#get_litigation_view) | `claim_id` | one SELECT |
 | [`get_bi_view`](#get_bi_view) | `claim_id` | one SELECT |
 | [`get_subrogation_view`](#get_subrogation_view) | `claim_id` | one SELECT |
@@ -87,8 +83,13 @@ SELECT
   c.total_loss_indicator,
   c.loss_event_id,
   le.loss_cause_code,
+  le.loss_date,
   c.policy_id,
   p.policy_number,
+  p.policy_status_code,
+  p.effective_date,
+  p.expiration_date,
+  p.cancellation_date,
   c.insurable_object_id,
   v.vin,
   CASE WHEN pio.policy_id IS NOT NULL THEN TRUE ELSE FALSE END AS policy_covers_vehicle,
@@ -123,7 +124,7 @@ WHERE claim_id = ${var:claim_id}
 
 ## get_claim_routing_signals
 
-Existence flags for YAML probes. Before the SELECTs, the handler best-effort `REFRESH`es `loss_driver`, `claim`, `police_report`, and `fault_determination` so Hue writes are visible on this Impala coordinator.
+Existence flags plus raw litigation/intake columns for playbook CEL. Before the SELECTs, the handler best-effort `REFRESH`es `loss_driver`, `claim`, `police_report`, `fault_determination`, and `claim_police_intake` so Hue writes are visible on this Impala coordinator. Docket/discovery/operator/policy predicates live in the playbook, not in this SQL.
 
 ### Signals (one row)
 
@@ -191,59 +192,6 @@ fa AS (
 ),
 doc AS (
   SELECT COUNT(*) AS cnt FROM ${var:database}.claim_document WHERE claim_id = ${var:claim_id}
-),
-cited AS (
-  SELECT COUNT(*) AS cnt
-  FROM ${var:database}.loss_driver
-  WHERE claim_id = ${var:claim_id}
-    AND driver_role_code = 'INSURED_OPERATOR'
-    AND UPPER(TRIM(CAST(was_cited_indicator AS STRING))) IN ('TRUE', '1', 'T')
-),
-unlawful AS (
-  SELECT COUNT(*) AS cnt
-  FROM ${var:database}.loss_driver ld
-  LEFT JOIN ${var:database}.driver d ON d.driver_id = ld.driver_id
-  WHERE ld.claim_id = ${var:claim_id}
-    AND ld.driver_role_code = 'INSURED_OPERATOR'
-    AND (
-      UPPER(TRIM(CAST(ld.impairment_suspected_indicator AS STRING))) IN ('TRUE', '1', 'T')
-      OR UPPER(COALESCE(d.license_status_code, '')) IN (
-        'SUSPENDED', 'REVOKED', 'UNLICENSED'
-      )
-    )
-),
-excl AS (
-  SELECT COUNT(*) AS cnt
-  FROM ${var:database}.loss_driver ld
-  INNER JOIN ${var:database}.claim c ON c.claim_id = ld.claim_id
-  LEFT JOIN ${var:database}.policy_driver pd
-    ON pd.policy_id = c.policy_id
-   AND pd.driver_id = ld.driver_id
-   AND pd.expiration_date IS NULL
-  WHERE ld.claim_id = ${var:claim_id}
-    AND ld.driver_role_code = 'INSURED_OPERATOR'
-    AND (
-      pd.driver_id IS NULL
-      OR UPPER(TRIM(CAST(pd.is_excluded_driver AS STRING))) IN ('TRUE', '1', 'T')
-    )
-),
-lapse AS (
-  SELECT COUNT(*) AS cnt
-  FROM ${var:database}.claim c
-  INNER JOIN ${var:database}.loss_event le ON le.loss_event_id = c.loss_event_id
-  INNER JOIN ${var:database}.insurance_policy p ON p.policy_id = c.policy_id
-  WHERE c.claim_id = ${var:claim_id}
-    AND (
-      UPPER(COALESCE(p.policy_status_code, '')) IN (
-        'LAPSED', 'CANCELLED', 'EXPIRED'
-      )
-      OR (p.effective_date IS NOT NULL AND le.loss_date < p.effective_date)
-      OR (p.expiration_date IS NOT NULL AND le.loss_date > p.expiration_date)
-      OR (
-        p.cancellation_date IS NOT NULL
-        AND p.cancellation_date <= le.loss_date
-      )
-    )
 )
 SELECT
   (sub.cnt > 0) AS has_subrogation_case,
@@ -258,23 +206,6 @@ SELECT
   lit.filed_date,
   lit.closed_date,
   lit.litigation_status_code,
-  (
-    lit.cnt > 0
-    AND (
-      lit.docket_number IS NULL OR TRIM(lit.docket_number) = ''
-      OR (
-        lit.defense_counsel_party_id IS NULL
-        AND lit.plaintiff_counsel_party_id IS NULL
-      )
-    )
-  ) AS missing_docket_or_counsel,
-  (
-    lit.cnt > 0
-    AND lit.litigation_status_code = 'IN_DISCOVERY'
-    AND lit.closed_date IS NULL
-    AND lit.filed_date IS NOT NULL
-    AND DATEDIFF(CURRENT_DATE(), lit.filed_date) > 90
-  ) AS discovery_aging,
   (inj.cnt > 0) AS has_injury,
   (pr.cnt > 0) AS has_police_report,
   pr.police_report_id,
@@ -291,11 +222,7 @@ SELECT
   (fa.cnt > 0) AS has_siu_suspected,
   fa.fraud_assessment_id,
   fa.fraud_outcome_code,
-  (doc.cnt > 0) AS has_document,
-  (cited.cnt > 0) AS insured_operator_cited,
-  (unlawful.cnt > 0) AS unlawful_operation_exclusion,
-  (excl.cnt > 0) AS excluded_operator_exclusion,
-  (lapse.cnt > 0) AS policy_not_in_force_on_loss
+  (doc.cnt > 0) AS has_document
 FROM sub
 CROSS JOIN lit
 CROSS JOIN inj
@@ -308,16 +235,33 @@ CROSS JOIN rec
 CROSS JOIN res
 CROSS JOIN fa
 CROSS JOIN doc
-CROSS JOIN cited
-CROSS JOIN unlawful
-CROSS JOIN excl
-CROSS JOIN lapse
 ```
 
 ### Injury ids
 
 ```sql
 SELECT claim_injury_id FROM ${var:database}.claim_injury WHERE claim_id = ${var:claim_id}
+```
+
+### Insured operators
+
+```sql
+SELECT
+  ld.driver_id,
+  ld.was_cited_indicator,
+  ld.impairment_suspected_indicator,
+  d.license_status_code,
+  CASE WHEN pd.driver_id IS NOT NULL THEN TRUE ELSE FALSE END AS on_policy,
+  pd.is_excluded_driver
+FROM ${var:database}.loss_driver ld
+LEFT JOIN ${var:database}.driver d ON d.driver_id = ld.driver_id
+INNER JOIN ${var:database}.claim c ON c.claim_id = ld.claim_id
+LEFT JOIN ${var:database}.policy_driver pd
+  ON pd.policy_id = c.policy_id
+ AND pd.driver_id = ld.driver_id
+ AND pd.expiration_date IS NULL
+WHERE ld.claim_id = ${var:claim_id}
+  AND ld.driver_role_code = 'INSURED_OPERATOR'
 ```
 
 ### Offers
@@ -578,7 +522,7 @@ INSERT INTO ${var:database}.litigation_task (
 
 ## create_pd_task
 
-`event_json.task_type_code` must be `COLLECT_INCIDENT_NUMBER`, `REQUEST_POLICE_REPORT`, `DETERMINE_FAULT`, or `PD_REVIEW`. Then one audit receipt. `REQUEST_POLICE_REPORT` requires `claim_police_intake.incident_report_number`, stores it on the task, and refuses if a `police_report` row already exists. `COLLECT_INCIDENT_NUMBER` also inserts `claim_outbound_message`.
+`event_json.task_type_code` must be `COLLECT_INCIDENT_NUMBER`, `REQUEST_POLICE_REPORT`, `DETERMINE_FAULT`, or `PD_REVIEW`. Then one audit receipt. `REQUEST_POLICE_REPORT` stamps `incident_report_number` from `claim_police_intake` when present (playbook owns whether that write is assigned). `COLLECT_INCIDENT_NUMBER` also inserts `claim_outbound_message`.
 
 ```sql
 INSERT INTO ${var:database}.pd_task (
@@ -621,7 +565,7 @@ Plus the same `INSERT INTO ${var:database}.agent_run_audit …` as `write_audit_
 
 ## deny_claim
 
-`event_json.next_step` must be `DenyUnlawfulOperation`, `DenyExcludedDriver`, or `DenyLapsedPolicy`. Refuses `CLOSED` and already-`DENIED`.
+`event_json.next_step` must be `DenyUnlawfulOperation`, `DenyExcludedDriver`, or `DenyLapsedPolicy`. SELECT is existence only (claim not found). The UPDATE is a no-op on `CLOSED` / already-`DENIED`. Playbook CEL owns whether a deny step is assigned.
 
 ### Status check
 

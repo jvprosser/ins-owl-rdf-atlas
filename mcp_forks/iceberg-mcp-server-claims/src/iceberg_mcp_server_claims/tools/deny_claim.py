@@ -84,28 +84,6 @@ def deny_claim(
             }
         )
 
-    status = str(rows[0].get("claim_status_code") or "").strip().upper()
-    if status == "CLOSED":
-        return json.dumps(
-            {
-                "error": "claim is CLOSED (approved); deny_claim refused",
-                "run_id": rid,
-                "database": db,
-                "claim_id": cid,
-                "claim_status_code": "CLOSED",
-            }
-        )
-    if status == "DENIED":
-        return json.dumps(
-            {
-                "error": "claim is already DENIED; do not call deny_claim on DenyAudit",
-                "run_id": rid,
-                "database": db,
-                "claim_id": cid,
-                "claim_status_code": "DENIED",
-            }
-        )
-
     update_sql = update_claim_denied_sql(db, cid)
     result = dml(update_sql)
     if isinstance(result, str) and result.startswith("Error:"):

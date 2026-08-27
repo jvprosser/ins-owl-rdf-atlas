@@ -68,10 +68,6 @@ STATUS OR POST-ROUTE WORK (default):
    Observation MUST include named_op=get_pd_view, incident_report_number,
    police_reports, and fault_determinations. If error/401: Final Answer
    with the error JSON and STOP.
-   If next_step is RequestPoliceReport and police_reports is not empty:
-   do not create_pd_task. Final Answer that police is already on file;
-   Orchestrator must re-run structured claim intake (expect DetermineFault).
-   STOP.
 
 2) Then write, chosen by next_step (do not invent SQL).
 

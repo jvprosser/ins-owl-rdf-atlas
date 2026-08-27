@@ -6,8 +6,8 @@ import json
 from importlib import metadata
 from typing import Any
 
-CONTENT_ID = "INS_FINSERV_MCP_V1"
-UPDATED = "2026-08-18"
+CONTENT_ID = "INS_FINSERV_MCP_V2"
+UPDATED = "2026-08-26"
 
 REGISTERED_TOOLS = (
     "get_server_info",

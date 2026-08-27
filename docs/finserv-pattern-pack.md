@@ -10,8 +10,8 @@ Control-plane architecture: [`architecture.md`](architecture.md). Resume / statu
 
 - Orchestrator has no tools; the user cannot skip it.
 - Manager runs catalog reads, then Studio `build_claim_graph` → `validate_claim_graph` → `route_claim`.
-- After route, Manager stops. Orchestrator maps `agent_role` → coworker Role and Delegates once.
-- YAML probes + Git-reviewed playbook are authoritative. Cosine is NL triage only.
+- After route, Manager stops. Orchestrator Delegates once to Observation `coworker` (playbook YAML). If `coworker` is omitted, Final Answer the route JSON.
+- CEL probes + Git-reviewed playbook are authoritative. Cosine is NL triage only.
 - Platform I/O is MCP `run_named_query` / `run_named_write`. Custom tools do not call MCP in-process.
 
 ## What a pack replaces
@@ -19,7 +19,7 @@ Control-plane architecture: [`architecture.md`](architecture.md). Resume / statu
 A pack is a directory with `pack.yaml` (and `catalog_fixtures.json` for MCP). File-by-file legend: [`packs/README.md`](../packs/README.md#what-each-directory-and-file-is-for).
 
 - Schema JSON (`ontology/`, `pack.yaml`)
-- Playbook with inlined YAML probes (`playbook/`)
+- YAML playbook with CEL probes (`playbook/`)
 - Fixture JSON for named reads (`fixtures/`, `catalog_fixtures.json`) — canned lake payloads, not routing rules
 - Cosine `exemplars.yaml`
 - Agents to configure in Agent Studio (`agents/`)

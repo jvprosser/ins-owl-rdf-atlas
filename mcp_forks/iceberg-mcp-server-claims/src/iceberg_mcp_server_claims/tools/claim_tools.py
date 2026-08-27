@@ -103,6 +103,7 @@ def get_claim_routing_signals(
           "signals": { ... },
           "injury_ids": [...],
           "offers": [...],
+          "insured_operators": [...],
           "payment_ids": [...],
           "recovery_ids": [...],
           "database": "..."
@@ -131,12 +132,6 @@ def get_claim_routing_signals(
         "has_current_reserve",
         "has_siu_suspected",
         "has_document",
-        "missing_docket_or_counsel",
-        "discovery_aging",
-        "insured_operator_cited",
-        "unlawful_operation_exclusion",
-        "excluded_operator_exclusion",
-        "policy_not_in_force_on_loss",
     ]
 
     try:
@@ -157,6 +152,7 @@ def get_claim_routing_signals(
         signal_rows = qr(claim_sql.claim_routing_signals_sql(cid, db))
         injuries = qr(claim_sql.claim_injury_ids_sql(cid, db))
         offers = qr(claim_sql.claim_offers_sql(cid, db))
+        operators = qr(claim_sql.claim_insured_operators_sql(cid, db))
         payments = qr(claim_sql.claim_payment_ids_sql(cid, db))
         recoveries = qr(claim_sql.claim_recovery_ids_sql(cid, db))
     except Exception as exc:
@@ -170,6 +166,18 @@ def get_claim_routing_signals(
             "signals": signals,
             "injury_ids": [r.get("claim_injury_id") for r in injuries],
             "offers": offers,
+            "insured_operators": [
+                _bool_fields(
+                    r,
+                    [
+                        "was_cited_indicator",
+                        "impairment_suspected_indicator",
+                        "on_policy",
+                        "is_excluded_driver",
+                    ],
+                )
+                for r in operators
+            ],
             "payment_ids": [r.get("claim_payment_id") for r in payments],
             "recovery_ids": [r.get("claim_recovery_id") for r in recoveries],
         },

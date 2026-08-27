@@ -1,13 +1,13 @@
 """
-CONTENT_ID: INS_CLAIMS_ROUTE_JSON_V5
+CONTENT_ID: INS_CLAIMS_ROUTE_JSON_V6
 REPO_REF: main
-UPDATED: 2026-08-25
+UPDATED: 2026-08-26
 FILE: agent_studio/studio_tools/route_claim/tool.py
 
 CUSTOM TOOL route_claim — structured claim intake.
 
-Reads claim_{id}_case.json from SESSION_DIRECTORY; playbook YAML from
-WORKFLOW_DATA_DIRECTORY. Observation leads with routing_summary (plain
+Reads claim_{id}_case.json from SESSION_DIRECTORY; playbook (CEL probes)
+from WORKFLOW_DATA_DIRECTORY. Observation leads with routing_summary (plain
 English). reason_probe_ids stay in the decision artifact only.
 """
 
@@ -19,7 +19,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-TOOL_FINGERPRINT = "INS_CLAIMS_ROUTE_JSON_V5"
+TOOL_FINGERPRINT = "INS_CLAIMS_ROUTE_JSON_V6"
 
 _PIN_HINT = (
     "route_claim returned no routing_reason. Studio is running an ins-claims-agent "

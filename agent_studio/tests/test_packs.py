@@ -42,6 +42,9 @@ def test_distribution_7001_ops(monkeypatch):
     assert report["passed"] is True
     assert decision["next_step"] == "ProcessDistribution"
     assert decision["agent_role"] == "DistributionOpsAgent"
+    assert decision["coworker"] == "Distribution Ops Agent"
+    assert decision["write"] == "write_audit_event"
+    assert decision["task_type_code"] is None
     assert decision["lane"] == "DISTRIBUTION"
     assert decision["routing_reason"] == (
         "No earlier check assigned work → ProcessDistribution."
@@ -57,6 +60,8 @@ def test_distribution_7002_exception(monkeypatch):
     assert report["passed"] is True
     assert decision["next_step"] == "RequestSubstantiation"
     assert decision["agent_role"] == "ExceptionQueueAgent"
+    assert decision["coworker"] == "Exception Queue Agent"
+    assert decision["write"] == "write_audit_event"
     assert "R2.2" in decision["reason_probe_ids"]
     assert decision["routing_reason"] == (
         "Hardship substantiation is missing → RequestSubstantiation."
@@ -72,6 +77,8 @@ def test_distribution_7003_rmd(monkeypatch):
     )
     assert decision["next_step"] == "RmdReview"
     assert decision["agent_role"] == "RmdOpsAgent"
+    assert decision["coworker"] == "RMD Ops Agent"
+    assert decision["write"] == "write_audit_event"
 
 
 def test_rollover_8001_erisa(monkeypatch):
@@ -81,6 +88,8 @@ def test_rollover_8001_erisa(monkeypatch):
     assert report["passed"] is True
     assert decision["next_step"] == "ErisaReview"
     assert decision["agent_role"] == "ErisaReviewAgent"
+    assert decision["coworker"] == "ERISA Review Agent"
+    assert decision["write"] == "write_audit_event"
     assert "R2.1" in decision["reason_probe_ids"]
     assert decision["routing_reason"] == (
         "Required spousal consent is missing → ErisaReview."
@@ -93,6 +102,9 @@ def test_rollover_8002_ops(monkeypatch):
     )
     assert decision["next_step"] == "ProcessRollover"
     assert decision["agent_role"] == "RolloverOpsAgent"
+    assert decision["coworker"] == "Rollover Ops Agent"
+    assert decision["write"] == "write_audit_event"
+    assert decision["task_type_code"] is None
 
 
 def test_distribution_cosine_exception():

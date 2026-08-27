@@ -1,5 +1,5 @@
 # This YAML file is the declarative Router Playbook: the deterministic
-# business-rules engine for the claims control plane. It evaluates YAML
+# business-rules engine for the claims control plane. It evaluates CEL
 # probes against the session case JSON (spine + signals) to assign work
 # lanes, target agent roles, and allowed tool permissions without LLM
 # decision-making.
@@ -10,6 +10,7 @@
 # Schema + case JSON: bind the runtime to ontology/claims.json field names.
 version: 1
 schema_relpath: ontology/claims.json
+expr: cel
 
 # Priority evaluation order (first-match-wins):
 #   Data integrity:     R0.1 claim exists, R0.4 validation triangle complete
@@ -47,203 +48,152 @@ priorities:
   - R1.3
   - R1.4
 
-# Probe registry: rule id → YAML match on case JSON (ASK bool, SELECT path).
+# Probe registry: rule id → CEL on case JSON (ASK bool).
 # User-facing copy (router emits routing_reason + checks; LLM must not invent):
 #   title: check name
 #   when_true / when_false: ASK outcome sentences
-#   when_equals / otherwise: SELECT outcome sentences ({value} = selected path)
+#   cel: expression over flattened case JSON (MCP facts; not lake SQL)
 probes:
   R0.1:
     form: ASK
     title: Claim exists in the case file
     when_true: Claim is present in the case file
     when_false: Claim is missing from the case file
-    match:
-      path: claim_exists
-      equals: true
+    cel: 'claim_exists == true'
   R0.4:
     form: ASK
     title: Policy, vehicle, and coverage triangle
     when_true: Policy, vehicle, and coverage triangle is complete
     when_false: Policy, vehicle, or coverage triangle is incomplete
-    match:
-      path: triangle
-      equals: true
+    cel: 'triangle == true'
   R1.1:
-    form: SELECT
-    path: claim_status_code
+    form: ASK
     title: Claim closed
-    when_equals: Claim is closed
-    otherwise: Claim is not closed (status {value})
+    when_true: Claim is closed
+    when_false: Claim is not closed
+    cel: 'claim_status_code == "CLOSED"'
   R1.1d:
-    form: SELECT
-    path: claim_status_code
+    form: ASK
     title: Claim denied
-    when_equals: Claim is denied
-    otherwise: Claim is not denied (status {value})
+    when_true: Claim is denied
+    when_false: Claim is not denied
+    cel: 'claim_status_code == "DENIED"'
   R5.2:
     form: ASK
     title: Insured operator cited
     when_true: Insured operator was cited
     when_false: Insured operator was not cited
-    match:
-      path: insured_operator_cited
-      equals: true
+    cel: 'insured_operators.exists(d, d.was_cited_indicator == true)'
   R6.1:
     form: ASK
     title: Unlawful operation exclusion
     when_true: Insured operator has an unlawful-operation exclusion
     when_false: No unlawful-operation exclusion
-    match:
-      path: unlawful_operation_exclusion
-      equals: true
+    cel: 'insured_operators.exists(d, d.impairment_suspected_indicator == true || d.license_status_code == "SUSPENDED" || d.license_status_code == "REVOKED" || d.license_status_code == "UNLICENSED")'
   R6.2:
     form: ASK
     title: Excluded or unlisted operator
     when_true: Insured operator is excluded or unlisted
     when_false: Insured operator is listed and not excluded
-    match:
-      path: excluded_operator_exclusion
-      equals: true
+    cel: 'insured_operators.exists(d, d.is_excluded_driver == true || d.on_policy == false)'
   R6.3:
     form: ASK
     title: Policy in force on loss date
     when_true: Policy was not in force on the loss date
     when_false: Policy was in force on the loss date
-    match:
-      path: policy_not_in_force_on_loss
-      equals: true
+    cel: 'policy_status_code == "LAPSED" || policy_status_code == "CANCELLED" || policy_status_code == "EXPIRED" || (size(effective_date) > 0 && size(loss_date) > 0 && loss_date < effective_date) || (size(expiration_date) > 0 && size(loss_date) > 0 && loss_date > expiration_date) || (size(cancellation_date) > 0 && size(loss_date) > 0 && cancellation_date <= loss_date)'
   R1.2a:
     form: ASK
     title: Litigation file complete
     when_true: Litigated claim is missing docket or counsel
     when_false: Litigation file is not missing docket or counsel
-    match:
-      path: missing_docket_or_counsel
-      equals: true
+    cel: '(litigation_indicator == true || has_litigation_case == true) && (size(docket_number) == 0 || (size(defense_counsel_party_id) == 0 && size(plaintiff_counsel_party_id) == 0))'
   R1.2b:
     form: ASK
     title: Discovery aging
     when_true: Discovery has been open more than 90 days
     when_false: Discovery is not aging
-    match:
-      path: discovery_aging
-      equals: true
+    cel: '(litigation_indicator == true || has_litigation_case == true) && litigation_status_code == "IN_DISCOVERY" && size(closed_date) == 0 && size(filed_date) > 0 && timestamp(filed_date + "T00:00:00Z") + duration("2160h") < timestamp(eval_date + "T00:00:00Z")'
   R1.2:
     form: ASK
     title: Remaining litigation
     when_true: Claim is in litigation
     when_false: Claim is not in remaining litigation
-    match:
-      any:
-        - { path: litigation_indicator, equals: true }
-        - { path: has_litigation_case, equals: true }
+    cel: 'litigation_indicator == true || has_litigation_case == true'
   R1.3:
     form: ASK
     title: Bodily injury or BI liability
     when_true: Injury or BI liability coverage is present
     when_false: No injury or BI liability coverage
-    match:
-      any:
-        - { path: has_injury, equals: true }
-        - { path: coverage_type_codes, contains: BI_LIABILITY }
+    cel: 'has_injury == true || coverage_type_codes.exists(c, c == "BI_LIABILITY")'
   R1.4:
     form: ASK
     title: Collision or comprehensive coverage
     when_true: Collision or comprehensive coverage is present
     when_false: No collision or comprehensive coverage
-    match:
-      any:
-        - { path: coverage_type_codes, contains: COLLISION }
-        - { path: coverage_type_codes, contains: COMPREHENSIVE }
+    cel: 'coverage_type_codes.exists(c, c == "COLLISION" || c == "COMPREHENSIVE")'
   R2.0:
     form: ASK
     title: Police incident report number
     when_true: Policyholder has not provided an incident report number
     when_false: Incident report number is on file
-    match:
-      all:
-        - { path: has_police_report, equals: false }
-        - { path: has_incident_report_number, equals: false }
+    cel: 'has_police_report == false && size(incident_report_number) == 0'
   R2.1:
     form: ASK
     title: Police report on file
     when_true: No police report on file
     when_false: Police report is on file
-    match:
-      path: has_police_report
-      equals: false
+    cel: 'has_police_report == false'
   R2.2:
     form: ASK
     title: Fault determination on file
     when_true: No fault determination on file
     when_false: Fault determination is on file
-    match:
-      path: has_fault_determination
-      equals: false
+    cel: 'has_fault_determination == false'
   R2.3:
     form: ASK
     title: Adjuster assigned
     when_true: No adjuster is assigned
     when_false: An adjuster is assigned
-    match:
-      path: has_adjuster
-      equals: false
+    cel: 'has_adjuster == false'
   R2.5:
     form: ASK
     title: Injury details for BI liability
     when_true: BI liability coverage with no injury details
     when_false: Injury details are not missing for BI liability
-    match:
-      all:
-        - { path: coverage_type_codes, contains: BI_LIABILITY }
-        - { path: has_injury, equals: false }
+    cel: 'coverage_type_codes.exists(c, c == "BI_LIABILITY") && has_injury == false'
   R3.2:
     form: ASK
     title: Open settlement offer
     when_true: An extended settlement offer is still open
     when_false: No extended settlement offer is open
-    match:
-      path: has_extended_offer
-      equals: true
+    cel: 'has_extended_offer == true'
   R3.4:
     form: ASK
     title: Payment after accepted offer
     when_true: Offer is accepted and no loss payment is on file
     when_false: No accepted offer waiting on a loss payment
-    match:
-      all:
-        - { path: has_accepted_offer, equals: true }
-        - { path: has_loss_payment, equals: false }
+    cel: 'has_accepted_offer == true && has_loss_payment == false'
   R4.1:
     form: ASK
     title: Subrogation case opened
     when_true: Subrogation is indicated and no case is open
     when_false: Subrogation case is not missing
-    match:
-      all:
-        - { path: subrogation_indicator, equals: true }
-        - { path: has_subrogation_case, equals: false }
+    cel: 'subrogation_indicator == true && has_subrogation_case == false'
   R4.3:
     form: ASK
     title: Subrogation recovery
     when_true: Open subrogation case with no recovery
     when_false: No open subrogation case waiting on recovery
-    match:
-      all:
-        - { path: has_subrogation_case, equals: true }
-        - { path: subrogation_status_code, in: [OPEN, NEGOTIATING, DEMANDED] }
-        - { path: has_recovery, equals: false }
+    cel: 'has_subrogation_case == true && subrogation_status_code in ["OPEN", "NEGOTIATING", "DEMANDED"] && has_recovery == false'
   R5.1:
     form: ASK
     title: SIU or fraud review
     when_true: SIU or fraud is suspected
     when_false: SIU or fraud is not suspected
-    match:
-      path: has_siu_suspected
-      equals: true
+    cel: 'has_siu_suspected == true'
 
-# Action matrix: probe result (ASK_TRUE, ASK_FALSE, SELECT_EQUALS) → execution.
+# Action matrix: probe result (ASK_TRUE, ASK_FALSE) → execution.
 #   agent:     playbook agent_role (legacy; still on the decision JSON)
 #   coworker:  exact CrewAI Role for Orchestrator Delegate (omit if unmapped)
 #   write:     catalog write label; specialist Goal owns the call
@@ -268,8 +218,7 @@ actions:
       write: write_audit_event
       tools: [build_claim_graph, validate_claim_graph, write_audit_event]
   R1.1:
-    - when: SELECT_EQUALS
-      match_value: CLOSED
+    - when: ASK_TRUE
       step: CloseoutAudit
       agent: CloseoutAgent
       coworker: Closeout Agent
@@ -278,8 +227,7 @@ actions:
       tools: [write_audit_event, promote_audit_run]
       terminal: true
   R1.1d:
-    - when: SELECT_EQUALS
-      match_value: DENIED
+    - when: ASK_TRUE
       step: DenyAudit
       agent: DenyAgent
       coworker: Deny Agent

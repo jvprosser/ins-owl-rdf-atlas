@@ -84,20 +84,31 @@ def get_distribution_routing_signals(
     cid = _cid(claim_id)
     try:
         rows = qr(dist_sql.distribution_routing_signals_sql(cid, db))
+        exception_rows = qr(dist_sql.distribution_exception_view_sql(cid, db))
+        rmd_rows = qr(dist_sql.distribution_rmd_view_sql(cid, db))
     except Exception as exc:
         return json.dumps({"error": str(exc), "claim_id": cid, "database": db})
     row = rows[0] if rows else {}
+    shortfall = 0
+    if rmd_rows:
+        raw_short = rmd_rows[0].get("shortfall_amount")
+        try:
+            shortfall = float(raw_short or 0)
+        except (TypeError, ValueError):
+            shortfall = 0
     return json.dumps(
         {
             "claim_id": cid,
             "case_id": cid,
             "database": db,
             "signals": {
-                "hardship_substantiation_missing": bool(
-                    dist_sql.coerce_bool(row.get("hardship_substantiation_missing"))
-                ),
                 "hold_or_aml_flag": bool(dist_sql.coerce_bool(row.get("hold_or_aml_flag"))),
-                "rmd_underpaid": bool(dist_sql.coerce_bool(row.get("rmd_underpaid"))),
+                "hardship_reason_codes": [
+                    r.get("reason_code")
+                    for r in exception_rows
+                    if r.get("reason_code") not in (None, "")
+                ],
+                "rmd_shortfall_amount": shortfall,
             },
         },
         default=str,

@@ -146,8 +146,13 @@ class IcebergFacade(McpToolCaller):
             "total_loss_indicator": sql.coerce_bool(row.get("total_loss_indicator")),
             "loss_event_id": row.get("loss_event_id"),
             "loss_cause_code": row.get("loss_cause_code"),
+            "loss_date": row.get("loss_date"),
             "policy_id": row.get("policy_id"),
             "policy_number": row.get("policy_number"),
+            "policy_status_code": row.get("policy_status_code"),
+            "effective_date": row.get("effective_date"),
+            "expiration_date": row.get("expiration_date"),
+            "cancellation_date": row.get("cancellation_date"),
             "insurable_object_id": row.get("insurable_object_id"),
             "vin": row.get("vin"),
             "policy_covers_vehicle": sql.coerce_bool(row.get("policy_covers_vehicle")),
@@ -180,6 +185,9 @@ class IcebergFacade(McpToolCaller):
             if r.get("claim_injury_id") is not None
         ]
         offers = sql.parse_query_result(self.execute_query(sql.claim_offers_sql(claim_id, database)))
+        operators = sql.parse_query_result(
+            self.execute_query(sql.claim_insured_operators_sql(claim_id, database))
+        )
         payment_ids = [
             r.get("claim_payment_id")
             for r in sql.parse_query_result(
@@ -207,10 +215,6 @@ class IcebergFacade(McpToolCaller):
             "filed_date": row.get("filed_date"),
             "closed_date": row.get("closed_date"),
             "litigation_status_code": row.get("litigation_status_code"),
-            "missing_docket_or_counsel": bool(
-                sql.coerce_bool(row.get("missing_docket_or_counsel"))
-            ),
-            "discovery_aging": bool(sql.coerce_bool(row.get("discovery_aging"))),
             "has_injury": bool(sql.coerce_bool(row.get("has_injury"))),
             "injury_ids": injury_ids,
             "has_police_report": bool(sql.coerce_bool(row.get("has_police_report"))),
@@ -231,6 +235,19 @@ class IcebergFacade(McpToolCaller):
                 }
                 for o in offers
             ],
+            "insured_operators": [
+                {
+                    "driver_id": o.get("driver_id"),
+                    "was_cited_indicator": bool(sql.coerce_bool(o.get("was_cited_indicator"))),
+                    "impairment_suspected_indicator": bool(
+                        sql.coerce_bool(o.get("impairment_suspected_indicator"))
+                    ),
+                    "license_status_code": o.get("license_status_code"),
+                    "on_policy": bool(sql.coerce_bool(o.get("on_policy"))),
+                    "is_excluded_driver": bool(sql.coerce_bool(o.get("is_excluded_driver"))),
+                }
+                for o in operators
+            ],
             "has_loss_payment": bool(sql.coerce_bool(row.get("has_loss_payment"))),
             "payment_ids": payment_ids,
             "has_recovery": bool(sql.coerce_bool(row.get("has_recovery"))),
@@ -240,18 +257,6 @@ class IcebergFacade(McpToolCaller):
             "fraud_assessment_id": row.get("fraud_assessment_id"),
             "fraud_outcome_code": row.get("fraud_outcome_code"),
             "has_document": bool(sql.coerce_bool(row.get("has_document"))),
-            "insured_operator_cited": bool(
-                sql.coerce_bool(row.get("insured_operator_cited"))
-            ),
-            "unlawful_operation_exclusion": bool(
-                sql.coerce_bool(row.get("unlawful_operation_exclusion"))
-            ),
-            "excluded_operator_exclusion": bool(
-                sql.coerce_bool(row.get("excluded_operator_exclusion"))
-            ),
-            "policy_not_in_force_on_loss": bool(
-                sql.coerce_bool(row.get("policy_not_in_force_on_loss"))
-            ),
             "_source": "execute_query_fallback",
         }
 

@@ -17,7 +17,7 @@ Fork two MCP servers to close platform gaps for claim-graph agents, while keepin
 | Fork working name | Upstream | Owns | Status |
 |---|---|---|---|
 | `iceberg-mcp-server-claims` | [cloudera/iceberg-mcp-server](https://github.com/cloudera/iceberg-mcp-server) (Impala) | Iceberg read + claim spine/signals + audit helpers | **In-repo** — `mcp_forks/iceberg-mcp-server-claims/` |
-| `iceberg-mcp-server-finserv` | Clone of claims fork | Distribution spine/signals/views + audit (compiled catalog, distributions only) | **In-repo** — `mcp_forks/iceberg-mcp-server-finserv/` (`INS_FINSERV_MCP_V1`) |
+| `iceberg-mcp-server-finserv` | Clone of claims fork | Distribution spine/signals/views + audit (compiled catalog, distributions only) | **In-repo** — `mcp_forks/iceberg-mcp-server-finserv/` (`INS_FINSERV_MCP_V2`) |
 | `iceberg-mcp-server-hive-claims` | [frothkoetter/iceberg-mcp-server-hive](https://github.com/frothkoetter/iceberg-mcp-server-hive) | Same claim helpers + true WAP branches | Optional later if Hive branch API is required |
 | `data-contract-mcp-server-claims` | [frothkoetter/data-contract-mcp-server](https://github.com/frothkoetter/data-contract-mcp-server) | Atlas catalog + ODCS contracts + ontology-binding helpers | Deferred |
 
@@ -44,12 +44,12 @@ Implemented for Impala in `mcp_forks/iceberg-mcp-server-claims/`. **V7 MCP tools
 | Tool | Responsibility | Impala claims fork |
 |---|---|---|
 | `get_claim_spine(claim_id, database?)` | Claim + loss + policy + vehicle + current roles + lifecycle | Curated SQL |
-| `get_claim_routing_signals(claim_id, database?)` | Flags + existence signals | Curated SQL |
+| `get_claim_routing_signals(claim_id, database?)` | Existence flags + insured-operator rows | Curated SQL |
 | `get_litigation_view` / `get_bi_view` / `get_subrogation_view` / `get_pd_view` / `get_deny_view` | Playbook specialist views | Curated SQL |
 | `write_audit_event` / `promote_audit_run` | Playbook name aliases | → append / promote helpers |
 | `create_litigation_task` | Insert `litigation_task` (COMPLETE_FILE / ESCALATE_DISCOVERY / DRAFT_HOLD) | Curated INSERT; `run_id` + `event_json` |
 | `create_pd_task` | Insert `pd_task` plus `agent_run_audit` receipt | Curated INSERT; `run_id` + `event_json` |
-| `deny_claim` | Set `claim_status_code=DENIED` plus `agent_run_audit` receipt | Curated UPDATE + INSERT; refuses CLOSED / already DENIED |
+| `deny_claim` | Set `claim_status_code=DENIED` plus `agent_run_audit` receipt | Curated UPDATE (`NOT IN CLOSED/DENIED`) + INSERT |
 | `begin_agent_audit_run(run_id, database, source_branch?)` | Start audit run | Validate; `mode=table_append` (no branch) |
 | `append_agent_audit_event(run_id, event_json)` | Router/tool/decision events | `INSERT` main `agent_run_audit` |
 | `append_agent_audit_evidence(run_id, evidence_json)` | SPARQL/validation/graph excerpts | `INSERT` main `agent_run_evidence` |

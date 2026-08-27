@@ -12,7 +12,7 @@ Three different jobs are easy to collapse. They are kept separate on purpose.
 |---|---|---|
 | Lake I/O | What rows exist for this id, and what may we write? | Iceberg + Impala + a **named-query catalog** on MCP |
 | Instance meaning | What is this case, and is the spine intact? | Session case JSON + field checks |
-| Next work | Which lane and specialist run next? | Git playbook + YAML probes |
+| Next work | Which lane and specialist run next? | Git playbook + CEL probes |
 
 Atlas (deferred) would answer “what *is* this table/column in the ontology?” Ranger (deferred) would answer “who may see or change it?” Neither stores the per-run graph or chooses `next_step`.
 
@@ -36,7 +36,7 @@ User
 
 Custom Studio tools **cannot** call MCP in-process. The agent is the only bridge: MCP result → tool argument → session artifact.
 
-Unstructured notes go to Routing Agent (`pre_route_text`, TF-IDF cosine). If a `claim_id` is present, structured intake still wins. Cosine does not override YAML probes.
+Unstructured notes go to Routing Agent (`pre_route_text`, TF-IDF cosine). If a `claim_id` is present, structured intake still wins. Cosine does not override playbook probes.
 
 ## Pattern: allow-listed lake access (not free SQL)
 
@@ -62,9 +62,9 @@ Mapping from lake JSON → case JSON is code (claims builder) or `pack.yaml` fie
 
 ## Pattern: probes + playbook as the router
 
-`route_claim` evaluates Git YAML probes in playbook priority order (`ASK` / `SELECT` on case JSON paths). The first matching action wins (`next_step`, `agent_role`, `lane`, `allowed_tools`, `terminal`). Default action is human-review/wait.
+`route_claim` evaluates Git playbook probes in priority order (CEL on case JSON; YAML `match` / `SELECT` still accepted). The first matching action wins (`next_step`, `agent_role`, `coworker`, `write`, `lane`, `allowed_tools`, `terminal`). Default action is human-review/wait.
 
-Probes bind field paths on the case document (`litigation_indicator`, `triangle`, …). Rules are reviewed as YAML, not as prompt text and not as Iceberg UI config.
+Probes bind CEL expressions to the case document (`litigation_indicator`, `triangle`, …). Rules are reviewed as YAML + CEL, not as prompt text and not as Iceberg UI config. MCP named queries still project lake facts onto that document.
 
 The playbook can name specialists that have not been configured in Agent Studio yet (`SiuAgent`, `SettlementAgent`, `DataQualityAgent`). Orchestrator must Final Answer the route JSON rather than invent a Role. `DenyAgent` and `HumanCitationReview` are now configured in Agent Studio.
 
@@ -88,14 +88,14 @@ Each row is a later snapshot. Earlier gaps are already filled so a higher probe 
 | Offer ACCEPTED, no loss payment | `{"claim_status_code": "OPEN", "has_adjuster": true, "has_police_report": true, "has_fault_determination": true, "has_extended_offer": false, "has_accepted_offer": true, "has_loss_payment": false, "litigation_indicator": false, "has_siu_suspected": false, "subrogation_indicator": false}` | R3.4 | `IssuePayment` |
 | Status CLOSED | `{"claim_exists": true, "triangle": true, "claim_status_code": "CLOSED"}` | R1.1 | `CloseoutAudit` |
 | Status DENIED | `{"claim_exists": true, "triangle": true, "claim_status_code": "DENIED"}` | R1.1d | `DenyAudit` |
-| Insured operator cited | `{"claim_status_code": "OPEN", "insured_operator_cited": true}` | R5.2 | `HumanCitationReview` |
-| Unlawful-operation exclusion | `{"claim_status_code": "OPEN", "unlawful_operation_exclusion": true}` | R6.1 | `DenyUnlawfulOperation` |
-| Excluded/unlisted operator | `{"claim_status_code": "OPEN", "excluded_operator_exclusion": true}` | R6.2 | `DenyExcludedDriver` |
-| Policy not in force on loss | `{"claim_status_code": "OPEN", "policy_not_in_force_on_loss": true}` | R6.3 | `DenyLapsedPolicy` |
+| Insured operator cited | `{"claim_status_code": "OPEN", "insured_operators": [{"was_cited_indicator": true}]}` | R5.2 | `HumanCitationReview` |
+| Unlawful-operation exclusion | `{"claim_status_code": "OPEN", "insured_operators": [{"impairment_suspected_indicator": true}]}` | R6.1 | `DenyUnlawfulOperation` |
+| Excluded/unlisted operator | `{"claim_status_code": "OPEN", "insured_operators": [{"on_policy": false}]}` | R6.2 | `DenyExcludedDriver` |
+| Policy not in force on loss | `{"claim_status_code": "OPEN", "policy_status_code": "LAPSED"}` | R6.3 | `DenyLapsedPolicy` |
 
 PD steps (`CollectIncidentReportNumber`, `RequestPoliceReport`, `DetermineFault`, `PdClaimsReview`) use `get_pd_view` then `create_pd_task` (work item in `pd_task` plus an `agent_run_audit` receipt). `CollectIncidentReportNumber` also inserts `claim_outbound_message` (SMS; no carrier) and always saves `claim_{id}_sms.txt`. `RequestPoliceReport` cites `incident_report_number` from `claim_police_intake`, not claim id, and sets `letter_on_request`; that session letter via `save_claim_letter` is drafted only if the user asks. Settlement steps on this path still `write_audit_event`. `IssuePayment` means settlement work is due; the payment row still has to land in `claim_payment` from the claims platform. A later intake can then hit R1.1.
 
-Denial: CLOSED stays **approved** (Closeout). DENIED is the other terminal status. R5.2 (`insured_operator_cited`) is Human Review — view + audit, no `deny_claim`. R6.* coded exclusions (`unlawful_operation_exclusion`, `excluded_operator_exclusion`, `policy_not_in_force_on_loss`) go to Deny Agent, which `UPDATE`s `claim_status_code` to `DENIED`. Live deny smokes flip **404** only (`PA-1003`) and restore afterward. Do not use **401** for deny. Repeatable runbook: [deny-path-demo.md](deny-path-demo.md).
+Denial: CLOSED stays **approved** (Closeout). DENIED is the other terminal status. R5.2 (cited `insured_operators`) is Human Review — view + audit, no `deny_claim`. R6.* coded exclusions (impairment/license, excluded/unlisted operator, policy not in force on `loss_date`) go to Deny Agent, which `UPDATE`s `claim_status_code` to `DENIED` (`AND … NOT IN ('CLOSED','DENIED')`). Live deny smokes flip **404** only (`PA-1003`) and restore afterward. Do not use **401** for deny. Repeatable runbook: [deny-path-demo.md](deny-path-demo.md).
 
 ## Pattern: two Studio filesystems
 
@@ -116,7 +116,7 @@ A **pack** swaps schema JSON, playbook, cosine exemplars, and (for offline tests
 
 Claims today is the **default product**: walk-up to repo-root `ontology/` + `playbook/`. Do not move those trees until 402 has been proven from a pointer pack.
 
-**Distributions (live):** Impala database `retirement_distributions` + MCP `iceberg-mcp-server-finserv` (`INS_FINSERV_MCP_V1`). Compiled labels only — no `PACK_ROOT`. Pack fixture JSON remains golden for `agent_studio/tests/test_packs.py`.
+**Distributions (live):** Impala database `retirement_distributions` + MCP `iceberg-mcp-server-finserv` (`INS_FINSERV_MCP_V2`). Compiled labels only — no `PACK_ROOT`. Pack fixture JSON remains golden for `agent_studio/tests/test_packs.py`.
 
 **Rollovers:** still fixture / `PACK_ROOT` on the claims MCP until distributions e2e is proven. Details: [finserv-pattern-pack-status.md](finserv-pattern-pack-status.md).
 
@@ -167,10 +167,12 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 
 | Term | Meaning |
 |---|---|
-| Probe | YAML `ASK`/`SELECT` on case JSON paths. First playbook match wins. |
+| Probe | YAML `ASK`/`SELECT` or CEL on case JSON paths. First playbook match wins. |
 | Playbook | YAML that orders probes and names the action. Not an ops runbook. |
 | `next_step` | Action id the specialist should perform. |
-| `agent_role` | Specialist coworker to Delegate to. |
+| `agent_role` | Playbook specialist id (audit JSON). Not the CrewAI Delegate string. |
+| `coworker` | Exact CrewAI Role for Orchestrator Delegate (playbook YAML). Omit if unmapped. |
+| `write` | Catalog write label; the specialist Goal owns the call. |
 | `lane` | Routing bucket (litigation, BI, closeout, …). |
 | `routing_reason` | One-sentence why this `next_step` (playbook copy, not LLM). |
 | `routing_summary` | Ready-to-paste block: next step, lane, why, checks. Studio Observation leads with this. |
@@ -178,7 +180,7 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 | `reason_probe_ids` | Probe ids evaluated this snapshot (audit / tests). Do not lead the chat with these. |
 | `allowed_tools` | Catalog labels or Studio tools the specialist may call. |
 | `terminal` | Router says this run is done (no further specialist). |
-| Structured intake | User supplied a case/claim id. YAML probes win over cosine. |
+| Structured intake | User supplied a case/claim id. Playbook probes win over cosine. |
 
 **MCP / audit**
 

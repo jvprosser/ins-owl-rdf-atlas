@@ -1,7 +1,7 @@
 """
-CONTENT_ID: INS_CLAIMS_BUILD_JSON_V4
+CONTENT_ID: INS_CLAIMS_BUILD_JSON_V5
 REPO_REF: main
-UPDATED: 2026-08-24
+UPDATED: 2026-08-26
 FILE: agent_studio/studio_tools/build_claim_graph/tool.py
 
 CUSTOM TOOL build_claim_graph — structured claim intake.
@@ -18,7 +18,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-TOOL_FINGERPRINT = "INS_CLAIMS_BUILD_JSON_V4"
+TOOL_FINGERPRINT = "INS_CLAIMS_BUILD_JSON_V5"
 
 
 class UserParameters(BaseModel):
@@ -75,10 +75,9 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
         "policy_id": spine.get("policy_id"),
         "insurable_object_id": spine.get("insurable_object_id"),
         "coverage_type_code": spine.get("coverage_type_code"),
-        "insured_operator_cited": case.get("insured_operator_cited"),
-        "unlawful_operation_exclusion": case.get("unlawful_operation_exclusion"),
-        "excluded_operator_exclusion": case.get("excluded_operator_exclusion"),
-        "policy_not_in_force_on_loss": case.get("policy_not_in_force_on_loss"),
+        "insured_operators": case.get("insured_operators"),
+        "loss_date": case.get("loss_date"),
+        "filed_date": case.get("filed_date"),
         "has_police_report": case.get("has_police_report"),
         "has_incident_report_number": case.get("has_incident_report_number"),
         "incident_report_number": case.get("incident_report_number"),

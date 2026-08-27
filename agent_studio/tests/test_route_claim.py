@@ -33,6 +33,18 @@ def _spine_401() -> dict:
     }
 
 
+def _insured_operator(**overrides: object) -> dict:
+    row: dict = {
+        "was_cited_indicator": False,
+        "impairment_suspected_indicator": False,
+        "license_status_code": "VALID",
+        "on_policy": True,
+        "is_excluded_driver": False,
+    }
+    row.update(overrides)
+    return row
+
+
 def _signals_ready_for_subro() -> dict:
     """Police/fault present so R2 gaps do not preempt R4.1."""
     return {
@@ -68,8 +80,7 @@ def test_route_litigation():
     spine["subrogation_indicator"] = False
     case = build_claim_graph(402, spine=spine, signals={})
     decision = route_claim(case, 402)
-    assert case["missing_docket_or_counsel"] is True
-    assert case["discovery_aging"] is False
+    assert not case.get("docket_number")
     assert decision["next_step"] == "CompleteLitigationFile"
     assert decision["agent_role"] == "LitigationAgent"
     assert decision["coworker"] == "Litigation Agent"
@@ -101,8 +112,8 @@ def test_route_litigation_discovery_aging():
     spine["subrogation_indicator"] = False
     case = build_claim_graph(402, spine=spine, signals=_signals_litigation_file_complete())
     decision = route_claim(case, 402)
-    assert case["missing_docket_or_counsel"] is False
-    assert case["discovery_aging"] is True
+    assert case["filed_date"] == "2025-08-01"
+    assert case["litigation_status_code"] == "IN_DISCOVERY"
     assert decision["next_step"] == "EscalateDiscovery"
     assert decision["agent_role"] == "LitigationAgent"
     assert decision["coworker"] == "Litigation Agent"
@@ -132,8 +143,8 @@ def test_route_litigation_support_letter():
         ),
     )
     decision = route_claim(case, 402)
-    assert case["missing_docket_or_counsel"] is False
-    assert case["discovery_aging"] is False
+    assert case["filed_date"] == "2026-08-01"
+    assert case["litigation_status_code"] == "ANSWERED"
     assert decision["next_step"] == "LitigationSupport"
     assert decision["agent_role"] == "LitigationAgent"
     assert "needs_llm" not in decision
@@ -164,7 +175,11 @@ def test_route_denied_terminal():
     spine = _spine_401()
     spine["claim_status_code"] = "DENIED"
     spine["subrogation_indicator"] = False
-    case = build_claim_graph(401, spine=spine, signals={"insured_operator_cited": True})
+    case = build_claim_graph(
+        401,
+        spine=spine,
+        signals={"insured_operators": [_insured_operator(was_cited_indicator=True)]},
+    )
     decision = route_claim(case, 401)
     assert decision["next_step"] == "DenyAudit"
     assert decision["agent_role"] == "DenyAgent"
@@ -188,8 +203,12 @@ def test_route_closed_beats_denied_and_exclusions():
         403,
         spine=spine,
         signals={
-            "insured_operator_cited": True,
-            "unlawful_operation_exclusion": True,
+            "insured_operators": [
+                _insured_operator(
+                    was_cited_indicator=True,
+                    impairment_suspected_indicator=True,
+                )
+            ],
         },
     )
     decision = route_claim(case, 403)
@@ -205,14 +224,18 @@ def test_route_insured_cited_human_review():
         401,
         spine=spine,
         signals={
-            "insured_operator_cited": True,
-            "unlawful_operation_exclusion": True,
+            "insured_operators": [
+                _insured_operator(
+                    was_cited_indicator=True,
+                    impairment_suspected_indicator=True,
+                )
+            ],
             "has_police_report": True,
             "has_fault_determination": True,
         },
     )
     decision = route_claim(case, 401)
-    assert case["insured_operator_cited"] is True
+    assert case["insured_operators"][0]["was_cited_indicator"] is True
     assert decision["next_step"] == "HumanCitationReview"
     assert decision["agent_role"] == "HumanReviewAgent"
     assert decision["terminal"] is True
@@ -233,7 +256,7 @@ def test_route_unlawful_operation_deny():
     case = build_claim_graph(
         401,
         spine=spine,
-        signals={"unlawful_operation_exclusion": True},
+        signals={"insured_operators": [_insured_operator(impairment_suspected_indicator=True)]},
     )
     decision = route_claim(case, 401)
     assert decision["next_step"] == "DenyUnlawfulOperation"
@@ -258,21 +281,15 @@ def test_route_lifts_deny_flag_from_nested_signals():
         404,
         spine=spine,
         signals={
-            "unlawful_operation_exclusion": True,
+            "insured_operators": [_insured_operator(impairment_suspected_indicator=True)],
             "has_police_report": True,
             "has_fault_determination": True,
         },
     )
     stale = dict(case)
-    for key in (
-        "unlawful_operation_exclusion",
-        "excluded_operator_exclusion",
-        "policy_not_in_force_on_loss",
-        "insured_operator_cited",
-    ):
-        stale.pop(key, None)
-    assert "unlawful_operation_exclusion" not in stale
-    assert stale["signals"]["unlawful_operation_exclusion"] is True
+    stale.pop("insured_operators", None)
+    assert "insured_operators" not in stale
+    assert stale["signals"]["insured_operators"][0]["impairment_suspected_indicator"] is True
     decision = route_claim(stale, 404)
     assert decision["next_step"] == "DenyUnlawfulOperation"
     assert decision["agent_role"] == "DenyAgent"
@@ -306,7 +323,7 @@ def test_route_excluded_operator_deny():
     case = build_claim_graph(
         401,
         spine=spine,
-        signals={"excluded_operator_exclusion": True},
+        signals={"insured_operators": [_insured_operator(is_excluded_driver=True)]},
     )
     decision = route_claim(case, 401)
     assert decision["next_step"] == "DenyExcludedDriver"
@@ -318,11 +335,8 @@ def test_route_excluded_operator_deny():
 def test_route_lapsed_policy_deny():
     spine = _spine_401()
     spine["subrogation_indicator"] = False
-    case = build_claim_graph(
-        401,
-        spine=spine,
-        signals={"policy_not_in_force_on_loss": True},
-    )
+    spine["policy_status_code"] = "LAPSED"
+    case = build_claim_graph(401, spine=spine, signals={})
     decision = route_claim(case, 401)
     assert decision["next_step"] == "DenyLapsedPolicy"
     assert decision["agent_role"] == "DenyAgent"

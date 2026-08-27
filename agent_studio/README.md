@@ -3,7 +3,7 @@
 Structured claim intake for Agent Studio:
 
 - **Manager agent** — NL interface: drives tools, explains results, assigns unstructured LLM subtasks (ADR 0001 D0)
-- **Python tools** — deterministic build / validate / route (YAML probes + playbook)
+- **Python tools** — deterministic build / validate / route (CEL playbook)
 - **Git files** hold schema JSON and playbook (no custom steward UI)
 - **MCP** — Iceberg claims fork; later Atlas data-contract + Ranger
 

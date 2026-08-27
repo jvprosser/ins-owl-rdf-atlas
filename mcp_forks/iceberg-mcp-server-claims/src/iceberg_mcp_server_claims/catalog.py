@@ -31,7 +31,7 @@ READ_OPS: dict[str, dict[str, Any]] = {
     "get_claim_routing_signals": {
         "required": ("claim_id",),
         "optional": ("database",),
-        "summary": "Routing/existence signals",
+        "summary": "Routing signals: existence flags plus insured-operator rows",
         "handler": lambda p: claim_tools.get_claim_routing_signals(
             str(p["claim_id"]), p.get("database")
         ),

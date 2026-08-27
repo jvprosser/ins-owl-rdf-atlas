@@ -1,6 +1,6 @@
 [project]
 name = "iceberg-mcp-server-finserv"
-version = "0.1.0"
+version = "0.2.0"
 description = "Finserv Iceberg MCP (Impala): retirement distributions named catalog only"
 readme = "README.md"
 requires-python = ">=3.10"

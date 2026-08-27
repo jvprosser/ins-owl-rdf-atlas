@@ -66,8 +66,9 @@ STATUS OR POST-ROUTE WORK (default — user did not ask for a letter):
    Say that a denial letter is recommended and will be drafted if they ask.
    {"label":"deny_claim","run_id":"<run_id>",
     "event_json":"{\"claim_id\":\"<claim_id>\",\"next_step\":\"<next_step>\"}"}
-   Observation MUST include named_op=deny_claim and claim_status_code=DENIED.
-   If the claim is CLOSED or already DENIED, Final Answer with that JSON and STOP.
+   Observation MUST include named_op=deny_claim. CLOSED/DENIED lake rows
+   are a no-op on the UPDATE (`NOT IN ('CLOSED','DENIED')`); playbook must
+   not assign a deny step on those statuses. Do not expect MCP to refuse.
 
    DenyAudit → do NOT call deny_claim (status is already DENIED). Write audit
    then promote:

@@ -9,10 +9,13 @@
     "claim_status_code": { "type": "string" },
     "litigation_indicator": { "type": "boolean" },
     "has_litigation_case": { "type": "boolean" },
-    "missing_docket_or_counsel": { "type": "boolean", "comment": "litigated claim missing docket or both counsel ids" },
-    "discovery_aging": { "type": "boolean", "comment": "IN_DISCOVERY, closed_date null, filed_date older than 90 days" },
     "docket_number": { "type": "string" },
+    "defense_counsel_party_id": { "type": "string", "comment": "empty when neither counsel id is on the litigation row" },
+    "plaintiff_counsel_party_id": { "type": "string" },
+    "filed_date": { "type": "string", "comment": "ISO date; playbook CEL uses eval_date + 90 days for discovery aging" },
+    "closed_date": { "type": "string" },
     "litigation_status_code": { "type": "string" },
+    "eval_date": { "type": "string", "comment": "host YYYY-MM-DD injected by flatten_case (celpy has no now())" },
     "subrogation_indicator": { "type": "boolean" },
     "policy_id": { "type": "string" },
     "insurable_object_id": { "type": "string" },
@@ -32,9 +35,14 @@
     "has_subrogation_case": { "type": "boolean" },
     "subrogation_status_code": { "type": "string" },
     "has_siu_suspected": { "type": "boolean" },
-    "insured_operator_cited": { "type": "boolean", "comment": "INSURED_OPERATOR loss_driver was_cited_indicator" },
-    "unlawful_operation_exclusion": { "type": "boolean", "comment": "insured operator impaired or license SUSPENDED/REVOKED/UNLICENSED" },
-    "excluded_operator_exclusion": { "type": "boolean", "comment": "insured operator excluded or unlisted on policy" },
-    "policy_not_in_force_on_loss": { "type": "boolean", "comment": "policy lapsed/cancelled/expired or loss_date outside term" }
+    "loss_date": { "type": "string", "comment": "ISO date from loss_event" },
+    "policy_status_code": { "type": "string" },
+    "effective_date": { "type": "string" },
+    "expiration_date": { "type": "string" },
+    "cancellation_date": { "type": "string" },
+    "insured_operators": {
+      "type": "object[]",
+      "comment": "INSURED_OPERATOR rows: was_cited_indicator, impairment_suspected_indicator, license_status_code, on_policy, is_excluded_driver"
+    }
   }
 }

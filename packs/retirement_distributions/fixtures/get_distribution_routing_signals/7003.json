@@ -2,8 +2,8 @@
   "claim_id": "7003",
   "case_id": "7003",
   "signals": {
-    "hardship_substantiation_missing": false,
     "hold_or_aml_flag": false,
-    "rmd_underpaid": true
+    "hardship_reason_codes": [],
+    "rmd_shortfall_amount": 4500
   }
 }

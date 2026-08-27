@@ -81,4 +81,6 @@ Labels: `get_rollover_spine`, `get_rollover_routing_signals`, `get_erisa_review_
 Please process claim 8001.
 ```
 
-Expect `next_step=ErisaReview`, `lane=ERISA`, probe **R2.1**.
+Expect `next_step=ErisaReview`, `lane=ERISA`, `coworker=ERISA Review Agent`, `write=write_audit_event`, probe **R2.1**.
+
+After a playbook or Goal change: re-upload `playbook.yaml`, re-upload Studio `route_claim` (`INS_CLAIMS_ROUTE_JSON_V6`), re-paste Orchestrator and Manager Goals. Do **not** mix this project's MCP with the claims 402 or distributions projects.

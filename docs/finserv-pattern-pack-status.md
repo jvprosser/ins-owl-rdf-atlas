@@ -11,7 +11,7 @@ Reuse the car-insurance **control plane** for a finserv customer demo:
 1. **Retirement distributions** — request classification and exception handling (lead case **7002**). **DDL + compiled MCP in repo.** Studio e2e on Impala is next.
 2. **Retirement rollovers** — document / ERISA completeness (lead case **8001**). **Still parked** (fixtures). Not on the finserv MCP.
 
-Same locked flow as claims: Orchestrator (no tools) → Manager catalog reads → Studio `build_claim_graph` → `validate_claim_graph` → `route_claim` → one specialist Delegate. YAML probes + playbook decide the lane. The LLM does not decide hardship, RMD, or ERISA.
+Same locked flow as claims: Orchestrator (no tools) → Manager catalog reads → Studio `build_claim_graph` → `validate_claim_graph` → `route_claim` → one specialist Delegate using Observation `coworker`. CEL probes + playbook decide the lane. The LLM does not decide hardship, RMD, or ERISA.
 
 Studio tools still take `claim_id`.
 
@@ -75,7 +75,7 @@ MCP runs as `uvx` stdio from the **workflow engine**, not inside the tool sandbo
 
 **Not** `PACK_ID` fixture bake-in. **Not** rollover labels on this server.
 
-- Clone: `mcp_forks/iceberg-mcp-server-finserv` (`INS_FINSERV_MCP_V1`).
+- Clone: `mcp_forks/iceberg-mcp-server-finserv` (`INS_FINSERV_MCP_V2`).
 - Compiled `READ_OPS` / `WRITE_OPS`: `get_distribution_spine`, `get_distribution_routing_signals`, `get_distribution_exception_view`, `get_rmd_view`, `get_schema`, live `write_audit_event` / `promote_audit_run`.
 - `list_named_queries` does not list `get_claim_spine` or `get_rollover_*`.
 - Impala DDL + seed: `ddl/hive_iceberg/retirement_distributions_iceberg.sql` and `retirement_distributions_seed_data.sql` (**7001** / **7002** / **7003**). Fixture JSON remains golden for offline `test_packs.py`.
@@ -94,7 +94,7 @@ Fallback (do not use): Manager reads spine from Workflow Data and skips `run_nam
 - One pack = one Agent Studio project. Do not mix with 402. Do not register the claims MCP in the distributions project.
 - Manager Role exactly `Manager agent`. CrewAI Delegate matches **Role**.
 - Custom tools: `build_claim_graph`, `validate_claim_graph`, `route_claim`, optional `pre_route_text`.
-- Identity: claims `get_server_info` → `INS_CLAIMS_MCP_V9`. Finserv `get_server_info` → `INS_FINSERV_MCP_V1`.
+- Identity: claims `get_server_info` → `INS_CLAIMS_MCP_V10`. Finserv `get_server_info` → `INS_FINSERV_MCP_V2`.
 - Lead customer prompt: intake **7002**.
 
 ## Tests to re-run on resume

@@ -144,6 +144,18 @@ def test_get_routing_signals_sql_fallback():
             )
         if "claim_injury" in query:
             return _columns_rows(["claim_injury_id"], [])
+        if "loss_driver" in query:
+            return _columns_rows(
+                [
+                    "driver_id",
+                    "was_cited_indicator",
+                    "impairment_suspected_indicator",
+                    "license_status_code",
+                    "on_policy",
+                    "is_excluded_driver",
+                ],
+                [[11, False, False, "VALID", True, False]],
+            )
         if "claim_offer" in query:
             return _columns_rows(
                 ["claim_offer_id", "offer_status_code"], [[9001, "ACCEPTED"]]
@@ -162,6 +174,7 @@ def test_get_routing_signals_sql_fallback():
     assert signals["subrogation_case_id"] == 8801
     assert signals["offers"][0]["offer_status_code"] == "ACCEPTED"
     assert signals["payment_ids"] == [9201]
+    assert signals["insured_operators"][0]["license_status_code"] == "VALID"
 
 
 def test_begin_audit_run_branch_fallback():

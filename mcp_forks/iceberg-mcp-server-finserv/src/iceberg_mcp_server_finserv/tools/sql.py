@@ -58,35 +58,13 @@ LIMIT 1
 
 
 def distribution_routing_signals_sql(claim_id: int | str, database: str) -> str:
-    """One-row flags. Avoid scalar COUNT(*)>0 subqueries (Impala Iceberg)."""
+    """Hold/AML flag only. Reason codes and RMD amounts are separate SELECTs."""
     db = validate_ident(database, "database")
     cid = int(claim_id)
     return f"""
-WITH
-req AS (
-  SELECT hold_or_aml_flag
-  FROM {db}.distribution_request
-  WHERE distribution_request_id = {cid}
-),
-exc AS (
-  SELECT COUNT(*) AS cnt
-  FROM {db}.distribution_exception
-  WHERE distribution_request_id = {cid}
-    AND reason_code = 'HARDSHIP_SUBSTANTIATION_MISSING'
-),
-rmd AS (
-  SELECT COUNT(*) AS cnt
-  FROM {db}.distribution_rmd
-  WHERE distribution_request_id = {cid}
-    AND shortfall_amount > 0
-)
-SELECT
-  COALESCE(req.hold_or_aml_flag, FALSE) AS hold_or_aml_flag,
-  (exc.cnt > 0) AS hardship_substantiation_missing,
-  (rmd.cnt > 0) AS rmd_underpaid
-FROM req
-CROSS JOIN exc
-CROSS JOIN rmd
+SELECT COALESCE(hold_or_aml_flag, FALSE) AS hold_or_aml_flag
+FROM {db}.distribution_request
+WHERE distribution_request_id = {cid}
 """.strip()
 
 

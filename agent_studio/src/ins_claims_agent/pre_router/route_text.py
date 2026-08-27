@@ -11,7 +11,7 @@ import yaml
 
 from ins_claims_agent.pre_router.cosine import TfidfIndex, build_index, cosine_search
 
-# Coarse triage only. Structured claim intake (YAML probes + playbook) remains
+# Coarse triage only. Structured claim intake (CEL playbook) remains
 # authoritative for claim_id.
 LABELS = ("LITIGATION", "GENERAL_CLAIMS")
 DEFAULT_THRESHOLD = 0.28

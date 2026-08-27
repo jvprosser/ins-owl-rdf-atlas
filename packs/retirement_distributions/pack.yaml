@@ -16,9 +16,7 @@ graph:
     - plan_id
     - participant_id
   booleans:
-    - hardship_substantiation_missing
     - hold_or_aml_flag
-    - rmd_underpaid
 catalog:
   mcp: iceberg-mcp-server-finserv
   database: retirement_distributions

@@ -13,7 +13,7 @@ UPDATED: YYYY-MM-DD
 FILE: agent_studio/studio_tools/...
 ```
 
-`requirements.txt` also has `# PACKAGE_PIN: …`. After paste, confirm those lines match the repo file. **`8f60419` is too old** — it builds case JSON without R6 deny flags, so `route_claim` can assign PD while MCP already shows `unlawful_operation_exclusion: true`. Tool results echo `tool_fingerprint` / `content_id` equal to `CONTENT_ID`. **Bump `CONTENT_ID` (and fingerprint) whenever the file contents change.**
+`requirements.txt` also has `# PACKAGE_PIN: …`. After paste, confirm those lines match the repo file. **`8f60419` is too old** — it builds case JSON without `insured_operators`, so `route_claim` can assign PD while MCP already shows an impaired operator. Tool results echo `tool_fingerprint` / `content_id` equal to `CONTENT_ID`. **Bump `CONTENT_ID` (and fingerprint) whenever the file contents change.**
 
 **Manager agent (locked):** natural-language interface to the user — drives tools, returns friendly explanations, and may assign LLM subtasks for unstructured data. It does **not** invent SQL or routing rules (probes + playbook do). Paste-ready definition: [`agents/manager_agent.md`](agents/manager_agent.md).
 

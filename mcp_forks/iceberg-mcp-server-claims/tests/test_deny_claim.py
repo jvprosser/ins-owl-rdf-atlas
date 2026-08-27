@@ -51,36 +51,42 @@ def test_deny_claim_ok():
     assert "DenyUnlawfulOperation" in captured[1]
 
 
-def test_deny_claim_refuses_closed():
-    def fake_query(_sql: str):
-        return [{"claim_status_code": "CLOSED"}]
+def test_deny_claim_does_not_python_refuse_closed():
+    captured: list[str] = []
+
+    def fake_dml(sql: str):
+        captured.append(sql)
+        return "OK"
 
     raw = deny_claim.deny_claim(
         "demo-403-deny",
         json.dumps({"claim_id": "403", "next_step": "DenyLapsedPolicy"}),
         "car_insurance_claims",
-        query_rows=fake_query,
-        execute_dml=lambda _sql: "OK",
+        query_rows=lambda _sql: [{"claim_status_code": "CLOSED"}],
+        execute_dml=fake_dml,
     )
     payload = json.loads(raw)
-    assert "CLOSED" in payload["error"]
-    assert payload["claim_status_code"] == "CLOSED"
+    assert payload["ok"] is True
+    assert "NOT IN ('CLOSED', 'DENIED')" in captured[0]
 
 
-def test_deny_claim_refuses_already_denied():
-    def fake_query(_sql: str):
-        return [{"claim_status_code": "DENIED"}]
+def test_deny_claim_does_not_python_refuse_already_denied():
+    captured: list[str] = []
+
+    def fake_dml(sql: str):
+        captured.append(sql)
+        return "OK"
 
     raw = deny_claim.deny_claim(
         "demo-404-deny",
         json.dumps({"claim_id": "404", "next_step": "DenyExcludedDriver"}),
         "car_insurance_claims",
-        query_rows=fake_query,
-        execute_dml=lambda _sql: "OK",
+        query_rows=lambda _sql: [{"claim_status_code": "DENIED"}],
+        execute_dml=fake_dml,
     )
     payload = json.loads(raw)
-    assert "already DENIED" in payload["error"]
-    assert payload["claim_status_code"] == "DENIED"
+    assert payload["ok"] is True
+    assert "NOT IN ('CLOSED', 'DENIED')" in captured[0]
 
 
 def test_deny_claim_missing_claim():

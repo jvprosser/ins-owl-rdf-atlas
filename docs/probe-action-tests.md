@@ -1,10 +1,10 @@
 # Probe / action test prompts
 
-One chat per playbook **probe → action** pair. Chat the **Orchestrator** as a claims handler: one sentence and a claim id. Do not mention tools, catalog labels, `run_id`, or probe ids. Orchestrator maps `agent_role` to a coworker Role; the specialist Goal owns the write. Pass = `route_claim` returns the expected `next_step`, `agent_role`, `routing_reason`, and `checks`. Probe ids remain in the JSON for audit.
+One chat per playbook **probe → action** pair. Chat the **Orchestrator** as a claims handler: one sentence and a claim id. Do not mention tools, catalog labels, `run_id`, or probe ids. Orchestrator Delegates Observation `coworker` (playbook YAML); the specialist Goal owns the write. Pass = `route_claim` returns the expected `next_step`, `agent_role`, `coworker`, `write`, `routing_reason`, and `checks`. Probe ids remain in the JSON for audit.
 
 First-match-wins: a later probe only fires if every earlier action’s `when` failed. You cannot test `R1.4` on claim **402**; litigation (`R1.2b` discovery aging) wins first.
 
-Specialist work runs only if that `agent_role` has been configured in Agent Studio. Otherwise Orchestrator Final Answers the route JSON (`SiuAgent`, `SettlementAgent`, `DataQualityAgent`, and `HumanReviewOrWait`). `HumanCitationReview` maps to Human Review Agent; deny steps map to Deny Agent.
+Specialist work runs only if that playbook `coworker` has been configured in Agent Studio. Otherwise Orchestrator Final Answers the route JSON (`SiuAgent`, `SettlementAgent`, `DataQualityAgent`, and `HumanReviewOrWait` have no `coworker`). `HumanCitationReview` maps to Human Review Agent; deny steps map to Deny Agent.
 
 Citation is **not** auto-deny. Narrative is **not** a YAML probe. `R6.1` is the coded unlawful-operation exclusion (impairment or license `SUSPENDED`/`REVOKED`/`UNLICENSED`).
 
@@ -28,8 +28,8 @@ Studio project: live Impala catalog, Workflow Data = repo `ontology/` + `playboo
 |---|---|---|---|---|
 | R0.1 | ASK_FALSE | `FixDataQuality` / `DataQualityAgent` / DATA_QUALITY | Graph has no `AutoClaim` at the claim IRI (builder usually prevents this) | none |
 | R0.4 | ASK_FALSE | `FixDataQuality` / `DataQualityAgent` / DATA_QUALITY | Claim exists but triangle broken (no policy↔vehicle) | none |
-| R1.1 | SELECT_EQUALS CLOSED | `CloseoutAudit` / `CloseoutAgent` / CLOSEOUT | Status CLOSED | **403** |
-| R1.1d | SELECT_EQUALS DENIED | `DenyAudit` / `DenyAgent` / DENY | Status DENIED; letter on request; no `deny_claim` | pytest `test_route_denied_terminal`; live **404** after a deny write |
+| R1.1 | ASK_TRUE `claim_status_code == "CLOSED"` | `CloseoutAudit` / `CloseoutAgent` / CLOSEOUT | Status CLOSED | **403** |
+| R1.1d | ASK_TRUE `claim_status_code == "DENIED"` | `DenyAudit` / `DenyAgent` / DENY | Status DENIED; letter on request; no `deny_claim` | pytest `test_route_denied_terminal`; live **404** after a deny write |
 | R5.2 | ASK_TRUE | `HumanCitationReview` / `HumanReviewAgent` / GENERAL | Insured operator `was_cited_indicator`; do not use police `citation_issued_indicator` | pytest `test_route_insured_cited_human_review`; live **401** flip only |
 | R6.1 | ASK_TRUE | `DenyUnlawfulOperation` / `DenyAgent` / DENY | Insured impairment or license SUSPENDED/REVOKED/UNLICENSED | pytest `test_route_unlawful_operation_deny`; live **404** flip only |
 | R6.2 | ASK_TRUE | `DenyExcludedDriver` / `DenyAgent` / DENY | Insured operator excluded or unlisted (skip PERMISSIVE_USER) | pytest `test_route_excluded_operator_deny`; live **404** / `PA-1003` flip only |
@@ -66,7 +66,7 @@ What's the status of claim 999004?
 
 Expect `FixDataQuality` / `DataQualityAgent` (R0.4). Needs a claim row whose spine omits policy or vehicle (or `policy_covers_vehicle` false) so the triangle ASK is false while R0.1 is true.
 
-### R1.1 SELECT_EQUALS CLOSED — CloseoutAudit (403)
+### R1.1 ASK_TRUE CLOSED — CloseoutAudit (403)
 
 ```text
 Please process claim 403.
@@ -74,7 +74,7 @@ Please process claim 403.
 
 Expect `CloseoutAudit` / `CloseoutAgent` (R1.1), then audit write + promote.
 
-### R1.1d SELECT_EQUALS DENIED — DenyAudit
+### R1.1d ASK_TRUE DENIED — DenyAudit
 
 Offline: `pytest tests/test_route_claim.py::test_route_denied_terminal`.
 
@@ -292,14 +292,14 @@ Expect `HumanReviewOrWait` / `HumanReviewAgent`, terminal. Needs a valid triangl
 
 Separate Studio project. Fixture cases: **7001**, **7002**, **7003**. MCP must serve those labels (`PACK_ID` resume; see [finserv-pattern-pack-status.md](finserv-pattern-pack-status.md)).
 
-| Probe | When | `next_step` / `agent_role` | Studio id |
+| Probe | When | `next_step` / `agent_role` / `coworker` | Studio id |
 |---|---|---|---|
-| R0.1 | ASK_FALSE | `FixDataQuality` / `DataQualityAgent` | none (unknown id) |
-| R1.1 | SELECT_EQUALS CLOSED | `CloseoutAudit` / `CloseoutAgent` | none (add CLOSED fixture) |
-| R2.1 | ASK_TRUE | `HoldReview` / `ExceptionQueueAgent` | none (add `hold_or_aml_flag`) |
-| R2.2 | ASK_TRUE | `RequestSubstantiation` / `ExceptionQueueAgent` | **7002** |
-| R2.3 | ASK_TRUE | `RmdReview` / `RmdOpsAgent` | **7003** |
-| default | no match | `ProcessDistribution` / `DistributionOpsAgent` | **7001** |
+| R0.1 | ASK_FALSE | `FixDataQuality` / `DataQualityAgent` / omit | none (unknown id) |
+| R1.1 | ASK_TRUE CLOSED | `CloseoutAudit` / `CloseoutAgent` / `Closeout Agent` | none (add CLOSED fixture) |
+| R2.1 | ASK_TRUE | `HoldReview` / `ExceptionQueueAgent` / `Exception Queue Agent` | none (add `hold_or_aml_flag`) |
+| R2.2 | ASK_TRUE | `RequestSubstantiation` / `ExceptionQueueAgent` / `Exception Queue Agent` | **7002** |
+| R2.3 | ASK_TRUE | `RmdReview` / `RmdOpsAgent` / `RMD Ops Agent` | **7003** |
+| default | no match | `ProcessDistribution` / `DistributionOpsAgent` / `Distribution Ops Agent` | **7001** |
 
 ### R0.1 ASK_FALSE
 
@@ -309,7 +309,7 @@ What's the status of claim 7009?
 
 Expect `FixDataQuality` / `DataQualityAgent` (R0.1).
 
-### R1.1 SELECT_EQUALS CLOSED
+### R1.1 ASK_TRUE CLOSED
 
 ```text
 Please process claim 7004.
@@ -355,13 +355,13 @@ Expect `ProcessDistribution` / `DistributionOpsAgent`. Offline: `pytest tests/te
 
 Separate Studio project. Fixture cases: **8001**, **8002**.
 
-| Probe | When | `next_step` / `agent_role` | Studio id |
+| Probe | When | `next_step` / `agent_role` / `coworker` | Studio id |
 |---|---|---|---|
-| R0.1 | ASK_FALSE | `FixDataQuality` / `DataQualityAgent` | none |
-| R1.1 | SELECT_EQUALS CLOSED | `CloseoutAudit` / `CloseoutAgent` | none (add CLOSED fixture) |
-| R2.1 | ASK_TRUE | `ErisaReview` / `ErisaReviewAgent` | **8001** |
-| R2.2 | ASK_TRUE | `RequestDocuments` / `ExceptionQueueAgent` | none (add `missing_required_docs`) |
-| default | no match | `ProcessRollover` / `RolloverOpsAgent` | **8002** |
+| R0.1 | ASK_FALSE | `FixDataQuality` / `DataQualityAgent` / omit | none |
+| R1.1 | ASK_TRUE CLOSED | `CloseoutAudit` / `CloseoutAgent` / `Closeout Agent` | none (add CLOSED fixture) |
+| R2.1 | ASK_TRUE | `ErisaReview` / `ErisaReviewAgent` / `ERISA Review Agent` | **8001** |
+| R2.2 | ASK_TRUE | `RequestDocuments` / `ExceptionQueueAgent` / `Exception Queue Agent` | none (add `missing_required_docs`) |
+| default | no match | `ProcessRollover` / `RolloverOpsAgent` / `Rollover Ops Agent` | **8002** |
 
 ### R0.1 ASK_FALSE
 
@@ -371,7 +371,7 @@ What's the status of claim 8009?
 
 Expect `FixDataQuality` / `DataQualityAgent` (R0.1).
 
-### R1.1 SELECT_EQUALS CLOSED
+### R1.1 ASK_TRUE CLOSED
 
 ```text
 Please process claim 8004.

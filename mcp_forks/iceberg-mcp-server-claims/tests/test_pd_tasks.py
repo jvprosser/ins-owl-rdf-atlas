@@ -131,16 +131,24 @@ def test_create_pd_task_collect_sends_sms():
     assert "CLM-" not in payload["sms_body"]
 
 
-def test_create_pd_task_request_requires_incident_number():
+def test_create_pd_task_request_ok_without_incident_number():
+    captured: list[str] = []
+
+    def fake_dml(sql: str):
+        captured.append(sql)
+        return "OK"
+
     raw = pd_tasks.create_pd_task(
         "demo-401-pd",
         json.dumps({"claim_id": "401", "task_type_code": "REQUEST_POLICE_REPORT"}),
         "car_insurance_claims",
         query_rows=lambda _sql: [],
-        execute_dml=lambda _sql: "OK",
+        execute_dml=fake_dml,
     )
     payload = json.loads(raw)
-    assert "incident_report_number" in payload["error"]
+    assert payload["ok"] is True
+    assert "incident_report_number" not in payload
+    assert "INSERT INTO car_insurance_claims.pd_task" in captured[0]
 
 
 def test_create_pd_task_request_stores_incident_number():
@@ -164,7 +172,7 @@ def test_create_pd_task_request_stores_incident_number():
     assert "SPD-25-11887" in captured[1]
 
 
-def test_create_pd_task_request_refuses_when_police_on_file():
+def test_create_pd_task_request_ok_even_if_police_on_file():
     raw = pd_tasks.create_pd_task(
         "demo-401-pd",
         json.dumps({"claim_id": "401", "task_type_code": "REQUEST_POLICE_REPORT"}),
@@ -177,6 +185,5 @@ def test_create_pd_task_request_refuses_when_police_on_file():
         execute_dml=lambda _sql: "OK",
     )
     payload = json.loads(raw)
-    assert "error" in payload
-    assert "police_report already on file" in payload["error"]
-    assert payload["has_police_report"] is True
+    assert payload["ok"] is True
+    assert payload["incident_report_number"] == "SPD-25-11887"

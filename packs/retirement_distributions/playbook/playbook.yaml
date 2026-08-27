@@ -1,6 +1,6 @@
 # This YAML file is the declarative Router Playbook: the deterministic
 # business-rules engine for retirement distribution requests. It evaluates
-# YAML probes against the session case JSON to assign work lanes, target
+# CEL probes against the session case JSON to assign work lanes, target
 # agent roles, and allowed tool permissions without LLM decision-making.
 #
 # RDF/SPARQL restore: git checkout rdf-sparql-runtime.
@@ -23,7 +23,7 @@ priorities:
   - R2.2
   - R2.3
 
-# Probe registry: YAML match on case JSON.
+# Probe registry: CEL on case JSON (ASK bool).
 # User-facing copy (router emits routing_reason + checks; LLM must not invent).
 probes:
   R0.1:
@@ -31,42 +31,36 @@ probes:
     title: Distribution request exists in the case file
     when_true: Distribution request is present in the case file
     when_false: Distribution request is missing from the case file
-    match:
-      path: case_exists
-      equals: true
+    cel: 'case_exists == true'
   R1.1:
-    form: SELECT
-    path: request_status_code
+    form: ASK
     title: Request closed
-    when_equals: Request is closed
-    otherwise: Request is not closed (status {value})
+    when_true: Request is closed
+    when_false: Request is not closed
+    cel: 'request_status_code == "CLOSED"'
   R2.1:
     form: ASK
     title: Hold or AML flag
     when_true: A hold or AML flag is set
     when_false: No hold or AML flag is set
-    match:
-      path: hold_or_aml_flag
-      equals: true
+    cel: 'hold_or_aml_flag == true'
   R2.2:
     form: ASK
     title: Hardship substantiation
     when_true: Hardship substantiation is missing
     when_false: Hardship substantiation is not missing
-    match:
-      path: hardship_substantiation_missing
-      equals: true
+    cel: 'hardship_reason_codes.exists(c, c == "HARDSHIP_SUBSTANTIATION_MISSING")'
   R2.3:
     form: ASK
     title: RMD amount
     when_true: Required minimum distribution is underpaid
     when_false: Required minimum distribution is not underpaid
-    match:
-      path: rmd_underpaid
-      equals: true
+    cel: 'rmd_shortfall_amount > 0'
 
-# Action matrix: probe result (ASK_TRUE, ASK_FALSE, SELECT_EQUALS) → execution.
-#   agent:     playbook agent_role for Orchestrator handoff
+# Action matrix: probe result (ASK_TRUE, ASK_FALSE) → execution.
+#   agent:     playbook agent_role (legacy; still on the decision JSON)
+#   coworker:  exact CrewAI Role for Orchestrator Delegate (omit if unmapped)
+#   write:     catalog write label; specialist Goal owns the call
 #   lane/step: operational classification and next action id
 #   tools:     allow-list of MCP catalog labels (and Studio graph tools) for that step
 actions:
@@ -75,32 +69,40 @@ actions:
       step: FixDataQuality
       agent: DataQualityAgent
       lane: DATA_QUALITY
+      write: write_audit_event
       tools: [build_claim_graph, validate_claim_graph, write_audit_event]
   R1.1:
-    - when: SELECT_EQUALS
-      match_value: CLOSED
+    - when: ASK_TRUE
       step: CloseoutAudit
       agent: CloseoutAgent
+      coworker: Closeout Agent
       lane: CLOSEOUT
+      write: write_audit_event
       tools: [write_audit_event, promote_audit_run]
       terminal: true
   R2.1:
     - when: ASK_TRUE
       step: HoldReview
       agent: ExceptionQueueAgent
+      coworker: Exception Queue Agent
       lane: EXCEPTION
+      write: write_audit_event
       tools: [get_distribution_exception_view, write_audit_event]
   R2.2:
     - when: ASK_TRUE
       step: RequestSubstantiation
       agent: ExceptionQueueAgent
+      coworker: Exception Queue Agent
       lane: EXCEPTION
+      write: write_audit_event
       tools: [get_distribution_exception_view, write_audit_event]
   R2.3:
     - when: ASK_TRUE
       step: RmdReview
       agent: RmdOpsAgent
+      coworker: RMD Ops Agent
       lane: RMD
+      write: write_audit_event
       tools: [get_rmd_view, write_audit_event]
 
 # Fallback: no exception/RMD hit → ProcessDistribution / DistributionOpsAgent
@@ -109,6 +111,8 @@ default_action:
   title: No earlier check assigned work
   step: ProcessDistribution
   agent: DistributionOpsAgent
+  coworker: Distribution Ops Agent
   lane: DISTRIBUTION
+  write: write_audit_event
   tools: [write_audit_event]
   terminal: true

@@ -9,7 +9,7 @@
     "plan_id": { "type": "string" },
     "participant_id": { "type": "string" },
     "hold_or_aml_flag": { "type": "boolean" },
-    "hardship_substantiation_missing": { "type": "boolean" },
-    "rmd_underpaid": { "type": "boolean" }
+    "hardship_reason_codes": { "type": "string[]" },
+    "rmd_shortfall_amount": { "type": "number" }
   }
 }
