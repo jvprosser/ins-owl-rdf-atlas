@@ -1,17 +1,29 @@
-# Manager agent — retirement rollovers (configured in Agent Studio)
+# Intake Agent — retirement rollovers (configured in Agent Studio)
 
-CrewAI `coworker` must match **Role** exactly: `Manager agent`.
+CrewAI `coworker` must match **Role** exactly: `Intake Agent`.
+
+Do **not** set Role to `Manager agent`. That string collides with Cloudera Agent
+Studio’s hierarchical Manager UI label.
+
+## Studio cutover (existing projects)
+
+1. Open this rollovers project. Open the agent whose Role is still `Manager agent`.
+2. Set **Name** and **Role** to `Intake Agent`.
+3. Re-paste **Backstory** and **Goal** from this file.
+4. Re-paste Orchestrator **Backstory** and **Goal** from `orchestrator_agent.md`.
+5. Confirm Crew “must be one of” includes `Intake Agent`. Start a **new** Orchestrator chat.
+6. Smoke: `Please process claim 8001`. First Delegate is `Intake Agent`. Identity: `Call get_server_info once and stop.`
 
 ## Studio fields
 
 ### Name
 ```text
-Manager agent
+Intake Agent
 ```
 
 ### Role
 ```text
-Manager agent
+Intake Agent
 ```
 
 ### Backstory
@@ -75,7 +87,7 @@ Do **not** run specialist views or audit writes after `route_claim`. Orchestrato
 One-shot identity:
 
 ```text
-coworker: Manager agent
+coworker: Intake Agent
 task: Call get_server_info once. Return the exact JSON. Do not run structured
 intake. Do not call any other tool.
 ```
@@ -83,7 +95,7 @@ intake. Do not call any other tool.
 Structured intake:
 
 ```text
-coworker: Manager agent
+coworker: Intake Agent
 task: Structured intake for claim_id 8001 —
 run_named_query label get_rollover_spine, then
 get_rollover_routing_signals, then build, validate, route. STOP after

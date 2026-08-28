@@ -26,7 +26,7 @@ def test_general_claims_phrase_matches_without_llm():
     )
     assert result["needs_llm"] is False
     assert result["label"] == "GENERAL_CLAIMS"
-    assert result["coworker"] == "Manager agent"
+    assert result["coworker"] == "Intake Agent"
     assert result["next_step"] == "StructuredIntake"
 
 

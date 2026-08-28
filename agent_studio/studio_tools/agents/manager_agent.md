@@ -1,25 +1,41 @@
-# Manager agent (configured in Agent Studio)
+# Intake Agent (configured in Agent Studio)
 
 NL interface for structured claim intake and one-shot MCP. Build, validate, and
 YAML playbook route are deterministic. This agent is **not** the router
 (probes + playbook are).
 
-CrewAI `coworker` must match **Role** exactly: `Manager agent`.
+CrewAI `coworker` must match **Role** exactly: `Intake Agent`.
 
-If Studio already generated a long Role sentence, either shorten Role to
-`Manager agent` (put the long sentence in Backstory) or keep Orchestrator’s
-`coworker` as that entire sentence.
+Do **not** set Role to `Manager agent`. That string collides with Cloudera Agent
+Studio’s hierarchical Manager UI label.
+
+## Studio cutover (existing projects)
+
+Do this in **each** Studio project (claims 402, distributions, rollovers). Git
+does not update live Crew Roles.
+
+1. Open the agent whose Role is still `Manager agent` (same Crew as Orchestrator).
+2. Set **Name** to `Intake Agent`.
+3. Set **Role** to `Intake Agent` (Delegate matches Role, not Name).
+4. Re-paste **Backstory** and **Goal** from this file.
+5. Open Orchestrator. Re-paste **Backstory** and **Goal** from
+   `orchestrator_agent.md` so every Delegate string is `Intake Agent`.
+6. Confirm Crew membership includes Orchestrator, Intake Agent, and specialists.
+   The coworker “must be one of” list must show `Intake Agent`, not `Manager agent`.
+7. Start a **new chat** on Orchestrator (old threads keep the old Role).
+8. Smoke: `Please process claim 402`. First Delegate coworker is `Intake Agent`,
+   then Observation specialist. Identity: `Call get_server_info once and stop.`
 
 ## Studio fields
 
 ### Name
 ```text
-Manager agent
+Intake Agent
 ```
 
 ### Role
 ```text
-Manager agent
+Intake Agent
 ```
 
 ### Backstory
@@ -89,14 +105,14 @@ Do **not** run specialist views or audit writes after `route_claim`. Orchestrato
 
 ## Same-crew requirement
 
-Manager must be in the **same Crew** as Orchestrator (and Litigation / Routing).
+Intake Agent must be in the **same Crew** as Orchestrator (and Litigation / Routing).
 
 ## Orchestrator delegate tasks
 
 One-shot identity:
 
 ```text
-coworker: Manager agent
+coworker: Intake Agent
 task: Call get_server_info once. Return the exact JSON. Do not run structured
 claim intake. Do not call any other tool.
 ```
@@ -104,7 +120,7 @@ claim intake. Do not call any other tool.
 Structured claim intake:
 
 ```text
-coworker: Manager agent
+coworker: Intake Agent
 task: Structured claim intake for claim_id 402 —
 run_named_query label get_claim_spine, then get_claim_routing_signals,
 then build, validate, route. STOP after route_claim. Return routing_summary

@@ -21,6 +21,8 @@ Temporary bridge code exists today (Iceberg SQL/branch fallbacks). Studio custom
 
 ### D0 — Manager agent is the NL interface (not the router)
 
+**Live Crew (2026):** the NL front door is **Orchestrator** (no tools). Structured lake intake is **Intake Agent** (Role exactly `Intake Agent`). Do not name that agent `Manager agent` — it collides with Cloudera Agent Studio’s hierarchical Manager UI. ADR text below still says “Manager agent” for the original NL+tools split.
+
 The **manager agent** is the conversational control plane between the user and tools:
 
 | Does | Does not |
@@ -53,7 +55,7 @@ Fork and register (additive tools only):
 
 Do **not** fork Ranger. Do **not** dual-register `ecole5/atlas-mcp` beside the data-contract fork.
 
-**Structured claim intake:** Manager agent → MCP claim helpers → custom tool with payload. Register the Impala claims fork in Studio in place of stock `iceberg-mcp-server`. Custom tools do not call MCP in-process.
+**Structured claim intake:** Intake Agent → MCP claim helpers → custom tool with payload. Register the Impala claims fork in Studio in place of stock `iceberg-mcp-server`. Custom tools do not call MCP in-process.
 
 After forks are contract-tested on seeded CDP data, **remove** from this repo:
 
@@ -145,7 +147,7 @@ Path resolution in shared code / tools:
 2. `validate_claim_graph` — read graph from session dir; ontology from `workflow_data` if needed  
 3. `route_claim` — probes + playbook from `workflow_data`; write decision JSON to session dir  
 
-Manager agent calls MCP then these tools in order; explains results to the user; may assign unstructured LLM subtasks afterward. It does not invent SQL or routing.
+Intake Agent calls MCP then these tools in order; Orchestrator explains results to the user. Neither invents SQL or routing.
 
 ## Consequences
 

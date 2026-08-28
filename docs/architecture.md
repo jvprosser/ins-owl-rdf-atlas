@@ -21,17 +21,17 @@ Atlas (deferred) would answer “what *is* this table/column in the ontology?”
 ```text
 User
   └─ Orchestrator          no tools; Delegate only
-       ├─ Manager          MCP catalog + Studio build / validate / route
+       ├─ Intake Agent     MCP catalog + Studio build / validate / route
        ├─ Routing Agent    cosine pre_route_text (NL triage only)
        └─ Specialist       MCP view label (if any) + playbook write
 ```
 
 **Structured intake** (user supplies a case/claim id):
 
-1. Orchestrator Delegates once to Manager.
-2. Manager calls `run_named_query` for spine, then routing signals (catalog **labels**, not extra MCP tools).
-3. Manager passes those JSON payloads, unmodified, into `build_claim_graph` → `validate_claim_graph` → `route_claim`.
-4. Manager stops. Orchestrator Delegates once to Observation `coworker` (playbook YAML). If `coworker` is omitted, Final Answer the route JSON.
+1. Orchestrator Delegates once to Intake Agent (Role `Intake Agent`).
+2. Intake Agent calls `run_named_query` for spine, then routing signals (catalog **labels**, not extra MCP tools).
+3. Intake Agent passes those JSON payloads, unmodified, into `build_claim_graph` → `validate_claim_graph` → `route_claim`.
+4. Intake Agent stops. Orchestrator Delegates once to Observation `coworker` (playbook YAML). If `coworker` is omitted, Final Answer the route JSON.
 5. Specialist may run one view label, then the playbook write (`create_litigation_task`, `create_pd_task`, `deny_claim`, or `write_audit_event`; Closeout and `DenyAudit` also `promote_audit_run`). `CollectIncidentReportNumber` always writes `claim_{id}_sms.txt`. `LitigationSupport`, `RequestPoliceReport`, and Deny steps mark a letter as recommended (`letter_on_request`); Studio `save_claim_letter` runs for those letters only when the user asks to write it.
 
 Custom Studio tools **cannot** call MCP in-process. The agent is the only bridge: MCP result → tool argument → session artifact.
@@ -125,11 +125,11 @@ Claims today is the **default product**: walk-up to repo-root `ontology/` + `pla
 | Agent | Tools | Job |
 |---|---|---|
 | Orchestrator | None | Sequence and handoff; user cannot skip it |
-| Manager | MCP + build/validate/route | Intake and one-shot catalog calls; stop after route |
+| Intake Agent | MCP + build/validate/route | Intake and one-shot catalog calls; stop after route |
 | Routing | `pre_route_text` only | Coarse NL label; not authoritative when an id is present |
 | Specialist | MCP (+ `save_claim_letter` when mapped) | One view (if mapped) + playbook write |
 
-CrewAI `Delegate` matches **Role**, not Name. Manager Role must be exactly `Manager agent`.
+CrewAI `Delegate` matches **Role**, not Name. Intake Role must be exactly `Intake Agent` (not `Manager agent`, which collides with Studio’s hierarchical Manager UI). Studio cutover: [`agent_studio/studio_tools/agents/manager_agent.md`](../agent_studio/studio_tools/agents/manager_agent.md).
 
 The LLM is justified for NL ops and unstructured text. Hardship, RMD, ERISA, litigation, closeout, and coded denial are probe results.
 
@@ -205,7 +205,7 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 
 | Term | Meaning |
 |---|---|
-| `Manager agent` | Exact CrewAI **Role** string required for Delegate to Manager. |
+| `Intake Agent` | Exact CrewAI **Role** string required for Delegate to structured intake. Not Studio’s hierarchical Manager. |
 | Final Answer | CrewAI terminal reply. Orchestrator uses this when no coworker exists for a role. |
 | Configured in Agent Studio | Name / Role / Backstory / Goal (and tools table) set on the agent in Agent Studio. |
 | Workflow Data | Studio read-only tree: schema JSON, playbook, `pack.yaml`, exemplars. |

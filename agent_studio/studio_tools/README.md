@@ -1,6 +1,6 @@
 # Agent Studio tools — structured claim intake
 
-Thin tools: **`tool.py` + `requirements.txt` only**. Lake I/O is manager agent → MCP; Python builds/routes the graph. Custom tools do not call MCP in-process. `ins-claims-agent` installs from git. See ADR 0001 **D0**.
+Thin tools: **`tool.py` + `requirements.txt` only**. Lake I/O is Intake Agent → MCP; Python builds/routes the graph. Custom tools do not call MCP in-process. `ins-claims-agent` installs from git. See ADR 0001 **D0**.
 
 ### Paste / version check (required)
 
@@ -15,7 +15,7 @@ FILE: agent_studio/studio_tools/...
 
 `requirements.txt` also has `# PACKAGE_PIN: …`. After paste, confirm those lines match the repo file. **`8f60419` is too old** — it builds case JSON without `insured_operators`, so `route_claim` can assign PD while MCP already shows an impaired operator. Tool results echo `tool_fingerprint` / `content_id` equal to `CONTENT_ID`. **Bump `CONTENT_ID` (and fingerprint) whenever the file contents change.**
 
-**Manager agent (locked):** natural-language interface to the user — drives tools, returns friendly explanations, and may assign LLM subtasks for unstructured data. It does **not** invent SQL or routing rules (probes + playbook do). Paste-ready definition: [`agents/manager_agent.md`](agents/manager_agent.md).
+**Intake Agent (Role `Intake Agent`):** structured intake — MCP + build / validate / route. Not Studio’s hierarchical Manager UI label. Paste-ready definition: [`agents/manager_agent.md`](agents/manager_agent.md). Studio cutover is in that file. Orchestrator is the NL front door (no tools).
 
 | Tool | Input | Output (`SESSION_DIRECTORY`) |
 |---|---|---|

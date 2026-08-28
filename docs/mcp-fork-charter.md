@@ -85,18 +85,19 @@ Implemented for Impala in `mcp_forks/iceberg-mcp-server-claims/`. **V7 MCP tools
 
 ```text
 User (natural language)
-  └─ Manager agent                    # NL interface + unstructured task dispatch
-       ├─ MCP Iceberg claims fork     → get_claim_spine / signals / audit helpers
-       ├─ Custom tools (deterministic)
-       │    ├─ build_claim_graph
-       │    ├─ validate_claim_graph
-       │    └─ route_claim            → rdflib + probes/*.rq + playbook.yaml
-       ├─ LLM subtasks (when needed)  → unstructured notes/docs/extraction only
-       ├─ governance helpers (later)  → Atlas fork: BM bind + contracts/tags
-       └─ access/masking/audit        → Ranger MCP (unchanged)
+  └─ Orchestrator                     # NL front door; Delegate only
+       └─ Intake Agent                # MCP + build / validate / route
+            ├─ MCP Iceberg claims fork     → get_claim_spine / signals / audit helpers
+            ├─ Custom tools (deterministic)
+            │    ├─ build_claim_graph
+            │    ├─ validate_claim_graph
+            │    └─ route_claim
+            ├─ LLM subtasks (when needed)  → unstructured notes/docs/extraction only
+            ├─ governance helpers (later)  → Atlas fork: BM bind + contracts/tags
+            └─ access/masking/audit        → Ranger MCP (unchanged)
 ```
 
-**Manager agent (locked):** conversational front door and explainer; assigns LLM work for unstructured data. **Not** the business-rules engine — routing stays in Git-reviewed probes/playbook + Python tools.
+**Intake Agent (Role `Intake Agent`):** structured intake and one-shot catalog calls. **Not** Studio’s hierarchical Manager UI. **Not** the business-rules engine — routing stays in Git-reviewed probes/playbook + Python tools. Orchestrator is the conversational front door.
 
 ## Success criteria
 
@@ -134,7 +135,7 @@ Parked integration plan (phases A–C, crew, risks): [`atlas-ranger-integration-
 
 | Decision | Choice |
 |---|---|
-| Manager agent role | NL interface + user-friendly results + unstructured LLM task dispatch |
+| Intake Agent Role | Structured intake (`Intake Agent`); Orchestrator is NL front door |
 | Business rules / routing | Deterministic tools + SPARQL probes + playbook (not the LLM) |
 | RDF/SPARQL location | Python Agent Studio tools |
 | Audit destination | Iceberg via Iceberg MCP (WAP branch on Hive; table-append on Impala claims fork) |

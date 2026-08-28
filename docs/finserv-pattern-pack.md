@@ -1,6 +1,6 @@
 # Finserv pattern packs
 
-Reuse the claims **control plane** for retirement operations. Same Orchestrator → Manager → YAML route → specialist flow. Studio tools stay `build_claim_graph` / `claim_id`.
+Reuse the claims **control plane** for retirement operations. Same Orchestrator → Intake Agent → YAML route → specialist flow. Studio tools stay `build_claim_graph` / `claim_id`.
 
 **Locked (2026-08-18):** live distributions demo uses a **separate** MCP, `iceberg-mcp-server-finserv`, with a compiled catalog for **distributions only**. Claims MCP stays claims-only (**402** unchanged). Rollovers stay parked on fixtures until distributions is proven on Impala.
 
@@ -9,8 +9,8 @@ Control-plane architecture: [`architecture.md`](architecture.md). Resume / statu
 ## What stays the same
 
 - Orchestrator has no tools; the user cannot skip it.
-- Manager runs catalog reads, then Studio `build_claim_graph` → `validate_claim_graph` → `route_claim`.
-- After route, Manager stops. Orchestrator Delegates once to Observation `coworker` (playbook YAML). If `coworker` is omitted, Final Answer the route JSON.
+- Intake Agent runs catalog reads, then Studio `build_claim_graph` → `validate_claim_graph` → `route_claim`.
+- After route, Intake Agent stops. Orchestrator Delegates once to Observation `coworker` (playbook YAML). If `coworker` is omitted, Final Answer the route JSON.
 - CEL probes + Git-reviewed playbook are authoritative. Cosine is NL triage only.
 - Platform I/O is MCP `run_named_query` / `run_named_write`. Custom tools do not call MCP in-process.
 

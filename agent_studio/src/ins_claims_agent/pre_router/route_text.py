@@ -26,8 +26,8 @@ DISPATCH = {
         "lane": "LITIGATION",
     },
     "GENERAL_CLAIMS": {
-        "coworker": "Manager agent",
-        "agent_role": "ManagerAgent",
+        "coworker": "Intake Agent",
+        "agent_role": "IntakeAgent",
         "next_step": "StructuredIntake",
         "lane": "CLAIMS",
     },

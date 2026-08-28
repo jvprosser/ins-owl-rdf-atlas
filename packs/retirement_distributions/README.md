@@ -97,11 +97,11 @@ Write: `write_audit_event`, `promote_audit_run`, `begin_agent_audit_run`, `appen
 
 Studio `claim_id` is `distribution_request.distribution_request_id` (seed **7001**, **7002**, **7003**, **7011–7017**).
 
-Check: Delegate Manager `get_server_info` → `content_id=INS_FINSERV_MCP_V3`. Then `list_named_queries` must include `get_distribution_spine` and must **not** include `get_claim_spine`.
+Check: Delegate Intake Agent `get_server_info` → `content_id=INS_FINSERV_MCP_V3`. Then `list_named_queries` must include `get_distribution_spine` and must **not** include `get_claim_spine`.
 
 ## Studio prompt (lead with 7002)
 
-Paste Orchestrator / Manager / Exception Queue / Client Communications / Compliance Ops from `agents/`. Then chat Orchestrator:
+Paste Orchestrator / Intake Agent / Exception Queue / Client Communications / Compliance Ops from `agents/`. If the intake Role is still `Manager agent`, rename it (Studio Manager UI collision) — steps in `agents/manager_agent.md`. Then chat Orchestrator:
 
 ```text
 Please process claim 7002.
@@ -109,4 +109,4 @@ Please process claim 7002.
 
 Expect `next_step=RequestSubstantiation`, `lane=EXCEPTION`, `coworker=Exception Queue Agent`, `write=write_audit_event`, probe **R2.2**.
 
-After a playbook or Goal change: re-upload `playbook.yaml`, re-upload Studio `route_claim` (`INS_CLAIMS_ROUTE_JSON_V6`), re-paste Orchestrator and Manager Goals. Do **not** mix claims MCP into this project.
+After a playbook or Goal change: re-upload `playbook.yaml`, re-upload Studio `route_claim` (`INS_CLAIMS_ROUTE_JSON_V6`), re-paste Orchestrator and Intake Agent Goals. Do **not** mix claims MCP into this project.

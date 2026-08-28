@@ -1,6 +1,6 @@
 # PD path demo (claim 401)
 
-Repeatable Agent Studio demo of the property-damage probes on seed **401**. Orchestrator chats, with Impala between them. The crew does **not** walk FNOL → payout in one run. Each **user message** classifies the current lake snapshot (Manager always re-calls `get_claim_routing_signals`). A new message in the same chat is enough; a new chat also works.
+Repeatable Agent Studio demo of the property-damage probes on seed **401**. Orchestrator chats, with Impala between them. The crew does **not** walk FNOL → payout in one run. Each **user message** classifies the current lake snapshot (Intake Agent always re-calls `get_claim_routing_signals`). A new message in the same chat is enough; a new chat also works.
 
 Chat the **Orchestrator** as a claims handler would: one sentence and a claim id. Do not mention tools, catalog labels, `run_id`, or `next_step`. Orchestrator supplies `run_id` and the specialist Role; the PD agent Goal owns the catalog write. Leave **402** / **403** / **404** rows alone.
 
@@ -26,7 +26,7 @@ Skip if already done this session. These checks are for the operator, not the ha
 3. Operator chat: `Call get_server_info once and stop.` Expect `INS_CLAIMS_MCP_V10` / **`0.4.0`** or newer.
 4. Operator chat: `Call list_named_queries once and stop.` Must include `get_pd_view` and `create_pd_task`.
 5. Workflow Data includes the playbook with **R2.0** `CollectIncidentReportNumber` before R2.1.
-6. Same Crew, Roles **exactly**: `Manager agent`, `PD Claims Agent`. Re-paste Orchestrator Goal from [`agent_studio/studio_tools/agents/orchestrator_agent.md`](../agent_studio/studio_tools/agents/orchestrator_agent.md). Paste [`pd_claims_agent.md`](../agent_studio/studio_tools/agents/pd_claims_agent.md). Attach MCP + Studio `save_claim_letter` on the PD agent (always SMS copy on CollectIncidentReportNumber; police letter only if the handler asks).
+6. Same Crew, Roles **exactly**: `Intake Agent`, `PD Claims Agent`. Re-paste Orchestrator Goal from [`agent_studio/studio_tools/agents/orchestrator_agent.md`](../agent_studio/studio_tools/agents/orchestrator_agent.md). Paste [`pd_claims_agent.md`](../agent_studio/studio_tools/agents/pd_claims_agent.md). Attach MCP + Studio `save_claim_letter` on the PD agent (always SMS copy on CollectIncidentReportNumber; police letter only if the handler asks). If the intake agent is still Role `Manager agent`, rename it — see [`manager_agent.md`](../agent_studio/studio_tools/agents/manager_agent.md) Studio cutover.
 7. In Impala, create intake / SMS tables and add `pd_task.incident_report_number` if they do not exist. Fresh full seed: [`ddl/hive_iceberg/car_insurance_claims_iceberg.sql`](../ddl/hive_iceberg/car_insurance_claims_iceberg.sql). Already-loaded lake: run [`ddl/hive_iceberg/car_insurance_claims_pd_intake.sql`](../ddl/hive_iceberg/car_insurance_claims_pd_intake.sql). If `pd_task` itself is missing, use this shape (then re-run the additive file for the extra column):
 
 ```sql

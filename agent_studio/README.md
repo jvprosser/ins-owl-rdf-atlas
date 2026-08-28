@@ -2,12 +2,13 @@
 
 Structured claim intake for Agent Studio:
 
-- **Manager agent** — NL interface: drives tools, explains results, assigns unstructured LLM subtasks (ADR 0001 D0)
+- **Orchestrator** — NL front door (no tools); Delegates intake and specialists
+- **Intake Agent** — structured intake: MCP catalog + Studio build / validate / route (Role `Intake Agent`, not Studio’s Manager UI)
 - **Python tools** — deterministic build / validate / route (CEL playbook)
 - **Git files** hold schema JSON and playbook (no custom steward UI)
 - **MCP** — Iceberg claims fork; later Atlas data-contract + Ranger
 
-Routing is in-process Python over case JSON. The manager agent is **not** the router.
+Routing is in-process Python over case JSON. Intake Agent is **not** the router.
 
 ## Layout
 

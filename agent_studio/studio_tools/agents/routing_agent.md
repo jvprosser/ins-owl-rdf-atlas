@@ -2,7 +2,7 @@
 
 Fast unstructured pre-router. Uses Studio tool `pre_route_text` (TF-IDF + numpy
 cosine). Does **not** replace structured claim intake. If `claim_id` is present,
-Manager structured claim intake is authoritative.
+Intake Agent structured claim intake is authoritative.
 
 CrewAI `coworker` must match **Role** exactly: `Routing Agent`.
 
@@ -50,7 +50,7 @@ Given unstructured text (and optional claim_id):
 
 ## Same-crew requirement
 
-Routing Agent must be in the **same Crew** as Orchestrator (and Manager / Litigation / Closeout).
+Routing Agent must be in the **same Crew** as Orchestrator (and Intake Agent / Litigation / Closeout).
 
 ## Smoke prompt (chat Routing Agent directly)
 

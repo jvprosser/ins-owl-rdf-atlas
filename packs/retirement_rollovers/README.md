@@ -67,7 +67,7 @@ Steps:
 ```
 
 5. Save. Restart or reconnect the MCP server (catalog merge runs at process start).
-6. Check: Delegate Manager to call `list_named_queries`. The reads list must include `get_rollover_spine`. If you only see `get_claim_spine`, `PACK_ROOT` is unset, the path is wrong, or MCP was not restarted.
+6. Check: Delegate Intake Agent to call `list_named_queries`. The reads list must include `get_rollover_spine`. If you only see `get_claim_spine`, `PACK_ROOT` is unset, the path is wrong, or MCP was not restarted.
 
 `uvx` from git does **not** include `packs/`. Clone or copy `packs/retirement_rollovers` onto the MCP host, then point `PACK_ROOT` at that copy. Impala variables are optional for this fixture demo.
 
@@ -83,4 +83,4 @@ Please process claim 8001.
 
 Expect `next_step=ErisaReview`, `lane=ERISA`, `coworker=ERISA Review Agent`, `write=write_audit_event`, probe **R2.1**.
 
-After a playbook or Goal change: re-upload `playbook.yaml`, re-upload Studio `route_claim` (`INS_CLAIMS_ROUTE_JSON_V6`), re-paste Orchestrator and Manager Goals. Do **not** mix this project's MCP with the claims 402 or distributions projects.
+After a playbook or Goal change: re-upload `playbook.yaml`, re-upload Studio `route_claim` (`INS_CLAIMS_ROUTE_JSON_V6`), re-paste Orchestrator and Intake Agent Goals. Do **not** mix this project's MCP with the claims 402 or distributions projects.

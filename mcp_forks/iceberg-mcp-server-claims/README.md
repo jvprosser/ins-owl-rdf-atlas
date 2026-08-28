@@ -112,10 +112,10 @@ Do this once per pack (new project, or a dedicated workflow in a new project).
    - `agent_studio/studio_tools/route_claim`
    - `agent_studio/studio_tools/pre_route_text` (optional; unstructured cosine)
 3. **MCP `PACK_ROOT`** — Open **MCP** (or **Tools → MCP servers**), edit `iceberg-mcp-server-claims`, add Environment variable `PACK_ROOT` = absolute pack path on the MCP host (see each pack below). Save and restart MCP. Impala vars are optional for fixture packs.
-4. **Crew** — Same-crew requirement. Orchestrator has **no** tools (user cannot skip it). Manager Role must be exactly `Manager agent`. Paste agents from `packs/<id>/agents/`. CrewAI `Delegate` matches **Role**, not Name.
-5. **Chat the Orchestrator** — Do not start on Manager. Use the pack test prompts below.
+4. **Crew** — Same-crew requirement. Orchestrator has **no** tools (user cannot skip it). Intake Role must be exactly `Intake Agent` (not `Manager agent`). Paste agents from `packs/<id>/agents/`. CrewAI `Delegate` matches **Role**, not Name. Studio cutover: `agents/manager_agent.md`.
+5. **Chat the Orchestrator** — Do not start on Intake Agent. Use the pack test prompts below.
 
-Manager tools: MCP + `build_claim_graph` + `validate_claim_graph` + `route_claim`.  
+Intake Agent tools: MCP + `build_claim_graph` + `validate_claim_graph` + `route_claim`.  
 Specialists: MCP only.  
 Routing Agent (optional): `pre_route_text` only; Role exactly `Routing Agent`.
 
@@ -187,7 +187,7 @@ Do **not** upload `agents/`, `fixtures/`, `catalog_fixtures.json`, or `README.md
 | Agent | Role (exact coworker) | Tools | Paste |
 |---|---|---|---|
 | Orchestrator | (no Delegate target) | none | `agents/orchestrator_agent.md` |
-| Manager | `Manager agent` | MCP + build / validate / route | `agents/manager_agent.md` |
+| Intake | `Intake Agent` | MCP + build / validate / route | `agents/manager_agent.md` |
 | Exception Queue | `Exception Queue Agent` | MCP | `agents/exception_queue_agent.md` |
 | Distribution Ops | `Distribution Ops Agent` | MCP | `agents/distribution_ops_agent.md` |
 | RMD Ops | `RMD Ops Agent` | MCP | `agents/rmd_ops_agent.md` |
@@ -204,7 +204,7 @@ cd ../mcp_forks/iceberg-mcp-server-claims && uv run pytest tests/test_pack_fixtu
 
 Expect 7002 → `RequestSubstantiation` / `Exception Queue Agent`; 7001 → `ProcessDistribution` / `Distribution Ops Agent`; 7003 → `RmdReview` / `RMD Ops Agent`.
 
-#### Test — MCP in Studio (Manager, one-shot)
+#### Test — MCP in Studio (Intake Agent, one-shot)
 
 Operator checks (not handler chats). Chat Orchestrator. Do not run intake.
 
@@ -318,7 +318,7 @@ Do **not** upload `agents/`, `fixtures/`, `catalog_fixtures.json`, or `README.md
 | Agent | Role (exact coworker) | Tools | Paste |
 |---|---|---|---|
 | Orchestrator | (no Delegate target) | none | `agents/orchestrator_agent.md` |
-| Manager | `Manager agent` | MCP + build / validate / route | `agents/manager_agent.md` |
+| Intake | `Intake Agent` | MCP + build / validate / route | `agents/manager_agent.md` |
 | ERISA Review | `ERISA Review Agent` | MCP | `agents/erisa_review_agent.md` |
 | Rollover Ops | `Rollover Ops Agent` | MCP | `agents/rollover_ops_agent.md` |
 | Routing (optional) | `Routing Agent` | `pre_route_text` | `agent_studio/studio_tools/agents/routing_agent.md` |
@@ -329,7 +329,7 @@ Catalog labels (fixture): `get_rollover_spine`, `get_rollover_routing_signals`, 
 
 Same pytest commands as distributions (`tests/test_packs.py` covers 8001 / 8002). Expect 8001 → `ErisaReview` / `ERISA Review Agent`; 8002 → `ProcessRollover` / `Rollover Ops Agent`.
 
-#### Test — MCP in Studio (Manager, one-shot)
+#### Test — MCP in Studio (Intake Agent, one-shot)
 
 `get_server_info` as above. Then `list_named_queries` must include `get_rollover_spine`. Then:
 

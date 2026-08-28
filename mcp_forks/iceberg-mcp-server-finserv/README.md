@@ -56,7 +56,7 @@ Environment (same keys as claims, different database):
 
 Do **not** set `PACK_ROOT`. Workflow Data is still the distributions pack contents (`pack.yaml`, ontology, playbook, exemplars).
 
-Check: Delegate Manager `get_server_info` → `content_id=INS_FINSERV_MCP_V3`. Then `list_named_queries` must include `get_distribution_spine` and must **not** include `get_claim_spine`.
+Check: Delegate Intake Agent `get_server_info` → `content_id=INS_FINSERV_MCP_V3`. Then `list_named_queries` must include `get_distribution_spine` and must **not** include `get_claim_spine`.
 
 Restart MCP after this identity bump so Studio is not still on V2.
 

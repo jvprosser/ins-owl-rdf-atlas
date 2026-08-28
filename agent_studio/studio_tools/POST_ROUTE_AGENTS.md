@@ -30,13 +30,13 @@ Optional catalog lifecycle labels (not used on the one-shot intake path): `begin
 ### Claims Orchestrator (no tools)
 **Paste-ready definition:** [`agents/orchestrator_agent.md`](agents/orchestrator_agent.md)
 
-NL front door; delegates structured claim intake, unstructured pre-route, and post-route work. Goal is intent only; playbook `coworker` / `write` on the route Observation are the handoff. Specialist Goals own catalog writes. Hard limits: fresh intake once per user message; never assign post-route work to Manager.
+NL front door; delegates structured claim intake, unstructured pre-route, and post-route work. Goal is intent only; playbook `coworker` / `write` on the route Observation are the handoff. Specialist Goals own catalog writes. Hard limits: fresh intake once per user message; never assign post-route work to Intake Agent.
 
 **CrewAI coworker names:** `Delegate work to coworker` requires the coworker string to match the agent’s **Role** exactly (see Studio’s “must be one of” error). Prefer short Roles:
 
 | Agent | Role (exact coworker string) | Playbook `agent_role` |
 |---|---|---|
-| Manager | `Manager agent` | (intake; not a route worker) |
+| Intake | `Intake Agent` | (intake; not a route worker) |
 | Routing | `Routing Agent` | (unstructured cosine only) |
 | Litigation | `Litigation Agent` | `LitigationAgent` |
 | Subrogation | `Subrogation Agent` | `SubrogationAgent` |
@@ -49,19 +49,19 @@ NL front door; delegates structured claim intake, unstructured pre-route, and po
 | Settlement | `Settlement Agent` | `SettlementAgent` |
 | Data quality | `Data Quality Agent` | `DataQualityAgent` |
 
-If Manager Role is still the long sentence Studio generated, Orchestrator must paste that **entire** Role as `coworker` — or rename Manager Role to `Manager agent` and retry.
+If Intake Agent Role is still `Manager agent`, rename it — that string collides with Studio’s hierarchical Manager UI. Orchestrator must Delegate Role `Intake Agent`. Cutover steps: [`agents/manager_agent.md`](agents/manager_agent.md) (Studio cutover).
 
-On unstructured text: delegate to `Routing Agent`. If cosine `needs_llm` is false, hand off to the returned `coworker`. If `claim_id` is also present, still run Manager structured claim intake — cosine does not override YAML probes.
+On unstructured text: delegate to `Routing Agent`. If cosine `needs_llm` is false, hand off to the returned `coworker`. If `claim_id` is also present, still run Intake Agent structured claim intake — cosine does not override YAML probes.
 
 ### Routing Agent (Studio `pre_route_text` only)
 **Paste-ready definition:** [`agents/routing_agent.md`](agents/routing_agent.md)
 
-NL first-touch triage. Cosine vs a small `LITIGATION` / `GENERAL_CLAIMS` catalog; `needs_llm` when the score is low. **Does not replace structured claim intake.** If `claim_id` is present, Manager structured claim intake is authoritative.
+NL first-touch triage. Cosine vs a small `LITIGATION` / `GENERAL_CLAIMS` catalog; `needs_llm` when the score is low. **Does not replace structured claim intake.** If `claim_id` is present, Intake Agent structured claim intake is authoritative.
 
-### Claims Manager (MCP + build / validate / route Studio tools)
+### Intake Agent (MCP + build / validate / route Studio tools)
 **Paste-ready definition:** [`agents/manager_agent.md`](agents/manager_agent.md)
 
-**Role (exact for CrewAI coworker):** `Manager agent`  
+**Role (exact for CrewAI coworker):** `Intake Agent`  
 **Tools:** MCP `get_server_info` / `run_named_query` / `run_named_write`; Studio `build` / `validate` / `route`.  
 **Job:** Structured claim intake when asked to intake/route; **if asked for one MCP identity/spine tool by name, call it once and stop**. After `route_claim`, STOP — return `routing_summary` plus a json block (`next_step`, `agent_role`, `lane`, `letter_on_request`, `coworker`, `write`, `task_type_code`) so Studio’s evidence gate can complete. If the Planner assigns specialist work here, refuse and tell Orchestrator to Delegate Observation coworker.
 
@@ -153,9 +153,9 @@ Paste Orchestrator Goal from [`agents/orchestrator_agent.md`](agents/orchestrato
 Please process claim 402.
 ```
 
-Manager Goal must STOP after `route_claim`. Orchestrator Delegates Observation `coworker` (not a Goal Role map). The specialist Goal owns the view/write. Do not put step 2 on Manager.
+Intake Agent Goal must STOP after `route_claim`. Orchestrator Delegates Observation `coworker` (not a Goal Role map). The specialist Goal owns the view/write. Do not put step 2 on Intake Agent.
 
-1. Orchestrator → Manager: structured claim intake (`run_named_query` spine then signals → build → validate → route). Once per user message (fresh signals even if this claim_id was routed earlier in the chat).
+1. Orchestrator → Intake Agent: structured claim intake (`run_named_query` spine then signals → build → validate → route). Once per user message (fresh signals even if this claim_id was routed earlier in the chat).
 2. Route returns `coworker` / `write` / `next_step` (402: `Litigation Agent` / `create_litigation_task` / `EscalateDiscovery`).
 3. Orchestrator → Observation coworker: `claim_id`, `run_id=demo-<claim_id>-e2e`, `next_step`, `write`, `task_type_code`. Specialist runs its Goal (402: `create_litigation_task`).
 4. Orchestrator Final Answer: route decision + specialist summary + write JSON (keep JSON in a fenced block so Studio format overlays do not drop it).

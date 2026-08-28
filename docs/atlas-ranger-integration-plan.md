@@ -10,7 +10,7 @@ Related: [`mcp-fork-charter.md`](mcp-fork-charter.md), ADR 0001 D1.
 
 ## What stays locked
 
-- Orchestrator has no tools. Manager (or a small governance agent) calls MCP.
+- Orchestrator has no tools. Intake Agent (or a small governance agent) calls MCP.
 - Custom tools do not call MCP in-process.
 - SPARQL + playbook own `next_step`. Session Turtle owns the instance graph.
 - Iceberg MCP stays catalog-only (`run_named_query` / `run_named_write`).
@@ -38,10 +38,10 @@ Named Iceberg catalog, structured intake, specialists, `car_insurance_claims.age
 
 1. Fork/register `data-contract-mcp-server-claims` with a **small** tool surface (same lesson as V7): e.g. `ensure_business_metadata_typedef`, `bind_ontology_iri_to_entity`, `get_entity_business_metadata`.
 2. Steward smoke: bind `car_insurance_claims.claim` → `https://example.org/ins/Claim` (and a few columns).
-3. Manager one-shot: read BM back; Final Answer the IRI. Do not fold this into every 402 intake.
+3. Intake Agent one-shot: read BM back; Final Answer the IRI. Do not fold this into every 402 intake.
 4. Optional: ODCS contract on the claims database; classification on PII columns.
 
-**Success:** a steward (or Manager) can show “this Iceberg table *is* ontology Claim” in Atlas without label hacks.
+**Success:** a steward (or Intake Agent) can show “this Iceberg table *is* ontology Claim” in Atlas without label hacks.
 
 Facade stubs already exist in `agent_studio/src/ins_claims_agent/mcp_facade/atlas_client.py`.
 
@@ -68,9 +68,9 @@ Intake unchanged. After route, a governance step may *record* that the run used 
 
 ## Crew / Studio
 
-- Iceberg MCP stays on Manager + specialists (facts + audit).
-- Atlas MCP: Manager only, or a Governance Agent with a tiny Goal (bind/read, then STOP). Do not add an Atlas `agent_role` to the playbook in Phase A.
-- Ranger MCP: Manager or security helper; keep it off Litigation/BI.
+- Iceberg MCP stays on Intake Agent + specialists (facts + audit).
+- Atlas MCP: Intake Agent only, or a Governance Agent with a tiny Goal (bind/read, then STOP). Do not add an Atlas `agent_role` to the playbook in Phase A.
+- Ranger MCP: Intake Agent or security helper; keep it off Litigation/BI.
 
 ## Risks
 

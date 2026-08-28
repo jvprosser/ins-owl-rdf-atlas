@@ -49,7 +49,7 @@ Each has: `pack.yaml`, schema JSON (`ontology/*.json`), YAML playbook with inlin
 | **8001** | `ErisaReview` / `ErisaReviewAgent` (R2.1) |
 | **8002** | `ProcessRollover` / `RolloverOpsAgent` |
 
-Agent Roles: Orchestrator is `Distributions Orchestrator` / `Rollovers Orchestrator`. Manager Role stays exactly `Manager agent`. Specialists: `Exception Queue Agent`, `Distribution Ops Agent`, `RMD Ops Agent`, `ERISA Review Agent`, `Rollover Ops Agent`. Orchestrator tools: MCP NONE, Studio NONE. Manager: V7 MCP + build/validate/route. Specialists: V7 MCP, Studio NONE.
+Agent Roles: Orchestrator is `Distributions Orchestrator` / `Rollovers Orchestrator`. Intake Role is exactly `Intake Agent` (not `Manager agent`). Specialists: `Exception Queue Agent`, `Distribution Ops Agent`, `RMD Ops Agent`, `ERISA Review Agent`, `Rollover Ops Agent`, `Client Communications Agent`, `Compliance Ops Agent`. Orchestrator tools: MCP NONE, Studio NONE. Intake Agent: V7 MCP + build/validate/route. Specialists: V7 MCP, Studio NONE.
 
 Studio Workflow Data (tools only): upload pack **contents** so `/workflow_data/pack.yaml` exists. Do not nest `retirement_*` as an extra folder. Do not upload `agents/` (paste into Studio fields). `fixtures/` + `catalog_fixtures.json` were intended for MCP, not tools.
 
@@ -92,7 +92,7 @@ Fallback (do not use): Manager reads spine from Workflow Data and skips `run_nam
 ## Studio / MCP notes for resume
 
 - One pack = one Agent Studio project. Do not mix with 402. Do not register the claims MCP in the distributions project.
-- Manager Role exactly `Manager agent`. CrewAI Delegate matches **Role**.
+- Intake Role exactly `Intake Agent`. CrewAI Delegate matches **Role**. Do not use `Manager agent` (Studio hierarchical Manager UI collision). Cutover: `packs/*/agents/manager_agent.md`.
 - Custom tools: `build_claim_graph`, `validate_claim_graph`, `route_claim`, optional `pre_route_text`.
 - Identity: claims `get_server_info` → `INS_CLAIMS_MCP_V10`. Finserv `get_server_info` → `INS_FINSERV_MCP_V3`.
 - Lead customer prompt: intake **7002**.

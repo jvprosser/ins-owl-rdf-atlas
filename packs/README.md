@@ -1,6 +1,6 @@
 # Finserv demo packs
 
-Same control plane as car-insurance claims: Orchestrator (no tools) → Manager MCP catalog reads → Studio `build_claim_graph` → `validate_claim_graph` → `route_claim` → one specialist Delegate. CEL probes + playbook decide the lane. The LLM does not decide hardship, RMD, or ERISA.
+Same control plane as car-insurance claims: Orchestrator (no tools) → Intake Agent MCP catalog reads → Studio `build_claim_graph` → `validate_claim_graph` → `route_claim` → one specialist Delegate. CEL probes + playbook decide the lane. The LLM does not decide hardship, RMD, or ERISA.
 
 Do **not** move `ontology/` / `playbook/` at the repo root. Claim **402** still uses those assets.
 
@@ -42,8 +42,8 @@ packs/<id>/
 | `catalog_fixtures.json` | MCP allow-list for this pack: each `run_named_query` **label**, required params, and `fixture_dir` | MCP only (when it can load pack fixtures). Not used by graph tools |
 | `ontology/*.json` | Case field schema (JSON, not Turtle) | `build_claim_graph` / humans |
 | `playbook/playbook.yaml` | Probe CEL `cel` + actions (`step`, `agent`, `coworker`, `write`, `lane`, tools) | `route_claim` |
-| `fixtures/<label>/<id>.json` | Fake lake payload for that named query and case (spine, signals, exception/ERISA/RMD view) | MCP `run_named_query` if fixtures are loaded. Same JSON shape Manager would pass into `build_claim_graph` |
-| `agents/*.md` | Paste-ready Studio agents (Orchestrator, Manager, specialists) | Humans → Agent Studio fields. Not uploaded to Workflow Data |
+| `fixtures/<label>/<id>.json` | Fake lake payload for that named query and case (spine, signals, exception/ERISA/RMD view) | MCP `run_named_query` if fixtures are loaded. Same JSON shape Intake Agent would pass into `build_claim_graph` |
+| `agents/*.md` | Paste-ready Studio agents (Orchestrator, Intake Agent, specialists) | Humans → Agent Studio fields. Not uploaded to Workflow Data |
 
 **Workflow Data (Studio tools)** needs: `pack.yaml`, `exemplars.yaml`, `ontology/`, `playbook/`.  
 **Do not** upload `agents/` (paste those).  
