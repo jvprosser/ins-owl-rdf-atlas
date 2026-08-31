@@ -4,9 +4,6 @@ You cannot call MCP from this agent. You only Delegate, then Final Answer.
 
 Studio coworker matching uses the **Role** field, not the Name.
 
-Structured intake coworker Role is exactly `Intake Agent`. Do not Delegate
-`Manager agent` — that string collides with Studio’s hierarchical Manager UI.
-
 ## Studio fields
 
 ### Name

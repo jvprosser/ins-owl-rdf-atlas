@@ -6,25 +6,6 @@ YAML playbook route are deterministic. This agent is **not** the router
 
 CrewAI `coworker` must match **Role** exactly: `Intake Agent`.
 
-Do **not** set Role to `Manager agent`. That string collides with Cloudera Agent
-Studio’s hierarchical Manager UI label.
-
-## Studio cutover (existing projects)
-
-Do this in **each** Studio project (claims 402, distributions, rollovers). Git
-does not update live Crew Roles.
-
-1. Open the agent whose Role is still `Manager agent` (same Crew as Orchestrator).
-2. Set **Name** to `Intake Agent`.
-3. Set **Role** to `Intake Agent` (Delegate matches Role, not Name).
-4. Re-paste **Backstory** and **Goal** from this file.
-5. Open Orchestrator. Re-paste **Backstory** and **Goal** from
-   `orchestrator_agent.md` so every Delegate string is `Intake Agent`.
-6. Confirm Crew membership includes Orchestrator, Intake Agent, and specialists.
-   The coworker “must be one of” list must show `Intake Agent`, not `Manager agent`.
-7. Start a **new chat** on Orchestrator (old threads keep the old Role).
-8. Smoke: `Please process claim 402`. First Delegate coworker is `Intake Agent`,
-   then Observation specialist. Identity: `Call get_server_info once and stop.`
 
 ## Studio fields
 
