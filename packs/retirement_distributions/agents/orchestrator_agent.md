@@ -108,7 +108,7 @@ Do the next work:
 Please process claim 7002.
 ```
 
-Expect Exception Queue Agent (`RequestSubstantiation`).
+Expect Client Communications Agent (`RequestSubstantiation`, `send_client_notice`).
 
 Clean termination:
 
@@ -188,4 +188,4 @@ Please process claim 7017.
 
 Expect Compliance Ops Agent (`LegalQdroReview`).
 
-Operator identity check (not a handler chat): `Call get_server_info once and stop.` Expect `INS_FINSERV_MCP_V3`.
+Operator identity check (not a handler chat): `Call get_server_info once and stop.` Expect `INS_FINSERV_MCP_V4`.

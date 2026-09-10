@@ -2,7 +2,7 @@
 
 Compiled named-query catalog for **retirement distributions only**. Same V7 surface as claims (`get_server_info`, `list_named_queries`, `run_named_query`, `run_named_write`). No free SQL. No claim labels. No rollover labels. No `PACK_ROOT`.
 
-Identity: **`INS_FINSERV_MCP_V3`**.
+Identity: **`INS_FINSERV_MCP_V4`**.
 
 ## Catalog labels
 
@@ -12,7 +12,7 @@ Write: `write_audit_event`, `promote_audit_run`, `begin_agent_audit_run`, `appen
 
 Studio `claim_id` is `distribution_request.distribution_request_id` (seed **7001**, **7002**, **7003**, **7011–7017**).
 
-Signals return CEL ingredients (category, amounts, flags, lists). Playbook CEL decides hardship / ERISA / emergency / QDRO. `send_client_notice` inserts one `distribution_outbound_notice` row plus an audit receipt (no carrier).
+Signals return CEL ingredients (category, amounts, flags, lists). Playbook CEL decides hardship / ERISA / emergency / QDRO. `send_client_notice` inserts one `distribution_outbound_notice` row plus an audit receipt (no carrier). Allowed `next_step`: `RequestSelfCertification` (7013) or `RequestSubstantiation` (7002; body from lake `required_docs`).
 
 ## Lake
 
@@ -56,9 +56,9 @@ Environment (same keys as claims, different database):
 
 Do **not** set `PACK_ROOT`. Workflow Data is still the distributions pack contents (`pack.yaml`, ontology, playbook, exemplars).
 
-Check: Delegate Intake Agent `get_server_info` → `content_id=INS_FINSERV_MCP_V3`. Then `list_named_queries` must include `get_distribution_spine` and must **not** include `get_claim_spine`.
+Check: Delegate Intake Agent `get_server_info` → `content_id=INS_FINSERV_MCP_V4`. Then `list_named_queries` must include `get_distribution_spine` and must **not** include `get_claim_spine`.
 
-Restart MCP after this identity bump so Studio is not still on V2.
+Restart MCP after this identity bump so Studio is not still on V3.
 
 ## Tests
 

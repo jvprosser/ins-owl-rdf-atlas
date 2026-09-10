@@ -12,17 +12,35 @@ from iceberg_mcp_server_finserv.tools.audit_tools import (
     insert_audit_event_sql,
     validate_run_id,
 )
-from iceberg_mcp_server_finserv.tools.sql import insert_outbound_notice_sql, validate_ident
+from iceberg_mcp_server_finserv.tools.dist_tools import _parse_required_docs
+from iceberg_mcp_server_finserv.tools.sql import (
+    distribution_exception_view_sql,
+    insert_outbound_notice_sql,
+    validate_ident,
+)
 
 QueryFn = Callable[[str], list[dict[str, Any]]]
 DmlFn = Callable[[str], str]
 
-_NOTICE_STEPS = frozenset({"RequestSelfCertification"})
-_DEFAULT_BODY = (
+_SELF_CERT_STEP = "RequestSelfCertification"
+_SUBSTANTIATION_STEP = "RequestSubstantiation"
+_NOTICE_STEPS = frozenset({_SELF_CERT_STEP, _SUBSTANTIATION_STEP})
+_PURPOSE_BY_STEP = {
+    _SELF_CERT_STEP: "REQUEST_SELF_CERTIFICATION",
+    _SUBSTANTIATION_STEP: "REQUEST_SUBSTANTIATION",
+}
+_SELF_CERT_BODY = (
     "Please sign the hardship self-certification that you have an immediate "
     "and heavy financial need so we can continue processing your request."
 )
-_PURPOSE = "REQUEST_SELF_CERTIFICATION"
+_SUBSTANTIATION_FALLBACK = (
+    "Please provide the documents required to substantiate this hardship "
+    "so we can continue processing your request."
+)
+_DOC_COPY = {
+    "medical_bills": "itemized medical bills (or EOBs) covering the requested amount",
+    "hardship_attestation": "a signed hardship attestation",
+}
 
 
 def _default_database(database: str | None) -> str:
@@ -42,12 +60,54 @@ def _need_dml(execute_dml: DmlFn | None) -> DmlFn:
     return _dml
 
 
+def _need_query(query_rows: QueryFn | None) -> QueryFn:
+    if query_rows is not None:
+        return query_rows
+    from iceberg_mcp_server_finserv.tools.impala_tools import query_rows as _qr
+
+    return _qr
+
+
+def _required_doc_codes(rows: list[dict[str, Any]]) -> list[str]:
+    preferred = [
+        r
+        for r in rows
+        if str(r.get("reason_code") or "") == "HARDSHIP_SUBSTANTIATION_MISSING"
+    ]
+    source = preferred or rows
+    codes: list[str] = []
+    seen: set[str] = set()
+    for row in source:
+        for code in _parse_required_docs(row.get("required_docs")):
+            if code not in seen:
+                seen.add(code)
+                codes.append(code)
+    return codes
+
+
+def _substantiation_body(codes: list[str]) -> str:
+    if not codes:
+        return _SUBSTANTIATION_FALLBACK
+    phrases: list[str] = []
+    seen: set[str] = set()
+    for code in codes:
+        phrase = _DOC_COPY.get(code, code.replace("_", " "))
+        if phrase not in seen:
+            seen.add(phrase)
+            phrases.append(phrase)
+    return (
+        "Please send the following so we can continue processing your hardship "
+        "request: " + "; ".join(phrases) + "."
+    )
+
+
 def send_client_notice(
     run_id: str,
     event_json: str,
     database: str | None = None,
     *,
     execute_dml: DmlFn | None = None,
+    query_rows: QueryFn | None = None,
 ) -> str:
     try:
         rid = validate_run_id(run_id)
@@ -57,20 +117,37 @@ def send_client_notice(
         return json.dumps({"error": str(exc)})
 
     claim_id = body.get("claim_id")
-    next_step = str(body.get("next_step") or "RequestSelfCertification").strip()
+    next_step = str(body.get("next_step") or _SELF_CERT_STEP).strip()
     if claim_id in (None, ""):
         return json.dumps({"error": "event_json.claim_id is required"})
     if next_step not in _NOTICE_STEPS:
         return json.dumps(
-            {"error": "event_json.next_step must be RequestSelfCertification"}
+            {
+                "error": (
+                    "event_json.next_step must be RequestSelfCertification "
+                    "or RequestSubstantiation"
+                )
+            }
         )
 
     cid = int(claim_id)
-    text = str(body.get("body") or _DEFAULT_BODY).strip() or _DEFAULT_BODY
+    purpose = _PURPOSE_BY_STEP[next_step]
+    required_docs: list[str] = []
+    if next_step == _SUBSTANTIATION_STEP:
+        qr = _need_query(query_rows)
+        try:
+            rows = qr(distribution_exception_view_sql(cid, db))
+        except Exception as exc:
+            return json.dumps({"error": str(exc), "claim_id": cid, "database": db})
+        required_docs = _required_doc_codes(rows)
+        text = _substantiation_body(required_docs)
+    else:
+        text = _SELF_CERT_BODY
+
     row = {
-        "notice_id": _notice_id(rid, str(claim_id), _PURPOSE),
+        "notice_id": _notice_id(rid, str(claim_id), purpose),
         "distribution_request_id": cid,
-        "purpose_code": _PURPOSE,
+        "purpose_code": purpose,
         "channel_code": str(body.get("channel_code") or "LETTER"),
         "body_text": text,
         "run_id": rid,
@@ -91,8 +168,9 @@ def send_client_notice(
         "terminal": False,
         "payload_json": {
             "notice_id": row["notice_id"],
-            "purpose_code": _PURPOSE,
+            "purpose_code": purpose,
             "channel_code": row["channel_code"],
+            "required_docs": required_docs,
         },
     }
     audit_sql = insert_audit_event_sql(db, audit_event)
@@ -118,9 +196,10 @@ def send_client_notice(
             "audit_table": "agent_run_audit",
             "notice_id": row["notice_id"],
             "claim_id": cid,
-            "purpose_code": _PURPOSE,
+            "purpose_code": purpose,
             "channel_code": row["channel_code"],
             "body_text": text,
+            "required_docs": required_docs,
             "next_step": next_step,
             "agent_role": "ClientCommunicationsAgent",
             "lane": "CUSTOMER_REMEDIATION",

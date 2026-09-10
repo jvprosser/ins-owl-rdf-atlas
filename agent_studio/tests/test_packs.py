@@ -59,9 +59,10 @@ def test_distribution_7002_exception(monkeypatch):
     )
     assert report["passed"] is True
     assert decision["next_step"] == "RequestSubstantiation"
-    assert decision["agent_role"] == "ExceptionQueueAgent"
-    assert decision["coworker"] == "Exception Queue Agent"
-    assert decision["write"] == "write_audit_event"
+    assert decision["agent_role"] == "ClientCommunicationsAgent"
+    assert decision["coworker"] == "Client Communications Agent"
+    assert decision["write"] == "send_client_notice"
+    assert decision["lane"] == "CUSTOMER_REMEDIATION"
     assert "R2.2" in decision["reason_probe_ids"]
     assert decision["routing_reason"] == (
         "Hardship substantiation is missing → RequestSubstantiation."

@@ -142,7 +142,7 @@ WRITE_OPS: dict[str, dict[str, Any]] = {
     "send_client_notice": {
         "required": ("run_id", "event_json"),
         "optional": ("database",),
-        "summary": "Insert hardship self-cert notice plus audit receipt",
+        "summary": "Insert self-cert or hardship substantiation notice plus audit receipt",
         "handler": lambda p: notice_tools.send_client_notice(
             str(p["run_id"]),
             _as_json_string(p["event_json"]),

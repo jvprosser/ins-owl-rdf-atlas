@@ -290,7 +290,7 @@ Expect `HumanReviewOrWait` / `HumanReviewAgent`, terminal. Needs a valid triangl
 
 ## Distributions (`packs/retirement_distributions/playbook/playbook.yaml`)
 
-Separate Studio project. Fixture cases: **7001**, **7002**, **7003**, **7011–7017**. MCP identity `INS_FINSERV_MCP_V3` (see [finserv-pattern-pack-status.md](finserv-pattern-pack-status.md)). Crew Roles must exist for Exception Queue, Client Communications, and Compliance Ops.
+Separate Studio project. Fixture cases: **7001**, **7002**, **7003**, **7011–7017**. MCP identity `INS_FINSERV_MCP_V4` (see [finserv-pattern-pack-status.md](finserv-pattern-pack-status.md)). Crew Roles must exist for Exception Queue, Client Communications, and Compliance Ops.
 
 | Probe | When | `next_step` / `agent_role` / `coworker` | Studio id |
 |---|---|---|---|
@@ -304,7 +304,7 @@ Separate Studio project. Fixture cases: **7001**, **7002**, **7003**, **7011–7
 | R2.6 | ASK_TRUE | `RequestSelfCertification` / `ClientCommunicationsAgent` / `Client Communications Agent` | **7013** |
 | R2.8 | ASK_TRUE | `PlanLoanPrecheck` / `ExceptionQueueAgent` / `Exception Queue Agent` | **7015** |
 | R2.9 | ASK_TRUE | `EmergencyLimitCapReview` / `ExceptionQueueAgent` / `Exception Queue Agent` | **7016** |
-| R2.2 | ASK_TRUE | `RequestSubstantiation` / `ExceptionQueueAgent` / `Exception Queue Agent` | **7002** |
+| R2.2 | ASK_TRUE | `RequestSubstantiation` / `ClientCommunicationsAgent` / `Client Communications Agent` | **7002** |
 | R2.3 | ASK_TRUE | `RmdReview` / `RmdOpsAgent` / `RMD Ops Agent` | **7003** |
 | default | no match | `ProcessDistribution` / `DistributionOpsAgent` / `Distribution Ops Agent` | **7001** |
 
@@ -394,7 +394,7 @@ Expect `EmergencyLimitCapReview` / `Exception Queue Agent` (R2.9). Offline: `pyt
 Please process claim 7002.
 ```
 
-Expect `RequestSubstantiation` / `ExceptionQueueAgent` (R2.2). Offline: `pytest tests/test_packs.py::test_distribution_7002_exception`. **7002** uses a valid `MEDICAL` category, matching need, self-cert on file, and `requires_substantiation_audit` so R2.4–R2.6 do not steal this route.
+Expect `RequestSubstantiation` / `Client Communications Agent`, write `send_client_notice` (R2.2). Offline: `pytest tests/test_packs.py::test_distribution_7002_exception`. **7002** uses a valid `MEDICAL` category, matching need, self-cert on file, and `requires_substantiation_audit` so R2.4–R2.6 do not steal this route. Notice body lists medical bills and hardship attestation from lake `required_docs`.
 
 ### R2.3 ASK_TRUE — RmdReview (7003)
 

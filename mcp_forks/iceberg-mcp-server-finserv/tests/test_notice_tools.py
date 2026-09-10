@@ -44,19 +44,64 @@ def test_send_client_notice_inserts_notice_and_audit():
     assert payload["next_step"] == "RequestSelfCertification"
     assert payload["purpose_code"] == "REQUEST_SELF_CERTIFICATION"
     assert payload["table"] == "distribution_outbound_notice"
+    assert "self-certification" in payload["body_text"]
     assert len(statements) == 2
     assert "distribution_outbound_notice" in statements[0]
     assert "agent_run_audit" in statements[1]
+
+
+def test_send_client_notice_substantiation_uses_required_docs():
+    statements: list[str] = []
+
+    def fake_dml(statement: str) -> str:
+        statements.append(statement)
+        return "ok"
+
+    def fake_query(_sql: str) -> list[dict]:
+        return [
+            {
+                "exception_id": "EX-7002",
+                "reason_code": "HARDSHIP_SUBSTANTIATION_MISSING",
+                "queue": "ExceptionQueue",
+                "required_docs": '["medical_bills","hardship_attestation"]',
+            }
+        ]
+
+    payload = json.loads(
+        notice_tools.send_client_notice(
+            "demo-7002-notice",
+            json.dumps(
+                {
+                    "claim_id": "7002",
+                    "next_step": "RequestSubstantiation",
+                    "body": "ignore this agent text",
+                }
+            ),
+            "retirement_distributions",
+            execute_dml=fake_dml,
+            query_rows=fake_query,
+        )
+    )
+    assert payload["ok"] is True
+    assert payload["claim_id"] == 7002
+    assert payload["next_step"] == "RequestSubstantiation"
+    assert payload["purpose_code"] == "REQUEST_SUBSTANTIATION"
+    assert payload["required_docs"] == ["medical_bills", "hardship_attestation"]
+    assert "medical bills" in payload["body_text"]
+    assert "hardship attestation" in payload["body_text"]
+    assert "ignore this agent text" not in payload["body_text"]
+    assert "REQUEST_SUBSTANTIATION" in statements[0]
 
 
 def test_send_client_notice_rejects_other_next_step():
     payload = json.loads(
         notice_tools.send_client_notice(
             "demo-7013-notice",
-            json.dumps({"claim_id": "7013", "next_step": "RequestSubstantiation"}),
+            json.dumps({"claim_id": "7013", "next_step": "ProcessDistribution"}),
             "retirement_distributions",
             execute_dml=lambda _s: "ok",
         )
     )
     assert "error" in payload
     assert "RequestSelfCertification" in payload["error"]
+    assert "RequestSubstantiation" in payload["error"]

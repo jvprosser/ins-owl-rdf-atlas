@@ -197,11 +197,11 @@ actions:
   R2.2:
     - when: ASK_TRUE
       step: RequestSubstantiation
-      agent: ExceptionQueueAgent
-      coworker: Exception Queue Agent
-      lane: EXCEPTION
-      write: write_audit_event
-      tools: [get_distribution_exception_view, write_audit_event]
+      agent: ClientCommunicationsAgent
+      coworker: Client Communications Agent
+      lane: CUSTOMER_REMEDIATION
+      write: send_client_notice
+      tools: [send_client_notice]
   R2.3:
     - when: ASK_TRUE
       step: RmdReview

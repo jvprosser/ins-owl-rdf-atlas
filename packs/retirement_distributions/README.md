@@ -7,7 +7,7 @@ Live lake + MCP: `ddl/hive_iceberg/retirement_distributions_*.sql` and [`mcp_for
 | Case | Story | Route |
 |---|---|---|
 | **7001** | Termination, documents complete | `ProcessDistribution` / `DistributionOpsAgent` |
-| **7002** | Hardship, substantiation missing | `RequestSubstantiation` / `ExceptionQueueAgent` |
+| **7002** | Hardship, substantiation missing | `RequestSubstantiation` / `ClientCommunicationsAgent` |
 | **7003** | RMD underpaid | `RmdReview` / `RmdOpsAgent` |
 | **7011** | Hardship, invalid Safe Harbor category (`VACATION`) | `HardshipCategoryReview` / `ExceptionQueueAgent` |
 | **7012** | Hardship amount exceeds documented need | `ExcessAmountAudit` / `ExceptionQueueAgent` |
@@ -19,7 +19,7 @@ Live lake + MCP: `ddl/hive_iceberg/retirement_distributions_*.sql` and [`mcp_for
 
 ## Agent Studio workflow + tests
 
-Register **`iceberg-mcp-server-finserv`**, not the claims MCP. Identity: `INS_FINSERV_MCP_V3`. Do **not** set `PACK_ROOT`.
+Register **`iceberg-mcp-server-finserv`**, not the claims MCP. Identity: `INS_FINSERV_MCP_V4`. Do **not** set `PACK_ROOT`.
 
 Setup (MCP `uvx`, crew, e2e prompts): [`mcp_forks/iceberg-mcp-server-finserv/README.md`](../../mcp_forks/iceberg-mcp-server-finserv/README.md).
 
@@ -97,7 +97,7 @@ Write: `write_audit_event`, `promote_audit_run`, `begin_agent_audit_run`, `appen
 
 Studio `claim_id` is `distribution_request.distribution_request_id` (seed **7001**, **7002**, **7003**, **7011–7017**).
 
-Check: Delegate Intake Agent `get_server_info` → `content_id=INS_FINSERV_MCP_V3`. Then `list_named_queries` must include `get_distribution_spine` and must **not** include `get_claim_spine`.
+Check: Delegate Intake Agent `get_server_info` → `content_id=INS_FINSERV_MCP_V4`. Then `list_named_queries` must include `get_distribution_spine` and must **not** include `get_claim_spine`.
 
 ## Studio prompt (lead with 7002)
 
@@ -107,6 +107,6 @@ Paste Orchestrator / Intake Agent / Exception Queue / Client Communications / Co
 Please process claim 7002.
 ```
 
-Expect `next_step=RequestSubstantiation`, `lane=EXCEPTION`, `coworker=Exception Queue Agent`, `write=write_audit_event`, probe **R2.2**.
+Expect `next_step=RequestSubstantiation`, `lane=CUSTOMER_REMEDIATION`, `coworker=Client Communications Agent`, `write=send_client_notice`, probe **R2.2**. Catalog notice copy lists medical bills and hardship attestation from `required_docs`.
 
 After a playbook or Goal change: re-upload `playbook.yaml`, re-upload Studio `route_claim` (`INS_CLAIMS_ROUTE_JSON_V6`), re-paste Orchestrator and Intake Agent Goals. Do **not** mix claims MCP into this project.

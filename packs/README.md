@@ -6,7 +6,7 @@ Do **not** move `ontology/` / `playbook/` at the repo root. Claim **402** still 
 
 | Pack | Demo | Cases |
 |---|---|---|
-| [`retirement_distributions/`](retirement_distributions/) | Request classification + exception handling | **7001** clean termination → Distribution Ops; **7002** hardship missing substantiation → Exception Queue; **7003** RMD underpaid → RMD Ops; **7011–7017** hardship / ERISA / SECURE 2.0 / QDRO |
+| [`retirement_distributions/`](retirement_distributions/) | Request classification + exception handling | **7001** clean termination → Distribution Ops; **7002** hardship missing substantiation → Client Communications (`send_client_notice`); **7003** RMD underpaid → RMD Ops; **7011–7017** hardship / ERISA / SECURE 2.0 / QDRO |
 | [`retirement_rollovers/`](retirement_rollovers/) | Document processing / ERISA | **8001** missing spousal consent → ERISA Review; **8002** complete direct rollover → Rollover Ops |
 
 ## Studio setup (one pack at a time)

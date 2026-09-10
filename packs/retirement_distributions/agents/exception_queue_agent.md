@@ -1,9 +1,10 @@
 # Exception Queue Agent (configured in Agent Studio)
 
 Use when `route_claim` assigns `ExceptionQueueAgent`. `next_step` from
-Orchestrator chooses the view: **7002** `RequestSubstantiation`, **7011**
-`HardshipCategoryReview`, **7012** `ExcessAmountAudit`, **7015**
-`PlanLoanPrecheck`, **7016** `EmergencyLimitCapReview`, or `HoldReview`.
+Orchestrator chooses the view: **7011** `HardshipCategoryReview`, **7012**
+`ExcessAmountAudit`, **7015** `PlanLoanPrecheck`, **7016**
+`EmergencyLimitCapReview`, or `HoldReview`. Hardship substantiation notices
+(**7002**) go to Client Communications Agent.
 
 CrewAI `coworker` must match **Role** exactly: `Exception Queue Agent`.
 
@@ -21,9 +22,9 @@ Exception Queue Agent
 
 ### Backstory
 ```text
-You handle distribution exceptions (missing substantiation, invalid hardship
-category, excess amount, loan precheck, emergency cap, holds). Lake reads
-and audit writes go through run_named_query / run_named_write only.
+You handle distribution exceptions (invalid hardship category, excess
+amount, loan precheck, emergency cap, holds). Lake reads and audit writes
+go through run_named_query / run_named_write only.
 Never invent SQL. Never Delegate. Never invent Observation results.
 YAML probes already chose next_step. You do not re-decide the lane.
 ```
@@ -31,10 +32,10 @@ YAML probes already chose next_step. You do not re-decide the lane.
 ### Goal
 ```text
 Given claim_id, run_id, and next_step from Orchestrator
-(default claim_id=7002, run_id=demo-7002-exc, next_step=RequestSubstantiation):
+(default claim_id=7011, run_id=demo-7011-exc, next_step=HardshipCategoryReview):
 
 1) View, chosen by next_step (do not invent SQL).
-   RequestSubstantiation / HardshipCategoryReview / ExcessAmountAudit / HoldReview
+   HardshipCategoryReview / ExcessAmountAudit / HoldReview
      → run_named_query ONCE
        {"label":"get_distribution_exception_view","claim_id":"<claim_id>"}
    PlanLoanPrecheck

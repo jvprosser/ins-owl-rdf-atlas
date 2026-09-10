@@ -123,7 +123,7 @@ Routing Agent (optional): `pre_route_text` only; Role exactly `Routing Agent`.
 
 ### Pack: `retirement_distributions`
 
-**Live path (2026-08-18):** register [`iceberg-mcp-server-finserv`](../iceberg-mcp-server-finserv/README.md) in a separate Studio project. Identity `INS_FINSERV_MCP_V3`. Impala database `retirement_distributions`. Do **not** set `PACK_ROOT`. Do **not** register this claims MCP in the distributions project.
+**Live path (2026-08-18):** register [`iceberg-mcp-server-finserv`](../iceberg-mcp-server-finserv/README.md) in a separate Studio project. Identity `INS_FINSERV_MCP_V4`. Impala database `retirement_distributions`. Do **not** set `PACK_ROOT`. Do **not** register this claims MCP in the distributions project.
 
 The `PACK_ROOT` steps below are the **legacy fixture path** (still used by `tests/test_pack_fixtures.py`). Do not use them for the customer demo.
 
@@ -189,6 +189,7 @@ Do **not** upload `agents/`, `fixtures/`, `catalog_fixtures.json`, or `README.md
 | Orchestrator | (no Delegate target) | none | `agents/orchestrator_agent.md` |
 | Intake | `Intake Agent` | MCP + build / validate / route | `agents/manager_agent.md` |
 | Exception Queue | `Exception Queue Agent` | MCP | `agents/exception_queue_agent.md` |
+| Client Communications | `Client Communications Agent` | MCP | `agents/client_communications_agent.md` |
 | Distribution Ops | `Distribution Ops Agent` | MCP | `agents/distribution_ops_agent.md` |
 | RMD Ops | `RMD Ops Agent` | MCP | `agents/rmd_ops_agent.md` |
 | Routing (optional) | `Routing Agent` | `pre_route_text` | `agent_studio/studio_tools/agents/routing_agent.md` |
@@ -202,7 +203,7 @@ cd agent_studio && python -m pytest tests/test_packs.py -q
 cd ../mcp_forks/iceberg-mcp-server-claims && uv run pytest tests/test_pack_fixtures.py -q
 ```
 
-Expect 7002 → `RequestSubstantiation` / `Exception Queue Agent`; 7001 → `ProcessDistribution` / `Distribution Ops Agent`; 7003 → `RmdReview` / `RMD Ops Agent`.
+Expect 7002 → `RequestSubstantiation` / `Client Communications Agent`; 7001 → `ProcessDistribution` / `Distribution Ops Agent`; 7003 → `RmdReview` / `RMD Ops Agent`.
 
 #### Test — MCP in Studio (Intake Agent, one-shot)
 
@@ -237,10 +238,10 @@ Please process claim 7002.
 | Check | Expect |
 |---|---|
 | `next_step` | `RequestSubstantiation` |
-| `lane` | `EXCEPTION` |
-| `agent_role` | `ExceptionQueueAgent` |
-| `coworker` | `Exception Queue Agent` |
-| `write` | `write_audit_event` |
+| `lane` | `CUSTOMER_REMEDIATION` |
+| `agent_role` | `ClientCommunicationsAgent` |
+| `coworker` | `Client Communications Agent` |
+| `write` | `send_client_notice` |
 | `routing_reason` | Hardship substantiation is missing → RequestSubstantiation. |
 | write JSON | `fixture: true` (Orchestrator Goal supplies `run_id`) |
 
