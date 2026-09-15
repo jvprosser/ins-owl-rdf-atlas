@@ -18,8 +18,8 @@ expr: cel
 #                       R5.2 insured citation review, R6.* coverage exclusions,
 #                       R1.2a missing docket/counsel, R1.2b discovery aging,
 #                       R1.2 remaining litigation, R5.1 SIU / fraud
-#   Data gaps:          R2.3 missing adjuster, R2.0 incident report number,
-#                       R2.1 missing police report,
+#   Data gaps:          R2.3 missing adjuster, R2.0 incident SMS not sent,
+#                       R2.0b wait after SMS, R2.1 missing police report,
 #                       R2.2 missing fault, R2.5 injury details missing
 #   Financials & subro: R3.2 / R3.4 offers/payments, R4.1 / R4.3 subrogation
 #   Standard review:    R1.3 bodily injury, R1.4 property damage
@@ -38,6 +38,7 @@ priorities:
   - R5.1
   - R2.3
   - R2.0
+  - R2.0b
   - R2.1
   - R2.2
   - R2.5
@@ -134,10 +135,16 @@ probes:
     cel: 'coverage_type_codes.exists(c, c == "COLLISION" || c == "COMPREHENSIVE")'
   R2.0:
     form: ASK
-    title: Police incident report number
-    when_true: Policyholder has not provided an incident report number
-    when_false: Incident report number is on file
-    cel: 'has_police_report == false && size(incident_report_number) == 0'
+    title: Police incident report number not requested
+    when_true: Policyholder has not provided an incident report number and no SMS has been sent
+    when_false: Incident report number is on file or an SMS was already sent
+    cel: 'has_police_report == false && size(incident_report_number) == 0 && has_collect_incident_sms == false'
+  R2.0b:
+    form: ASK
+    title: Waiting for incident report number after SMS
+    when_true: An SMS requesting the incident report number was already sent
+    when_false: Not waiting on an incident-report SMS
+    cel: 'has_police_report == false && size(incident_report_number) == 0 && has_collect_incident_sms == true'
   R2.1:
     form: ASK
     title: Police report on file
@@ -332,6 +339,16 @@ actions:
       letter_on_request: false
       letter_note: An SMS was sent asking the policyholder to enter the incident report number in the app.
       tools: [get_pd_view, create_pd_task, save_claim_letter]
+  R2.0b:
+    - when: ASK_TRUE
+      step: WaitForIncidentNumber
+      agent: PdClaimsAgent
+      coworker: PD Claims Agent
+      lane: PD
+      write: write_audit_event
+      letter_on_request: false
+      letter_note: An SMS requesting the incident report number was already sent. Waiting on the policyholder.
+      tools: [get_pd_view, write_audit_event]
   R2.1:
     - when: ASK_TRUE
       step: RequestPoliceReport

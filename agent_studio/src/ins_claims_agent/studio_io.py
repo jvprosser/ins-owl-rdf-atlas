@@ -173,17 +173,25 @@ def assert_spine_has_triangle_fields(spine: dict[str, Any]) -> None:
 
 
 def assert_signals_has_intake_fields(signals: dict[str, Any]) -> None:
-    """Fail fast when omitted V8 flags would default to false and steal R2.0."""
+    """Fail fast when omitted flags would default to false and steal R2.0 / R2.0b."""
     police = signals.get("has_police_report")
     if police is True or str(police).strip().lower() in {"true", "1", "yes"}:
         return
-    if "has_incident_report_number" in signals or signals.get("incident_report_number"):
-        return
-    raise ValueError(
-        "signals_json omitted has_incident_report_number while has_police_report "
-        "is false. Pass the full get_claim_routing_signals JSON unmodified into "
-        "build_claim_graph (do not summarize or omit keys)."
-    )
+    missing: list[str] = []
+    if "has_incident_report_number" not in signals and not signals.get(
+        "incident_report_number"
+    ):
+        missing.append("has_incident_report_number")
+    if "has_collect_incident_sms" not in signals:
+        missing.append("has_collect_incident_sms")
+    if missing:
+        raise ValueError(
+            "signals_json omitted "
+            + " and ".join(missing)
+            + " while has_police_report is false. Pass the full "
+            "get_claim_routing_signals JSON unmodified into "
+            "build_claim_graph (do not summarize or omit keys)."
+        )
 
 
 def assert_signals_json_is_mcp_observation(raw: Any) -> dict[str, Any]:

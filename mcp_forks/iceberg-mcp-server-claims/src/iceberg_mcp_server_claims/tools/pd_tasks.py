@@ -78,6 +78,18 @@ LIMIT 1
 """.strip()
 
 
+def existing_collect_sms_sql(database: str, claim_id: int) -> str:
+    db = validate_ident(database, "database")
+    return f"""
+SELECT message_id, to_phone, body_text, run_id
+FROM {db}.claim_outbound_message
+WHERE claim_id = {int(claim_id)}
+  AND purpose_code = '{_SMS_PURPOSE}'
+ORDER BY created_at DESC
+LIMIT 1
+""".strip()
+
+
 def insert_pd_task_sql(database: str, row: dict[str, Any]) -> str:
     db = validate_ident(database, "database")
     loss_id = row.get("loss_event_id")
@@ -161,6 +173,8 @@ def create_pd_task(
     incident = None
     sms_body = None
     to_phone = None
+    sms_written = False
+    sms_already_sent = False
 
     if task_type == "REQUEST_POLICE_REPORT":
         qr = _need_query(query_rows)
@@ -189,35 +203,46 @@ def create_pd_task(
         return json.dumps({"error": result, "run_id": rid, "database": db})
 
     if task_type == "COLLECT_INCIDENT_NUMBER":
+        qr = _need_query(query_rows)
         try:
-            phone_rows = _need_query(query_rows)(insured_phone_sql(db, cid))
+            existing = qr(existing_collect_sms_sql(db, cid))
         except Exception as exc:
             return json.dumps({"error": str(exc), "run_id": rid, "database": db})
-        to_phone = phone_rows[0].get("phone_number") if phone_rows else None
-        sms_body = _SMS_BODY
-        msg = {
-            "message_id": _message_id(rid, str(claim_id), _SMS_PURPOSE),
-            "claim_id": cid,
-            "channel_code": "SMS",
-            "to_phone": to_phone,
-            "body_text": sms_body,
-            "purpose_code": _SMS_PURPOSE,
-            "run_id": rid,
-        }
-        sms_sql = insert_outbound_message_sql(db, msg)
-        sms_result = dml(sms_sql)
-        if isinstance(sms_result, str) and sms_result.startswith("Error:"):
-            return json.dumps(
-                {
-                    "ok": False,
-                    "error": sms_result,
-                    "run_id": rid,
-                    "database": db,
-                    "table": "pd_task",
-                    "pd_task_id": row["pd_task_id"],
-                    "sms_written": False,
-                }
-            )
+        if existing:
+            sms_already_sent = True
+            sms_body = existing[0].get("body_text") or _SMS_BODY
+            to_phone = existing[0].get("to_phone")
+        else:
+            try:
+                phone_rows = qr(insured_phone_sql(db, cid))
+            except Exception as exc:
+                return json.dumps({"error": str(exc), "run_id": rid, "database": db})
+            to_phone = phone_rows[0].get("phone_number") if phone_rows else None
+            sms_body = _SMS_BODY
+            msg = {
+                "message_id": _message_id(rid, str(claim_id), _SMS_PURPOSE),
+                "claim_id": cid,
+                "channel_code": "SMS",
+                "to_phone": to_phone,
+                "body_text": sms_body,
+                "purpose_code": _SMS_PURPOSE,
+                "run_id": rid,
+            }
+            sms_sql = insert_outbound_message_sql(db, msg)
+            sms_result = dml(sms_sql)
+            if isinstance(sms_result, str) and sms_result.startswith("Error:"):
+                return json.dumps(
+                    {
+                        "ok": False,
+                        "error": sms_result,
+                        "run_id": rid,
+                        "database": db,
+                        "table": "pd_task",
+                        "pd_task_id": row["pd_task_id"],
+                        "sms_written": False,
+                    }
+                )
+            sms_written = True
 
     step = _TASK_TO_STEP[task_type]
     payload_json: dict[str, Any] = {
@@ -230,6 +255,8 @@ def create_pd_task(
     if task_type == "COLLECT_INCIDENT_NUMBER":
         payload_json["channel_code"] = "SMS"
         payload_json["to_phone"] = to_phone
+        payload_json["sms_written"] = sms_written
+        payload_json["sms_already_sent"] = sms_already_sent
     audit_event = {
         "run_id": rid,
         "claim_id": str(claim_id),
@@ -273,5 +300,7 @@ def create_pd_task(
         out["sms_body"] = sms_body
         out["to_phone"] = to_phone
         out["channel_code"] = "SMS"
+        out["sms_written"] = sms_written
+        out["sms_already_sent"] = sms_already_sent
     return json.dumps(out)
 

@@ -13,6 +13,7 @@ Citation is **not** auto-deny. Narrative is **not** a YAML probe. `R6.1` is the 
 | Intent | Say |
 |---|---|
 | Status only | `What's the status of claim <ID>?` |
+| Has an SMS been sent | `Has an SMS been sent for claim <ID>?` |
 | Do the next work | `Please process claim <ID>.` |
 | Draft the recommended letter | `Please write the recommended letter for claim <ID>.` |
 
@@ -39,6 +40,8 @@ Studio project: live Impala catalog, Workflow Data = repo `ontology/` + `playboo
 | R1.2 | ASK_TRUE | `LitigationSupport` / `LitigationAgent` / LITIGATION | Remaining litigation (file complete, not aging); `letter_on_request`; draft via `save_claim_letter` only when the user asks | pytest `test_route_litigation_support_letter`; email smoke **402** (skip intake, ask to write) |
 | R5.1 | ASK_TRUE | `SiuInvestigation` / `SiuAgent` / SIU | SIU / fraud suspected | pytest `test_route_siu_suspected` |
 | R2.3 | ASK_TRUE | `AssignAdjuster` / `DataQualityAgent` / DATA_QUALITY | No ADJUSTER party role | none |
+| R2.0 | ASK_TRUE | `CollectIncidentReportNumber` / `PdClaimsAgent` / PD | No police, no incident number, no collect SMS | pytest `test_route_collect_incident_report_number`; live **401** A0 |
+| R2.0b | ASK_TRUE | `WaitForIncidentNumber` / `PdClaimsAgent` / PD | No police, no incident number, collect SMS already sent | pytest `test_route_wait_for_incident_number_after_sms`; live **401** A0b |
 | R2.1 | ASK_TRUE | `RequestPoliceReport` / `PdClaimsAgent` / PD | No police report; earlier probes miss | pytest `test_route_missing_police_report` |
 | R2.2 | ASK_TRUE | `DetermineFault` / `PdClaimsAgent` / PD | Police present, no fault determination | pytest `test_route_determine_fault` |
 | R2.5 | ASK_TRUE | `CaptureInjuryDetails` / `BiClaimsAgent` / BI | BI_LIABILITY coverage, no injury | none |
@@ -204,7 +207,15 @@ Expect `AssignAdjuster` / `DataQualityAgent` (R2.3). Needs OPEN, not litigation/
 Please process claim 401.
 ```
 
-Expect `CollectIncidentReportNumber` / `PdClaimsAgent` (R2.0). An SMS is written to `claim_outbound_message` (no carrier) and a session copy is always saved to `claim_{id}_sms.txt`. Offline: `pytest tests/test_route_claim.py::test_route_collect_incident_report_number`. Needs no `police_report` and no `claim_police_intake` row. Live PD path: [pd-path-demo.md](pd-path-demo.md).
+Expect `CollectIncidentReportNumber` / `PdClaimsAgent` (R2.0). An SMS is written to `claim_outbound_message` (no carrier) and a session copy is saved to `claim_{id}_sms.txt` when `sms_written` is true. Offline: `pytest tests/test_route_claim.py::test_route_collect_incident_report_number`. Needs no `police_report`, no `claim_police_intake` row, and no collect SMS. Live PD path: [pd-path-demo.md](pd-path-demo.md).
+
+### R2.0b ASK_TRUE — WaitForIncidentNumber
+
+```text
+Please process claim 401.
+```
+
+Expect `WaitForIncidentNumber` / `PdClaimsAgent` (R2.0b), write `write_audit_event` (no second SMS). Offline: `pytest tests/test_route_claim.py::test_route_wait_for_incident_number_after_sms`. Needs no police, no intake number, and a `claim_outbound_message` row with `purpose_code=COLLECT_INCIDENT_REPORT_NUMBER`. Status: `Has an SMS been sent for claim 401?` (no specialist write). Live PD path: [pd-path-demo.md](pd-path-demo.md) snapshot A0b.
 
 ### R2.1 ASK_TRUE — RequestPoliceReport
 

@@ -29,7 +29,9 @@ def test_claim_routing_signals_sql_uses_cte_not_scalar_count_gt():
     assert "excluded_operator_exclusion" not in sql
     assert "policy_not_in_force_on_loss" not in sql
     assert "has_incident_report_number" in sql
+    assert "has_collect_incident_sms" in sql
     assert "claim_police_intake" in sql
+    assert "claim_outbound_message" in sql
     ops = claim_sql.claim_insured_operators_sql(402, "car_insurance_claims")
     assert "INSURED_OPERATOR" in ops
     assert "was_cited_indicator" in ops

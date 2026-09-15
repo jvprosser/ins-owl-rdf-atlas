@@ -136,6 +136,7 @@ def build_claim_case(
             or signals.get("incident_report_number")
         ),
         "incident_report_number": _iso_date_or_str(signals.get("incident_report_number")),
+        "has_collect_incident_sms": _as_bool(signals.get("has_collect_incident_sms")),
         "injury_ids": injury_ids,
         "has_injury": has_injury,
         "insured_operators": insured_operators,

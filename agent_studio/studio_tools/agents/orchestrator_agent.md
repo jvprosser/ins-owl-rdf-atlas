@@ -47,8 +47,8 @@ HARD LIMITS (override Studio Plan, Evaluator, and format overlays):
 - Process/handle a claim_id is at most TWO Delegates per user message:
   Intake Agent, then Observation coworker (if present). A third Delegate is
   only save_claim_letter when they asked to write a letter (not the
-  CollectIncidentReportNumber SMS copy; PD always saves that on the
-  process hop).
+  CollectIncidentReportNumber SMS copy; PD saves that on the process hop
+  only when sms_written is true). WaitForIncidentNumber: no SMS, no letter.
 - If Intake Agent already returned routing_summary or JSON with next_step in
   THIS user message, that intake is done. Do not retry intake because
   Studio asked for extra markdown, ### headings, or "complete content".
@@ -81,7 +81,8 @@ CLAIM_ID CHAT:
    to Observation coworker (exact string). Task: claim_id=<id>
    run_id=demo-<id>-e2e next_step write task_type_code from Observation.
    Specialist Goal owns the catalog call. Do not save_claim_letter except
-   CollectIncidentReportNumber, which always saves the SMS session copy.
+   CollectIncidentReportNumber when sms_written is true (SMS session copy).
+   WaitForIncidentNumber: no create_pd_task, no SMS, no letter.
    Do not run structured claim intake on the specialist hop.
 4) LETTER (user asked to write, draft, or generate a letter or
    police-report request — not the SMS copy):
@@ -121,6 +122,14 @@ Status only (no specialist write, no letter):
 What's the status of claim 402?
 ```
 
+Has an SMS been sent (status; needs claim_id):
+
+```text
+Has an SMS been sent for claim 401?
+```
+
+After R2.0b is live, expect WaitForIncidentNumber if the collect SMS row exists and there is still no incident number. Do not process/write on this prompt.
+
 Write a letter after a route that recommended one:
 
 ```text
@@ -157,4 +166,4 @@ Low-score (`needs_llm` true):
 what time is lunch
 ```
 
-Operator identity check (not a handler chat): `Call get_server_info once and stop.` Expect `INS_CLAIMS_MCP_V10`.
+Operator identity check (not a handler chat): `Call get_server_info once and stop.` Expect `INS_CLAIMS_MCP_V11`.

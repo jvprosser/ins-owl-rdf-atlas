@@ -7,8 +7,8 @@ from importlib import metadata
 from typing import Any
 
 # Bump CONTENT_ID whenever shipped MCP behavior/tools change.
-CONTENT_ID = "INS_CLAIMS_MCP_V10"
-UPDATED = "2026-08-26"
+CONTENT_ID = "INS_CLAIMS_MCP_V11"
+UPDATED = "2026-09-15"
 
 # Keep in sync with @mcp.tool registrations in server.py
 REGISTERED_TOOLS = (

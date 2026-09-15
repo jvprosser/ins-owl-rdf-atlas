@@ -172,6 +172,12 @@ intake AS (
     AND incident_report_number IS NOT NULL
     AND TRIM(incident_report_number) <> ''
 ),
+sms AS (
+  SELECT COUNT(*) AS cnt
+  FROM {db}.claim_outbound_message
+  WHERE claim_id = {cid}
+    AND purpose_code = 'COLLECT_INCIDENT_REPORT_NUMBER'
+),
 fd AS (
   SELECT COUNT(*) AS cnt, MIN(fault_determination_id) AS fault_determination_id
   FROM {db}.fault_determination WHERE claim_id = {cid}
@@ -222,6 +228,7 @@ SELECT
   fd.fault_determination_id,
   (intake.cnt > 0) AS has_incident_report_number,
   intake.incident_report_number,
+  (sms.cnt > 0) AS has_collect_incident_sms,
   (ofr.cnt > 0) AS has_offer,
   (COALESCE(ofr.extended_cnt, 0) > 0) AS has_unresolved_offer,
   (COALESCE(ofr.accepted_cnt, 0) > 0) AS has_accepted_offer,
@@ -238,6 +245,7 @@ CROSS JOIN inj
 CROSS JOIN pr
 CROSS JOIN fd
 CROSS JOIN intake
+CROSS JOIN sms
 CROSS JOIN ofr
 CROSS JOIN pay
 CROSS JOIN rec

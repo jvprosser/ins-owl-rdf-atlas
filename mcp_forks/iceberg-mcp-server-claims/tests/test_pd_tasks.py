@@ -109,6 +109,8 @@ def test_create_pd_task_collect_sends_sms():
         return "OK"
 
     def fake_query(sql: str):
+        if "claim_outbound_message" in sql:
+            return []
         assert "phone_number" in sql
         return [{"phone_number": "+1-555-0101"}]
 
@@ -125,10 +127,48 @@ def test_create_pd_task_collect_sends_sms():
     assert payload["to_phone"] == "+1-555-0101"
     assert "claims app" in payload["sms_body"]
     assert payload["sms_table"] == "claim_outbound_message"
+    assert payload["sms_written"] is True
+    assert payload["sms_already_sent"] is False
     assert any("claim_outbound_message" in s for s in captured)
     assert len(captured) == 3
     assert "401" not in payload["sms_body"]
     assert "CLM-" not in payload["sms_body"]
+
+
+def test_create_pd_task_collect_skips_second_sms():
+    captured: list[str] = []
+
+    def fake_dml(sql: str):
+        captured.append(sql)
+        return "OK"
+
+    def fake_query(sql: str):
+        if "claim_outbound_message" in sql:
+            return [
+                {
+                    "message_id": 9,
+                    "to_phone": "+1-555-0101",
+                    "body_text": "Please open the claims app and enter the police incident report number so we can request the exchange slip from the agency.",
+                    "run_id": "demo-401-first",
+                }
+            ]
+        raise AssertionError(f"unexpected query: {sql}")
+
+    raw = pd_tasks.create_pd_task(
+        "demo-401-again",
+        json.dumps({"claim_id": "401", "task_type_code": "COLLECT_INCIDENT_NUMBER"}),
+        "car_insurance_claims",
+        query_rows=fake_query,
+        execute_dml=fake_dml,
+    )
+    payload = json.loads(raw)
+    assert payload["ok"] is True
+    assert payload["sms_written"] is False
+    assert payload["sms_already_sent"] is True
+    assert payload["to_phone"] == "+1-555-0101"
+    assert "claims app" in payload["sms_body"]
+    assert not any("INSERT INTO car_insurance_claims.claim_outbound_message" in s for s in captured)
+    assert len(captured) == 2
 
 
 def test_create_pd_task_request_ok_without_incident_number():

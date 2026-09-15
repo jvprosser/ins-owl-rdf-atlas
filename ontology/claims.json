@@ -25,6 +25,7 @@
     "has_adjuster": { "type": "boolean" },
     "has_incident_report_number": { "type": "boolean", "comment": "policyholder supplied agency incident report number" },
     "incident_report_number": { "type": "string", "comment": "agency incident / exchange-slip number from claim_police_intake" },
+    "has_collect_incident_sms": { "type": "boolean", "comment": "COLLECT_INCIDENT_REPORT_NUMBER SMS already in claim_outbound_message" },
     "has_police_report": { "type": "boolean" },
     "has_fault_determination": { "type": "boolean" },
     "has_injury": { "type": "boolean" },

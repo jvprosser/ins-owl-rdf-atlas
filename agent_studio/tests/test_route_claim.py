@@ -410,7 +410,11 @@ def test_route_collect_incident_report_number():
     case = build_claim_graph(
         401,
         spine=spine,
-        signals={"has_police_report": False, "has_incident_report_number": False},
+        signals={
+            "has_police_report": False,
+            "has_incident_report_number": False,
+            "has_collect_incident_sms": False,
+        },
     )
     decision = route_claim(case, 401)
     assert decision["next_step"] == "CollectIncidentReportNumber"
@@ -426,6 +430,33 @@ def test_route_collect_incident_report_number():
     assert "only if you ask" not in decision["routing_summary"]
     assert "R2.0" in decision["reason_probe_ids"]
     assert decision["checks"][-1]["probe_id"] == "R2.0"
+
+
+def test_route_wait_for_incident_number_after_sms():
+    spine = _spine_401()
+    spine["subrogation_indicator"] = False
+    case = build_claim_graph(
+        401,
+        spine=spine,
+        signals={
+            "has_police_report": False,
+            "has_incident_report_number": False,
+            "has_collect_incident_sms": True,
+        },
+    )
+    decision = route_claim(case, 401)
+    assert decision["next_step"] == "WaitForIncidentNumber"
+    assert decision["agent_role"] == "PdClaimsAgent"
+    assert decision["coworker"] == "PD Claims Agent"
+    assert decision["write"] == "write_audit_event"
+    assert decision["task_type_code"] is None
+    assert "create_pd_task" not in decision["allowed_tools"]
+    assert "save_claim_letter" not in decision["allowed_tools"]
+    assert "get_pd_view" in decision["allowed_tools"]
+    assert decision["letter_on_request"] is False
+    assert "already sent" in (decision["letter_note"] or "").lower()
+    assert "R2.0b" in decision["reason_probe_ids"]
+    assert decision["checks"][-1]["probe_id"] == "R2.0b"
 
 
 def test_route_determine_fault():

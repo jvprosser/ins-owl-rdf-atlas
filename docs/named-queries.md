@@ -124,7 +124,7 @@ WHERE claim_id = ${var:claim_id}
 
 ## get_claim_routing_signals
 
-Existence flags plus raw litigation/intake columns for playbook CEL. Before the SELECTs, the handler best-effort `REFRESH`es `loss_driver`, `claim`, `police_report`, `fault_determination`, and `claim_police_intake` so Hue writes are visible on this Impala coordinator. Docket/discovery/operator/policy predicates live in the playbook, not in this SQL.
+Existence flags plus raw litigation/intake/SMS columns for playbook CEL. Before the SELECTs, the handler best-effort `REFRESH`es `loss_driver`, `claim`, `police_report`, `fault_determination`, `claim_police_intake`, and `claim_outbound_message` so Hue writes are visible on this Impala coordinator. Docket/discovery/operator/policy predicates live in the playbook, not in this SQL.
 
 ### Signals (one row)
 
@@ -162,6 +162,12 @@ intake AS (
   WHERE claim_id = ${var:claim_id}
     AND incident_report_number IS NOT NULL
     AND TRIM(incident_report_number) <> ''
+),
+sms AS (
+  SELECT COUNT(*) AS cnt
+  FROM ${var:database}.claim_outbound_message
+  WHERE claim_id = ${var:claim_id}
+    AND purpose_code = 'COLLECT_INCIDENT_REPORT_NUMBER'
 ),
 fd AS (
   SELECT COUNT(*) AS cnt, MIN(fault_determination_id) AS fault_determination_id
@@ -213,6 +219,7 @@ SELECT
   fd.fault_determination_id,
   (intake.cnt > 0) AS has_incident_report_number,
   intake.incident_report_number,
+  (sms.cnt > 0) AS has_collect_incident_sms,
   (ofr.cnt > 0) AS has_offer,
   (COALESCE(ofr.extended_cnt, 0) > 0) AS has_unresolved_offer,
   (COALESCE(ofr.accepted_cnt, 0) > 0) AS has_accepted_offer,
@@ -229,6 +236,7 @@ CROSS JOIN inj
 CROSS JOIN pr
 CROSS JOIN fd
 CROSS JOIN intake
+CROSS JOIN sms
 CROSS JOIN ofr
 CROSS JOIN pay
 CROSS JOIN rec
@@ -522,7 +530,7 @@ INSERT INTO ${var:database}.litigation_task (
 
 ## create_pd_task
 
-`event_json.task_type_code` must be `COLLECT_INCIDENT_NUMBER`, `REQUEST_POLICE_REPORT`, `DETERMINE_FAULT`, or `PD_REVIEW`. Then one audit receipt. `REQUEST_POLICE_REPORT` stamps `incident_report_number` from `claim_police_intake` when present (playbook owns whether that write is assigned). `COLLECT_INCIDENT_NUMBER` also inserts `claim_outbound_message`.
+`event_json.task_type_code` must be `COLLECT_INCIDENT_NUMBER`, `REQUEST_POLICE_REPORT`, `DETERMINE_FAULT`, or `PD_REVIEW`. Then one audit receipt. `REQUEST_POLICE_REPORT` stamps `incident_report_number` from `claim_police_intake` when present (playbook owns whether that write is assigned). `COLLECT_INCIDENT_NUMBER` inserts `claim_outbound_message` unless a `COLLECT_INCIDENT_REPORT_NUMBER` row already exists for that `claim_id` (idempotent by claim + purpose, not `run_id`). On skip, the write returns `sms_written=false` and `sms_already_sent=true`.
 
 ```sql
 INSERT INTO ${var:database}.pd_task (
@@ -541,7 +549,18 @@ INSERT INTO ${var:database}.pd_task (
 )
 ```
 
-`COLLECT_INCIDENT_NUMBER` also:
+`COLLECT_INCIDENT_NUMBER` also (skip this INSERT when the purpose row already exists):
+
+```sql
+SELECT message_id, to_phone, body_text, run_id
+FROM ${var:database}.claim_outbound_message
+WHERE claim_id = ${var:claim_id}
+  AND purpose_code = 'COLLECT_INCIDENT_REPORT_NUMBER'
+ORDER BY created_at DESC
+LIMIT 1
+```
+
+If that SELECT returns a row, do not INSERT. Otherwise:
 
 ```sql
 INSERT INTO ${var:database}.claim_outbound_message (

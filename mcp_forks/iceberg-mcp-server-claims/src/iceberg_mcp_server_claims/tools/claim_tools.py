@@ -124,6 +124,7 @@ def get_claim_routing_signals(
         "has_police_report",
         "has_fault_determination",
         "has_incident_report_number",
+        "has_collect_incident_sms",
         "has_offer",
         "has_unresolved_offer",
         "has_accepted_offer",
@@ -144,6 +145,7 @@ def get_claim_routing_signals(
                 "police_report",
                 "fault_determination",
                 "claim_police_intake",
+                "claim_outbound_message",
             ):
                 try:
                     refresh_table(db, table)

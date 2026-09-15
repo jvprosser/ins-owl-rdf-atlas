@@ -4,11 +4,12 @@ Repeatable Agent Studio demo of the property-damage probes on seed **401**. Orch
 
 Chat the **Orchestrator** as a claims handler would: one sentence and a claim id. Do not mention tools, catalog labels, `run_id`, or `next_step`. Orchestrator supplies `run_id` and the specialist Role; the PD agent Goal owns the catalog write. Leave **402** / **403** / **404** rows alone.
 
-Probe order (first match wins): R2.0 `CollectIncidentReportNumber` → R2.1 `RequestPoliceReport` → R2.2 `DetermineFault` → … → R1.4 `PdClaimsReview`. Snapshot-to-`next_step` table: [architecture.md — typical PD path](architecture.md#typical-pd-path-separate-calls). Per-probe chats: [probe-action-tests.md](probe-action-tests.md).
+Probe order (first match wins): R2.0 `CollectIncidentReportNumber` → R2.0b `WaitForIncidentNumber` → R2.1 `RequestPoliceReport` → R2.2 `DetermineFault` → … → R1.4 `PdClaimsReview`. Snapshot-to-`next_step` table: [architecture.md — typical PD path](architecture.md#typical-pd-path-separate-calls). Per-probe chats: [probe-action-tests.md](probe-action-tests.md).
 
 | Snapshot | Lake | User says | Expect |
 |---|---|---|---|
-| A0 | no police, no intake number | Please process claim 401. | `CollectIncidentReportNumber` / R2.0; SMS to `+1-555-0101` |
+| A0 | no police, no intake number, no collect SMS | Please process claim 401. | `CollectIncidentReportNumber` / R2.0; SMS to `+1-555-0101` |
+| A0b | no police, no intake number, collect SMS on file | Please process claim 401. | `WaitForIncidentNumber` / R2.0b; no second SMS |
 | A1 | intake `SPD-25-11887`, no police | Please process claim 401. | `RequestPoliceReport` / R2.1; letter/task cite **SPD-25-11887** not 401 |
 | B | police present, no fault | Please process claim 401. | `DetermineFault` / R2.2 |
 | C | police + fault (seed) | Please process claim 401. | `PdClaimsReview` / R1.4 |
@@ -21,12 +22,12 @@ Coworker Role must be exactly `PD Claims Agent`. Playbook `agent_role` is `PdCla
 
 Skip if already done this session. These checks are for the operator, not the handler chats below.
 
-1. Claims MCP on **0.4.0** or later (`INS_CLAIMS_MCP_V10`). Studio `uvx` from GitHub `main` only sees SMS / intake after that commit is on the remote.
+1. Claims MCP on **0.5.0** or later (`INS_CLAIMS_MCP_V11`). Studio `uvx` from GitHub `main` only sees `has_collect_incident_sms` after that commit is on the remote.
 2. Restart `iceberg-mcp-server-claims`.
-3. Operator chat: `Call get_server_info once and stop.` Expect `INS_CLAIMS_MCP_V10` / **`0.4.0`** or newer.
+3. Operator chat: `Call get_server_info once and stop.` Expect `INS_CLAIMS_MCP_V11` / **`0.5.0`** or newer.
 4. Operator chat: `Call list_named_queries once and stop.` Must include `get_pd_view` and `create_pd_task`.
-5. Workflow Data includes the playbook with **R2.0** `CollectIncidentReportNumber` before R2.1.
-6. Same Crew, Roles **exactly**: `Intake Agent`, `PD Claims Agent`. Re-paste Orchestrator Goal from [`agent_studio/studio_tools/agents/orchestrator_agent.md`](../agent_studio/studio_tools/agents/orchestrator_agent.md). Paste [`pd_claims_agent.md`](../agent_studio/studio_tools/agents/pd_claims_agent.md). Attach MCP + Studio `save_claim_letter` on the PD agent (always SMS copy on CollectIncidentReportNumber; police letter only if the handler asks). If the intake agent is still Role `Manager agent`, rename it — see [`manager_agent.md`](../agent_studio/studio_tools/agents/manager_agent.md) Studio cutover.
+5. Workflow Data includes the playbook with **R2.0** `CollectIncidentReportNumber` then **R2.0b** `WaitForIncidentNumber` before R2.1.
+6. Same Crew, Roles **exactly**: `Intake Agent`, `PD Claims Agent`. Re-paste Orchestrator Goal from [`agent_studio/studio_tools/agents/orchestrator_agent.md`](../agent_studio/studio_tools/agents/orchestrator_agent.md). Paste [`pd_claims_agent.md`](../agent_studio/studio_tools/agents/pd_claims_agent.md). Attach MCP + Studio `save_claim_letter` on the PD agent (SMS copy on CollectIncidentReportNumber when `sms_written`; police letter only if the handler asks). If the intake agent is still Role `Manager agent`, rename it — see [`manager_agent.md`](../agent_studio/studio_tools/agents/manager_agent.md) Studio cutover.
 7. In Impala, create intake / SMS tables and add `pd_task.incident_report_number` if they do not exist. Fresh full seed: [`ddl/hive_iceberg/car_insurance_claims_iceberg.sql`](../ddl/hive_iceberg/car_insurance_claims_iceberg.sql). Already-loaded lake: run [`ddl/hive_iceberg/car_insurance_claims_pd_intake.sql`](../ddl/hive_iceberg/car_insurance_claims_pd_intake.sql). If `pd_task` itself is missing, use this shape (then re-run the additive file for the extra column):
 
 ```sql
@@ -98,7 +99,7 @@ New user message (same Orchestrator chat is fine):
 Please process claim 401.
 ```
 
-**Pass:** `next_step=CollectIncidentReportNumber`, `agent_role=PdClaimsAgent`, probe **R2.0**, `create_pd_task` `COLLECT_INCIDENT_NUMBER`. Observation / Hue shows an SMS row to **`+1-555-0101`**. A session copy is always written to `claim_401_sms.txt`. Orchestrator Goal supplies `run_id` (`demo-401-e2e`).
+**Pass:** `next_step=CollectIncidentReportNumber`, `agent_role=PdClaimsAgent`, probe **R2.0**, `create_pd_task` `COLLECT_INCIDENT_NUMBER`. Observation / Hue shows an SMS row to **`+1-555-0101`**. A session copy is written to `claim_401_sms.txt` when `sms_written` is true. Orchestrator Goal supplies `run_id` (`demo-401-e2e`).
 
 ```sql
 SELECT to_phone, purpose_code, body_text, run_id
@@ -114,6 +115,25 @@ WHERE claim_id = 401 AND task_type_code = 'COLLECT_INCIDENT_NUMBER';
 ```
 
 The agent does **not** insert `claim_police_intake`. The policyholder (you, in Hue) does that next.
+
+---
+
+## 2b. Snapshot A0b — `WaitForIncidentNumber`
+
+Leave the SMS row in place. Do **not** insert `claim_police_intake` yet. New user message:
+
+```text
+Please process claim 401.
+```
+
+**Pass:** `next_step=WaitForIncidentNumber`, probe **R2.0b**, `write=write_audit_event`. Hue still has **one** `COLLECT_INCIDENT_REPORT_NUMBER` SMS. Status-only: `Has an SMS been sent for claim 401?` — intake only; same `next_step`; no specialist write.
+
+```sql
+SELECT COUNT(*) AS sms_rows
+FROM car_insurance_claims.claim_outbound_message
+WHERE claim_id = 401 AND purpose_code = 'COLLECT_INCIDENT_REPORT_NUMBER';
+-- expect 1
+```
 
 ---
 

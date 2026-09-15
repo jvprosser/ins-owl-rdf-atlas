@@ -80,6 +80,7 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
         "filed_date": case.get("filed_date"),
         "has_police_report": case.get("has_police_report"),
         "has_incident_report_number": case.get("has_incident_report_number"),
+        "has_collect_incident_sms": case.get("has_collect_incident_sms"),
         "incident_report_number": case.get("incident_report_number"),
         "signals_named_op": "get_claim_routing_signals",
         "graph_artifact": str(case_path.resolve()),

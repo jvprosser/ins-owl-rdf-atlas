@@ -1,11 +1,14 @@
 # PD Claims Agent (configured in Agent Studio)
 
 Use when `route_claim` assigns `PdClaimsAgent` /
-`CollectIncidentReportNumber` / `RequestPoliceReport` / `DetermineFault` /
-`PdClaimsReview`. `next_step` from Orchestrator chooses the write.
+`CollectIncidentReportNumber` / `WaitForIncidentNumber` /
+`RequestPoliceReport` / `DetermineFault` / `PdClaimsReview`. `next_step`
+from Orchestrator chooses the write.
 
 `CollectIncidentReportNumber` sends an SMS (Iceberg row; no carrier) and
-always writes a session copy (`claim_<id>_sms.txt`). `RequestPoliceReport`
+writes a session copy (`claim_<id>_sms.txt`) when `sms_written` is true.
+`WaitForIncidentNumber` means that SMS is already on file — view + audit
+only, no second SMS. `RequestPoliceReport`
 means a police-report request letter is **recommended**; draft it only when
 the user asks. That letter must cite the **incident report number**, not the
 claim id.
@@ -33,8 +36,10 @@ PD Claims Agent
 ```text
 You support claims already routed into property-damage work. Lake reads and
 writes go through the named-query catalog only: run_named_query and
-run_named_write. CollectIncidentReportNumber always save_claim_letter the
-SMS copy (no carrier). Police-report request letters go through
+run_named_write. CollectIncidentReportNumber save_claim_letter the
+SMS copy (no carrier) only when the write Observation sms_written is
+true. WaitForIncidentNumber writes audit only — do not create_pd_task
+and do not save_claim_letter. Police-report request letters go through
 save_claim_letter (no mail) only when the user asks to write them. You never
 invent SQL or tool JSON. Never Delegate. Never invent Observation results.
 Do not run structured claim intake. If a tool returns error or 401, Final
@@ -71,14 +76,20 @@ STATUS OR POST-ROUTE WORK (default):
 
 2) Then write, chosen by next_step (do not invent SQL).
 
-   CollectIncidentReportNumber → create_pd_task COLLECT_INCIDENT_NUMBER,
-   then ALWAYS save_claim_letter the SMS copy (claim_<id>_sms.txt).
-   Body is sms_body from the write Observation (do not invent). Do not
-   send SMS.
+   CollectIncidentReportNumber → create_pd_task COLLECT_INCIDENT_NUMBER.
+   If Observation sms_written is true: save_claim_letter the SMS copy
+   (claim_<id>_sms.txt). Body is sms_body from the write Observation
+   (do not invent). If sms_already_sent is true: do NOT save_claim_letter.
+   Do not send SMS.
    {"label":"create_pd_task","run_id":"<run_id>",
     "event_json":"{\"claim_id\":\"<claim_id>\",\"task_type_code\":\"COLLECT_INCIDENT_NUMBER\"}"}
-   Then {"claim_id":"<claim_id>","run_id":"<run_id>",
+   Then if sms_written: {"claim_id":"<claim_id>","run_id":"<run_id>",
     "next_step":"CollectIncidentReportNumber","body":"<sms_body>"}
+
+   WaitForIncidentNumber → write_audit_event only. Do NOT create_pd_task.
+   Do NOT save_claim_letter. Cite last_sms from the view.
+   {"label":"write_audit_event","run_id":"<run_id>",
+    "event_json":"{\"event_type\":\"WaitForIncidentNumber\",\"claim_id\":\"<claim_id>\",\"agent_role\":\"PdClaimsAgent\"}"}
 
    RequestPoliceReport → create_pd_task REQUEST_POLICE_REPORT. Do NOT
    save_claim_letter. Say that a police-report request letter for
@@ -101,7 +112,9 @@ STATUS OR POST-ROUTE WORK (default):
    if present, report_number / agency / narrative_summary, fault percents)
    plus the exact write Observation JSON. If next_step is
    CollectIncidentReportNumber, include that an SMS was sent and a session
-   copy was saved. If next_step is RequestPoliceReport, include that a
+   copy was saved only if sms_written is true. If next_step is
+   WaitForIncidentNumber, include that an SMS was already sent (last_sms)
+   and no new SMS was written. If next_step is RequestPoliceReport, include that a
    letter for that incident number is recommended and will not be drafted
    unless they ask. Then STOP. Do not run structured claim intake.
 ```
@@ -109,19 +122,19 @@ STATUS OR POST-ROUTE WORK (default):
 ## Tools
 
 Attach the claims MCP (V8: `run_named_query` / `run_named_write`) and Studio
-`save_claim_letter` (always for CollectIncidentReportNumber SMS copy;
-RequestPoliceReport letter only when the user asks).
+`save_claim_letter` (CollectIncidentReportNumber SMS copy only when
+sms_written is true; RequestPoliceReport letter only when the user asks).
 
 | Use | Tool | Flat Action Input |
 |---|---|---|
 | Read | `run_named_query` | `{"label":"get_pd_view","claim_id":"401"}` |
 | Task write | `run_named_write` | `{"label":"create_pd_task","run_id":"demo-401-pd","event_json":"{...}"}` |
+| Wait audit | `run_named_write` | `{"label":"write_audit_event","run_id":"demo-401-pd","event_json":"{...}"}` |
 | Letter / SMS file | `save_claim_letter` | `{"claim_id":"401","run_id":"demo-401-pd","next_step":"CollectIncidentReportNumber","body":"..."}` |
 
 Do not attach spine/signals or build/validate/route. Do not call `save_claim_letter`
-on DetermineFault or PdClaimsReview. On RequestPoliceReport, call it only if
-the user asked to write the letter. On CollectIncidentReportNumber, always
-save the SMS copy.
+on WaitForIncidentNumber, DetermineFault, or PdClaimsReview. On RequestPoliceReport, call it only if
+the user asked to write the letter. On CollectIncidentReportNumber, save the SMS copy only when sms_written is true.
 
 ## Orchestrator delegate task
 

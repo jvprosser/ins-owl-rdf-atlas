@@ -32,7 +32,7 @@ User
 2. Intake Agent calls `run_named_query` for spine, then routing signals (catalog **labels**, not extra MCP tools).
 3. Intake Agent passes those JSON payloads, unmodified, into `build_claim_graph` → `validate_claim_graph` → `route_claim`.
 4. Intake Agent stops. Orchestrator Delegates once to Observation `coworker` (playbook YAML). If `coworker` is omitted, Final Answer the route JSON.
-5. Specialist may run one view label, then the playbook write (`create_litigation_task`, `create_pd_task`, `deny_claim`, or `write_audit_event`; Closeout and `DenyAudit` also `promote_audit_run`). `CollectIncidentReportNumber` always writes `claim_{id}_sms.txt`. `LitigationSupport`, `RequestPoliceReport`, and Deny steps mark a letter as recommended (`letter_on_request`); Studio `save_claim_letter` runs for those letters only when the user asks to write it.
+5. Specialist may run one view label, then the playbook write (`create_litigation_task`, `create_pd_task`, `deny_claim`, or `write_audit_event`; Closeout and `DenyAudit` also `promote_audit_run`). `CollectIncidentReportNumber` writes `claim_{id}_sms.txt` when `sms_written` is true. `WaitForIncidentNumber` audits only (SMS already sent). `LitigationSupport`, `RequestPoliceReport`, and Deny steps mark a letter as recommended (`letter_on_request`); Studio `save_claim_letter` runs for those letters only when the user asks to write it.
 
 Custom Studio tools **cannot** call MCP in-process. The agent is the only bridge: MCP result → tool argument → session artifact.
 
@@ -81,7 +81,8 @@ Each row is a later snapshot. Earlier gaps are already filled so a higher probe 
 | Claim missing / case not built | `{"claim_exists": false}` | R0.1 | `FixDataQuality` |
 | Claim exists, triangle incomplete | `{"claim_exists": true, "triangle": false, "claim_status_code": "OPEN"}` | R0.4 | `FixDataQuality` |
 | No ADJUSTER role | `{"claim_exists": true, "triangle": true, "claim_status_code": "OPEN", "has_adjuster": false, "litigation_indicator": false, "has_siu_suspected": false, "subrogation_indicator": false, "coverage_type_codes": ["COLLISION"]}` | R2.3 | `AssignAdjuster` |
-| No police report, no incident number | `{"claim_status_code": "OPEN", "has_adjuster": true, "has_police_report": false, "has_incident_report_number": false, "litigation_indicator": false, "has_siu_suspected": false, "subrogation_indicator": false}` | R2.0 | `CollectIncidentReportNumber` |
+| No police report, no incident number, no collect SMS | `{"claim_status_code": "OPEN", "has_adjuster": true, "has_police_report": false, "has_incident_report_number": false, "has_collect_incident_sms": false, "litigation_indicator": false, "has_siu_suspected": false, "subrogation_indicator": false}` | R2.0 | `CollectIncidentReportNumber` |
+| No police report, no incident number, collect SMS already sent | `{"claim_status_code": "OPEN", "has_adjuster": true, "has_police_report": false, "has_incident_report_number": false, "has_collect_incident_sms": true, "litigation_indicator": false, "has_siu_suspected": false, "subrogation_indicator": false}` | R2.0b | `WaitForIncidentNumber` |
 | No police report, incident number on file | `{"claim_status_code": "OPEN", "has_adjuster": true, "has_police_report": false, "has_incident_report_number": true, "litigation_indicator": false, "has_siu_suspected": false, "subrogation_indicator": false}` | R2.1 | `RequestPoliceReport` |
 | No fault determination | `{"claim_status_code": "OPEN", "has_adjuster": true, "has_police_report": true, "has_fault_determination": false, "litigation_indicator": false, "has_siu_suspected": false, "subrogation_indicator": false}` | R2.2 | `DetermineFault` |
 | Offer EXTENDED | `{"claim_status_code": "OPEN", "has_adjuster": true, "has_police_report": true, "has_fault_determination": true, "has_extended_offer": true, "litigation_indicator": false, "has_siu_suspected": false, "subrogation_indicator": false}` | R3.2 | `FollowUpOffer` |
@@ -93,7 +94,7 @@ Each row is a later snapshot. Earlier gaps are already filled so a higher probe 
 | Excluded/unlisted operator | `{"claim_status_code": "OPEN", "insured_operators": [{"on_policy": false}]}` | R6.2 | `DenyExcludedDriver` |
 | Policy not in force on loss | `{"claim_status_code": "OPEN", "policy_status_code": "LAPSED"}` | R6.3 | `DenyLapsedPolicy` |
 
-PD steps (`CollectIncidentReportNumber`, `RequestPoliceReport`, `DetermineFault`, `PdClaimsReview`) use `get_pd_view` then `create_pd_task` (work item in `pd_task` plus an `agent_run_audit` receipt). `CollectIncidentReportNumber` also inserts `claim_outbound_message` (SMS; no carrier) and always saves `claim_{id}_sms.txt`. `RequestPoliceReport` cites `incident_report_number` from `claim_police_intake`, not claim id, and sets `letter_on_request`; that session letter via `save_claim_letter` is drafted only if the user asks. Settlement steps on this path still `write_audit_event`. `IssuePayment` means settlement work is due; the payment row still has to land in `claim_payment` from the claims platform. A later intake can then hit R1.1.
+PD steps (`CollectIncidentReportNumber`, `WaitForIncidentNumber`, `RequestPoliceReport`, `DetermineFault`, `PdClaimsReview`) use `get_pd_view` then the playbook write. `CollectIncidentReportNumber` uses `create_pd_task` and inserts `claim_outbound_message` (SMS; no carrier) unless that purpose row already exists; it saves `claim_{id}_sms.txt` when `sms_written` is true. `WaitForIncidentNumber` is `write_audit_event` only. `RequestPoliceReport` cites `incident_report_number` from `claim_police_intake`, not claim id, and sets `letter_on_request`; that session letter via `save_claim_letter` is drafted only if the user asks. Settlement steps on this path still `write_audit_event`. `IssuePayment` means settlement work is due; the payment row still has to land in `claim_payment` from the claims platform. A later intake can then hit R1.1.
 
 Denial: CLOSED stays **approved** (Closeout). DENIED is the other terminal status. R5.2 (cited `insured_operators`) is Human Review — view + audit, no `deny_claim`. R6.* coded exclusions (impairment/license, excluded/unlisted operator, policy not in force on `loss_date`) go to Deny Agent, which `UPDATE`s `claim_status_code` to `DENIED` (`AND … NOT IN ('CLOSED','DENIED')`). Live deny smokes flip **404** only (`PA-1003`) and restore afterward. Do not use **401** for deny. Repeatable runbook: [deny-path-demo.md](deny-path-demo.md).
 
@@ -195,7 +196,7 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 | Hive WAP branches | Write-audit-publish on Iceberg branches. Later Hive fork; not this path. |
 | `write_audit_event` | Catalog write: `INSERT` one `agent_run_audit` row. |
 | `create_litigation_task` | Catalog write: `INSERT` one `litigation_task` row from `run_id` + `event_json`. |
-| `create_pd_task` | Catalog write: `INSERT` one `pd_task` row (`COLLECT_INCIDENT_NUMBER` / `REQUEST_POLICE_REPORT` / `DETERMINE_FAULT` / `PD_REVIEW`) and one `agent_run_audit` receipt. `COLLECT_INCIDENT_NUMBER` also inserts `claim_outbound_message`. |
+| `create_pd_task` | Catalog write: `INSERT` one `pd_task` row (`COLLECT_INCIDENT_NUMBER` / `REQUEST_POLICE_REPORT` / `DETERMINE_FAULT` / `PD_REVIEW`) and one `agent_run_audit` receipt. `COLLECT_INCIDENT_NUMBER` inserts `claim_outbound_message` unless that purpose row already exists (`sms_already_sent`). |
 | `get_deny_view` | Catalog read: operator / policy / police business columns for deny and citation review (no PK/FK). |
 | `deny_claim` | Catalog write: `UPDATE claim` to `DENIED` (refuses CLOSED and already-DENIED) plus an `agent_run_audit` receipt. Not used on `DenyAudit`. |
 | `promote_audit_run` | No-op success on Impala (rows already on main). |
@@ -213,7 +214,7 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 | `WORKFLOW_DATA_DIRECTORY` | Env for the Workflow Data mount (`/workflow_data`). |
 | `SESSION_DIRECTORY` | Env for per-run artifacts (`/workspace`). |
 | Exemplars | Labeled NL snippets for cosine `pre_route_text`. |
-| `save_claim_letter` | Studio tool: write `claim_{id}_letter.txt` when the user asks, or `claim_{id}_sms.txt` always on CollectIncidentReportNumber. Does not send mail or SMS. |
+| `save_claim_letter` | Studio tool: write `claim_{id}_letter.txt` when the user asks, or `claim_{id}_sms.txt` on CollectIncidentReportNumber when `sms_written` is true. Does not send mail or SMS. |
 
 **Packs / demo**
 

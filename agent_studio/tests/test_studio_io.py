@@ -61,7 +61,11 @@ def test_assert_signals_intake_fields_when_police_missing():
     from ins_claims_agent.studio_io import assert_signals_has_intake_fields
 
     assert_signals_has_intake_fields(
-        {"has_police_report": False, "has_incident_report_number": True}
+        {
+            "has_police_report": False,
+            "has_incident_report_number": True,
+            "has_collect_incident_sms": False,
+        }
     )
     assert_signals_has_intake_fields({"has_police_report": True})
     try:
@@ -69,6 +73,14 @@ def test_assert_signals_intake_fields_when_police_missing():
         assert False, "expected ValueError"
     except ValueError as exc:
         assert "has_incident_report_number" in str(exc)
+        assert "has_collect_incident_sms" in str(exc)
+    try:
+        assert_signals_has_intake_fields(
+            {"has_police_report": False, "has_incident_report_number": False}
+        )
+        assert False, "expected ValueError"
+    except ValueError as exc:
+        assert "has_collect_incident_sms" in str(exc)
 
 
 def test_assert_signals_json_requires_mcp_named_op():
