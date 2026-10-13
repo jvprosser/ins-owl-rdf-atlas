@@ -16,6 +16,7 @@ import os
 import socket
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -103,6 +104,18 @@ def _stop_existing() -> None:
         )
 
 
+def _package_backend_dir() -> str:
+    """Directory that contains the app package actually imported in this kernel."""
+    return os.path.dirname(os.path.dirname(os.path.abspath(app_main.__file__)))
+
+
+def _child_env(backend_dir: str) -> dict[str, str]:
+    env = os.environ.copy()
+    prior = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = backend_dir if not prior else backend_dir + os.pathsep + prior
+    return env
+
+
 def _uvicorn_cmd() -> list[str]:
     return [
         sys.executable,
@@ -116,6 +129,15 @@ def _uvicorn_cmd() -> list[str]:
         "--log-level",
         "info",
     ]
+
+
+def _pump_output(proc: subprocess.Popen[str], lines: list[str]) -> None:
+    if proc.stdout is None:
+        return
+    for line in proc.stdout:
+        lines.append(line)
+        sys.stderr.write(line)
+        sys.stderr.flush()
 
 
 def run() -> None:
@@ -141,20 +163,33 @@ def run() -> None:
 
     _stop_existing()
 
+    backend_dir = _package_backend_dir()
+    print(
+        f"Starting uvicorn from {backend_dir} "
+        f"on {app_main.APP_HOST}:{app_main.APP_PORT}"
+    )
     proc = subprocess.Popen(
         _uvicorn_cmd(),
-        cwd=BACKEND_DIR,
-        env=os.environ.copy(),
+        cwd=backend_dir,
+        env=_child_env(backend_dir),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
     )
     app_main._server_proc = proc
+    output: list[str] = []
+    pump = threading.Thread(target=_pump_output, args=(proc, output), daemon=True)
+    pump.start()
 
     deadline = time.time() + _STARTUP_TIMEOUT_S
     while time.time() < deadline:
         code = proc.poll()
         if code is not None:
+            pump.join(timeout=2)
+            detail = "".join(output).strip() or "(no output)"
             raise RuntimeError(
-                f"Uvicorn exited during startup (code {code}). "
-                "Check stderr above for bind errors (e.g. address already in use)."
+                f"Uvicorn exited during startup (code {code}) "
+                f"from {backend_dir} on port {app_main.APP_PORT}.\n{detail}"
             )
         if _health_ok(app_main.APP_HOST, app_main.APP_PORT):
             print(f"Adjuster GUI serving on port {app_main.APP_PORT} (pid {proc.pid})")
