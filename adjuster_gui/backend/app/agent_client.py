@@ -98,6 +98,43 @@ def _strings(value: Any, *, depth: int = 0) -> list[str]:
     return []
 
 
+_OUTPUT_KEYS = frozenset(
+    {"output", "result", "content", "message", "text", "answer", "raw", "final_output"}
+)
+
+
+def response_texts(events: list[Any]) -> list[str]:
+    """Agent-visible strings from workflow events, in arrival order."""
+    found: list[str] = []
+    seen: set[str] = set()
+
+    def add(text: str) -> None:
+        cleaned = text.strip()
+        if len(cleaned) < 2 or cleaned in seen:
+            return
+        seen.add(cleaned)
+        found.append(cleaned)
+
+    def walk(value: Any, *, emit: bool, depth: int) -> None:
+        if value is None or depth > 8:
+            return
+        if isinstance(value, str):
+            if emit:
+                add(value)
+            return
+        if isinstance(value, dict):
+            for key, nested in value.items():
+                walk(nested, emit=emit or key in _OUTPUT_KEYS, depth=depth + 1)
+            return
+        if isinstance(value, list):
+            for item in value:
+                walk(item, emit=emit, depth=depth + 1)
+
+    for event in events:
+        walk(event, emit=False, depth=0)
+    return found
+
+
 def answer_from_events(events: list[Any]) -> tuple[bool, Optional[str], Optional[str]]:
     """Return (completed, markdown, next_step)."""
     completed = _find_completed(events)
@@ -132,14 +169,26 @@ async def _post_json(
     return parsed
 
 
+def _field(payload: dict[str, Any], key: str) -> Optional[str]:
+    value = payload.get(key)
+    if value not in (None, ""):
+        return str(value)
+    nested = payload.get("response")
+    if isinstance(nested, dict):
+        value = nested.get(key)
+        if value not in (None, ""):
+            return str(value)
+    return None
+
+
 async def kickoff(
     client: httpx.AsyncClient,
     base_url: str,
     token: str,
-    claim_id: str,
+    user_input: str,
 ) -> dict[str, str]:
     session = await _post_json(client, base_url, CREATE_SESSION_PATH, token, {})
-    session_id = session.get("session_id")
+    session_id = session.get("session_id") or _field(session, "session_id")
     if not session_id:
         raise ValueError("createSession response missing session_id")
     started = await _post_json(
@@ -149,29 +198,37 @@ async def kickoff(
         token,
         {
             "inputs": {
-                "user_input": process_claim_text(claim_id),
+                "user_input": user_input,
                 "context": "",
             }
         },
     )
-    trace_id = started.get("trace_id")
-    if not trace_id:
-        raise ValueError("kickoff response missing trace_id")
-    return {"session_id": str(session_id), "trace_id": str(trace_id)}
+    if started.get("success") is False:
+        detail = started.get("error") or started.get("message") or "kickoff failed"
+        raise ValueError(str(detail))
+    trace_id = _field(started, "trace_id")
+    conversation_id = _field(started, "conversation_id") or trace_id
+    if not conversation_id:
+        raise ValueError("kickoff response missing conversation_id")
+    return {
+        "session_id": str(session_id),
+        "trace_id": trace_id or conversation_id,
+        "conversation_id": conversation_id,
+    }
 
 
 async def fetch_events(
     client: httpx.AsyncClient,
     base_url: str,
     token: str,
-    trace_id: str,
+    conversation_id: str,
 ) -> dict[str, Any]:
     url = f"{base_url.rstrip('/')}{EVENTS_PATH}"
     async with client.stream(
         "GET",
         url,
         headers=workflow_headers(token, json_body=False),
-        params={"trace_id": trace_id},
+        params={"trace_id": conversation_id, "conversation_id": conversation_id},
     ) as response:
         response.raise_for_status()
         content_type = response.headers.get("content-type", "")
@@ -196,8 +253,10 @@ async def fetch_events(
                     ]
     completed, answer, step = answer_from_events(events)
     return {
-        "trace_id": trace_id,
+        "trace_id": conversation_id,
+        "conversation_id": conversation_id,
         "completed": completed,
         "answer": answer,
         "next_step": step,
+        "responses": response_texts(events),
     }

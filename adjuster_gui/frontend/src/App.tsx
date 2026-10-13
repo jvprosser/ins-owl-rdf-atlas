@@ -10,7 +10,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import ReactMarkdown from "react-markdown";
 import {
-  kickoffClaim,
+  kickoffMessage,
   loadClaims,
   loadConfig,
   loadSampleBpmn,
@@ -28,7 +28,10 @@ interface ChatMessage {
   id: string;
   role: "user" | "agent";
   text: string;
+  turnId?: string;
 }
+
+const CHAT_MIN = 260;
 
 const nodeTypes = { bpmn: FlowNode };
 
@@ -76,10 +79,38 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [composer, setComposer] = useState("");
+  const [chatWidth, setChatWidth] = useState(340);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [draft, setDraft] = useState<AgentConfig>({ baseUrl: "", token: "" });
   const fileRef = useRef<HTMLInputElement>(null);
+  const transcriptRef = useRef<HTMLDivElement>(null);
+  const resizeRef = useRef<{ x: number; width: number } | null>(null);
   const configRef = useRef<AgentConfig>(loadConfig());
+
+  useEffect(() => {
+    const el = transcriptRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages]);
+
+  useEffect(() => {
+    const onMove = (event: PointerEvent) => {
+      const drag = resizeRef.current;
+      if (!drag) return;
+      const max = Math.max(CHAT_MIN, window.innerWidth - 420);
+      const width = drag.width + (drag.x - event.clientX);
+      setChatWidth(Math.min(max, Math.max(CHAT_MIN, width)));
+    };
+    const onUp = () => {
+      resizeRef.current = null;
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, []);
 
   useEffect(() => {
     loadClaims().then(setClaims).catch((e: Error) => setError(e.message));
@@ -113,52 +144,85 @@ export default function App() {
     setSettingsOpen(false);
   };
 
-  const runClaim = useCallback(async (claimId: string) => {
-    const config = configRef.current;
-    if (!config.baseUrl || !config.token) {
-      setDraft(config);
-      setSettingsOpen(true);
-      setError("Set the workflow URL and bearer token first.");
-      return;
-    }
-    const userText = `process claim ${claimId}`;
-    const pendingId = `agent-${claimId}-${Date.now()}`;
-    setActiveClaim(claimId);
-    setBusy(true);
-    setError(null);
-    setStep(null);
-    setMessages((prev) => [
-      ...prev,
-      { id: `user-${pendingId}`, role: "user", text: userText },
-      { id: pendingId, role: "agent", text: "Waiting for the agent…" },
-    ]);
-    try {
-      const started = await kickoffClaim(config, claimId);
-      const deadline = Date.now() + POLL_TIMEOUT_MS;
-      let answer = "The agent did not finish before the poll timeout.";
-      let nextStep: string | null = null;
-      while (Date.now() < deadline) {
-        await sleep(POLL_MS);
-        const polled = await pollEvents(config, started.trace_id);
-        if (!polled.completed) continue;
-        answer = polled.answer || "The agent finished without a routing summary.";
-        nextStep = polled.next_step;
-        break;
-      }
-      setStep(nextStep);
-      setMessages((prev) =>
-        prev.map((message) => (message.id === pendingId ? { ...message, text: answer } : message))
-      );
-    } catch (e) {
-      const text = e instanceof Error ? e.message : String(e);
-      setError(text);
-      setMessages((prev) =>
-        prev.map((message) => (message.id === pendingId ? { ...message, text } : message))
-      );
-    } finally {
-      setBusy(false);
-    }
+  const showTurn = useCallback((turnId: string, texts: string[]) => {
+    const bubbles: ChatMessage[] = (texts.length ? texts : ["Waiting for the agent…"]).map(
+      (text, index) => ({
+        id: `${turnId}-${index}`,
+        role: "agent",
+        text,
+        turnId,
+      })
+    );
+    setMessages((prev) => [...prev.filter((message) => message.turnId !== turnId), ...bubbles]);
   }, []);
+
+  const sendText = useCallback(
+    async (userText: string, claimId: string | null) => {
+      const config = configRef.current;
+      if (!config.baseUrl || !config.token) {
+        setDraft(config);
+        setSettingsOpen(true);
+        setError("Set the workflow URL and bearer token first.");
+        return;
+      }
+      const turnId = `turn-${Date.now()}`;
+      setActiveClaim(claimId);
+      setBusy(true);
+      setError(null);
+      setStep(null);
+      setMessages((prev) => [
+        ...prev,
+        { id: `user-${turnId}`, role: "user", text: userText },
+        { id: turnId, role: "agent", text: "Waiting for the agent…", turnId },
+      ]);
+      try {
+        const started = await kickoffMessage(config, userText);
+        const conversationId = started.conversation_id || started.trace_id;
+        const deadline = Date.now() + POLL_TIMEOUT_MS;
+        let answer = "The agent did not finish before the poll timeout.";
+        let nextStep: string | null = null;
+        let rendered = false;
+        while (Date.now() < deadline) {
+          await sleep(POLL_MS);
+          const polled = await pollEvents(config, conversationId);
+          if (polled.responses?.length) {
+            showTurn(turnId, polled.responses);
+            rendered = true;
+          }
+          if (!polled.completed) continue;
+          const lastResponse = polled.responses?.[polled.responses.length - 1];
+          answer = polled.answer || lastResponse || "The agent finished without a reply.";
+          nextStep = polled.next_step;
+          if (!rendered) showTurn(turnId, [answer]);
+          rendered = true;
+          break;
+        }
+        if (!rendered) showTurn(turnId, [answer]);
+        setStep(nextStep);
+      } catch (e) {
+        const text = e instanceof Error ? e.message : String(e);
+        setError(text);
+        showTurn(turnId, [text]);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [showTurn]
+  );
+
+  const runClaim = useCallback(
+    (claimId: string) => {
+      void sendText(`process claim ${claimId}`, claimId);
+    },
+    [sendText]
+  );
+
+  const sendComposer = () => {
+    const userText = composer.trim();
+    if (!userText || busy) return;
+    setComposer("");
+    void sendText(userText, null);
+  };
 
   return (
     <div className="app">
@@ -183,7 +247,7 @@ export default function App() {
         </button>
       </header>
       {error ? <div className="alert">{error}</div> : null}
-      <div className="body">
+      <div className="body" style={{ gridTemplateColumns: `180px minmax(0, 1fr) ${chatWidth}px` }}>
         <aside className="claims">
           <h2>Claims</h2>
           {claims.map((claimId) => (
@@ -222,8 +286,17 @@ export default function App() {
           </ReactFlow>
         </div>
         <aside className="chat">
+          <div
+            className="chat-resizer"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize chat"
+            onPointerDown={(event) => {
+              resizeRef.current = { x: event.clientX, width: chatWidth };
+            }}
+          />
           <h2>Chat</h2>
-          <div className="transcript">
+          <div className="transcript" ref={transcriptRef}>
             {messages.map((message) => (
               <div key={message.id} className={`bubble bubble--${message.role}`}>
                 {message.role === "agent" ? (
@@ -234,6 +307,24 @@ export default function App() {
               </div>
             ))}
           </div>
+          <form
+            className="composer"
+            onSubmit={(event) => {
+              event.preventDefault();
+              sendComposer();
+            }}
+          >
+            <textarea
+              rows={3}
+              value={composer}
+              placeholder="Message the agent"
+              disabled={busy}
+              onChange={(event) => setComposer(event.target.value)}
+            />
+            <button className="btn btn--accent" type="submit" disabled={busy || !composer.trim()}>
+              Send
+            </button>
+          </form>
         </aside>
       </div>
       {settingsOpen ? (

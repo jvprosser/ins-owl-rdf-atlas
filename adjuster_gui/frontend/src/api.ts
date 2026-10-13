@@ -1,13 +1,16 @@
 export interface KickoffResult {
   session_id: string;
   trace_id: string;
+  conversation_id: string;
 }
 
 export interface EventsResult {
   trace_id: string;
+  conversation_id: string;
   completed: boolean;
   answer: string | null;
   next_step: string | null;
+  responses: string[];
 }
 
 export interface AgentConfig {
@@ -53,14 +56,14 @@ export async function loadSampleBpmn(): Promise<string> {
   return res.text();
 }
 
-export async function kickoffClaim(config: AgentConfig, claimId: string): Promise<KickoffResult> {
+export async function kickoffMessage(config: AgentConfig, userInput: string): Promise<KickoffResult> {
   const res = await fetch("/api/agent/kickoff", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       base_url: config.baseUrl,
       token: config.token,
-      claim_id: claimId,
+      user_input: userInput,
     }),
   });
   if (!res.ok) throw new Error(await errorText(res, "Kickoff failed"));
@@ -69,11 +72,11 @@ export async function kickoffClaim(config: AgentConfig, claimId: string): Promis
 
 export async function pollEvents(
   config: AgentConfig,
-  traceId: string
+  conversationId: string
 ): Promise<EventsResult> {
   const params = new URLSearchParams({
     base_url: config.baseUrl,
-    trace_id: traceId,
+    conversation_id: conversationId,
   });
   const res = await fetch(`/api/agent/events?${params}`, {
     headers: { "X-Workflow-Token": config.token },

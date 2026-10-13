@@ -10,7 +10,7 @@ from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from . import agent_client
 
@@ -40,7 +40,8 @@ app.add_middleware(
 class KickoffRequest(BaseModel):
     base_url: str
     token: str
-    claim_id: str = Field(min_length=1)
+    user_input: str = ""
+    claim_id: str = ""
 
 
 def _client() -> httpx.AsyncClient:
@@ -72,10 +73,15 @@ def sample_bpmn() -> FileResponse:
 async def agent_kickoff(body: KickoffRequest) -> dict[str, str]:
     if not body.base_url.strip() or not body.token.strip():
         raise HTTPException(status_code=400, detail="Workflow URL and bearer token are required.")
+    user_input = body.user_input.strip()
+    if not user_input and body.claim_id.strip():
+        user_input = agent_client.process_claim_text(body.claim_id)
+    if not user_input:
+        raise HTTPException(status_code=400, detail="A message is required.")
     try:
         async with _client() as client:
             return await agent_client.kickoff(
-                client, body.base_url.strip(), body.token.strip(), body.claim_id.strip()
+                client, body.base_url.strip(), body.token.strip(), user_input
             )
     except httpx.HTTPStatusError as exc:
         detail = exc.response.text[:500] or str(exc)
@@ -87,15 +93,19 @@ async def agent_kickoff(body: KickoffRequest) -> dict[str, str]:
 @app.get("/api/agent/events")
 async def agent_events(
     base_url: str = Query(...),
-    trace_id: str = Query(...),
     token: str = Header(..., alias="X-Workflow-Token"),
+    conversation_id: str = Query(""),
+    trace_id: str = Query(""),
 ) -> dict:
-    if not base_url.strip() or not token.strip() or not trace_id.strip():
-        raise HTTPException(status_code=400, detail="base_url, token, and trace_id are required.")
+    poll_id = (conversation_id or trace_id).strip()
+    if not base_url.strip() or not token.strip() or not poll_id:
+        raise HTTPException(
+            status_code=400, detail="base_url, token, and conversation_id are required."
+        )
     try:
         async with _client() as client:
             return await agent_client.fetch_events(
-                client, base_url.strip(), token.strip(), trace_id.strip()
+                client, base_url.strip(), token.strip(), poll_id
             )
     except httpx.HTTPStatusError as exc:
         detail = exc.response.text[:500] or str(exc)
