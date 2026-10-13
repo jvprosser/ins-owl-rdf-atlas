@@ -133,10 +133,35 @@ def _cmdline(pid: int) -> str:
     return raw.replace(b"\x00", b" ").decode(errors="replace").strip()
 
 
+def _holders(port: int) -> list[str]:
+    described = [
+        f"{pid} {_cmdline(pid)}".strip() for pid in _pids_listening_on(port)
+    ]
+    return described or ["unidentified process"]
+
+
+def _engine_only(port: int) -> bool:
+    """True when the Cloudera editor, not another app, owns the port."""
+    pids = _pids_listening_on(port)
+    if not pids:
+        return False
+    for pid in pids:
+        cmd = _cmdline(pid)
+        if "app.main:app" in cmd:
+            return False
+        if pid != 1 and "jupyter-wsg-launcher" not in cmd and "engine-init" not in cmd:
+            return False
+    return True
+
+
 def _ensure_port_free(host: str, port: int) -> None:
-    """Stop a leftover adjuster uvicorn so a re-run can bind CDSW_APP_PORT."""
+    """Stop a leftover adjuster uvicorn so a re-run can bind the port."""
     if not _port_in_use(host, port):
         return
+    if _engine_only(port):
+        raise RuntimeError(
+            f"Port {port} is used by the Cloudera editor ({'; '.join(_holders(port))})."
+        )
     ours = [pid for pid in _pids_listening_on(port) if "app.main:app" in _cmdline(pid)]
     for pid in ours:
         try:
@@ -148,13 +173,41 @@ def _ensure_port_free(host: str, port: int) -> None:
         return
     if not _port_in_use(host, port):
         return
-    holders = [
-        f"{pid} {_cmdline(pid)}".strip() for pid in _pids_listening_on(port)
-    ] or ["unidentified process"]
     raise RuntimeError(
-        f"Port {port} is already in use ({'; '.join(holders)}). "
+        f"Port {port} is already in use ({'; '.join(_holders(port))}). "
         "Stop that process or restart the CML engine."
     )
+
+
+def _choose_port(host: str, port: int) -> int:
+    """Use CDSW_APP_PORT unless the session editor already bound it.
+
+    Jupyter in a Cloudera session listens on CDSW_APP_PORT. The other exposed
+    port is CDSW_READONLY_PORT (https://read-only-<engine>.<domain>). An
+    Application engine does not run that editor, so CDSW_APP_PORT stays free.
+    """
+    if not _port_in_use(host, port):
+        return port
+    if not _engine_only(port):
+        _ensure_port_free(host, port)
+        return port
+    readonly = os.environ.get("CDSW_READONLY_PORT")
+    if not readonly:
+        raise RuntimeError(
+            f"Port {port} is used by the Cloudera editor ({'; '.join(_holders(port))}). "
+            "Create an Application so CDSW_APP_PORT is free, or set CDSW_READONLY_PORT."
+        )
+    alt = int(readonly)
+    if _port_in_use(host, alt):
+        _ensure_port_free(host, alt)
+    engine = os.environ.get("CDSW_ENGINE_ID", "<engine>")
+    domain = os.environ.get("CDSW_DOMAIN", "<domain>")
+    print(
+        f"Port {port} is used by the Cloudera editor. "
+        f"Serving on CDSW_READONLY_PORT {alt} "
+        f"(https://read-only-{engine}.{domain})."
+    )
+    return alt
 
 
 def _wait_port_free(host: str, port: int, timeout: float) -> bool:
@@ -193,10 +246,12 @@ def _package_backend_dir() -> str:
     return os.path.dirname(os.path.dirname(os.path.abspath(app_main.__file__)))
 
 
-def _child_env(backend_dir: str) -> dict[str, str]:
+def _child_env(backend_dir: str, port: int) -> dict[str, str]:
     env = os.environ.copy()
     prior = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = backend_dir if not prior else backend_dir + os.pathsep + prior
+    # The child reads CDSW_APP_PORT when it imports app.main.
+    env["CDSW_APP_PORT"] = str(port)
     return env
 
 
@@ -238,7 +293,7 @@ def run() -> None:
         return
 
     _stop_existing()
-    _ensure_port_free(app_main.APP_HOST, app_main.APP_PORT)
+    app_main.APP_PORT = _choose_port(app_main.APP_HOST, app_main.APP_PORT)
 
     backend_dir = _package_backend_dir()
     print(
@@ -248,7 +303,7 @@ def run() -> None:
     proc = subprocess.Popen(
         _uvicorn_cmd(),
         cwd=backend_dir,
-        env=_child_env(backend_dir),
+        env=_child_env(backend_dir, app_main.APP_PORT),
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
