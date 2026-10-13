@@ -33,7 +33,7 @@ _TASK_TO_STEP = {
 }
 _SMS_BODY = (
     "Please open the claims app and enter the police incident report number "
-    "so we can request the exchange slip from the agency."
+    "so we can process the claim."
 )
 _SMS_PURPOSE = "COLLECT_INCIDENT_REPORT_NUMBER"
 
