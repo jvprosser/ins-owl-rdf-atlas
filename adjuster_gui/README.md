@@ -19,9 +19,12 @@ Same packaging as the Process Mapper. One process serves the built UI and the AP
    - **Command:** `python adjuster_gui/backend/main.py`
    - If the project root is `adjuster_gui` itself: `python backend/main.py`
 4. The process binds `CDSW_APP_PORT` on `0.0.0.0`. Health check path: `/health`.
-   In a Session, Jupyter already owns `CDSW_APP_PORT`, so the GUI binds
-   `CDSW_READONLY_PORT` instead (`https://read-only-<engine>.<domain>`).
-   An Application engine does not run that editor, so it keeps `CDSW_APP_PORT`.
+   In a Session, Jupyter already owns `CDSW_APP_PORT`. The GUI then uses the
+   next free proxied port: `CDSW_READONLY_PORT`
+   (`https://read-only-<engine>.<domain>`), then `CDSW_PUBLIC_PORT`
+   (`https://public-<engine>.<domain>`). A duplicate of the editor's port is
+   skipped. An Application engine does not run that editor, so it keeps
+   `CDSW_APP_PORT`.
 
 Open the gear and set the workflow base URL and bearer token. Those stay in the
 browser; they are not stored in the project.

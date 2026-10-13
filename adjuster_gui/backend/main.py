@@ -179,35 +179,73 @@ def _ensure_port_free(host: str, port: int) -> None:
     )
 
 
-def _choose_port(host: str, port: int) -> int:
-    """Use CDSW_APP_PORT unless the session editor already bound it.
+def _exposed_ports(primary: int) -> list[tuple[str, int]]:
+    """Cloudera-proxied ports, first choice first. Duplicates are skipped."""
+    found: list[tuple[str, int]] = []
+    seen: set[int] = set()
 
-    Jupyter in a Cloudera session listens on CDSW_APP_PORT. The other exposed
-    port is CDSW_READONLY_PORT (https://read-only-<engine>.<domain>). An
-    Application engine does not run that editor, so CDSW_APP_PORT stays free.
-    """
-    if not _port_in_use(host, port):
-        return port
-    if not _engine_only(port):
-        _ensure_port_free(host, port)
-        return port
-    readonly = os.environ.get("CDSW_READONLY_PORT")
-    if not readonly:
-        raise RuntimeError(
-            f"Port {port} is used by the Cloudera editor ({'; '.join(_holders(port))}). "
-            "Create an Application so CDSW_APP_PORT is free, or set CDSW_READONLY_PORT."
-        )
-    alt = int(readonly)
-    if _port_in_use(host, alt):
-        _ensure_port_free(host, alt)
+    def push(name: str, raw: str | None) -> None:
+        if raw is None or str(raw).strip() == "":
+            return
+        try:
+            value = int(str(raw).strip())
+        except ValueError:
+            return
+        if value in seen:
+            return
+        seen.add(value)
+        found.append((name, value))
+
+    if os.environ.get("CDSW_APP_PORT"):
+        push("CDSW_APP_PORT", os.environ.get("CDSW_APP_PORT"))
+    else:
+        push("port", str(primary))
+    push("CDSW_READONLY_PORT", os.environ.get("CDSW_READONLY_PORT"))
+    public = os.environ.get("CDSW_PUBLIC_PORT")
+    if public:
+        push("CDSW_PUBLIC_PORT", public)
+    elif os.environ.get("CDSW_APP_PORT"):
+        # Documented default when the variable is unset.
+        push("CDSW_PUBLIC_PORT", "8080")
+    return found
+
+
+def _listen_url(name: str) -> str:
     engine = os.environ.get("CDSW_ENGINE_ID", "<engine>")
     domain = os.environ.get("CDSW_DOMAIN", "<domain>")
-    print(
-        f"Port {port} is used by the Cloudera editor. "
-        f"Serving on CDSW_READONLY_PORT {alt} "
-        f"(https://read-only-{engine}.{domain})."
+    if name == "CDSW_READONLY_PORT":
+        return f"https://read-only-{engine}.{domain}"
+    if name == "CDSW_PUBLIC_PORT":
+        return f"https://public-{engine}.{domain}"
+    return f"https://{engine}.{domain}"
+
+
+def _choose_port(host: str, port: int) -> int:
+    """Bind the first Cloudera-proxied port the editor is not using.
+
+    Jupyter listens on CDSW_APP_PORT. CDSW_READONLY_PORT is often the same
+    number in that engine, so it is not a usable fallback by itself.
+    """
+    skipped: list[str] = []
+    for name, candidate in _exposed_ports(port):
+        if _port_in_use(host, candidate) and _engine_only(candidate):
+            skipped.append(f"{name} {candidate} is used by the Cloudera editor")
+            continue
+        if _port_in_use(host, candidate):
+            try:
+                _ensure_port_free(host, candidate)
+            except RuntimeError as exc:
+                skipped.append(str(exc))
+                continue
+        if _port_in_use(host, candidate):
+            skipped.append(f"{name} {candidate} is still in use")
+            continue
+        if name.startswith("CDSW_"):
+            print(f"Serving on {name} {candidate} ({_listen_url(name)}).")
+        return candidate
+    raise RuntimeError(
+        "No Cloudera web port is free. " + " ".join(skipped)
     )
-    return alt
 
 
 def _wait_port_free(host: str, port: int, timeout: float) -> bool:
