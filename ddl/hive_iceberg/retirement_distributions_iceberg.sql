@@ -112,6 +112,7 @@ TBLPROPERTIES (
 
 CREATE TABLE IF NOT EXISTS retirement_distributions.distribution_participant (
   participant_id                STRING    COMMENT 'PK. Participant business key.',
+  participant_yodlee_account_id STRING    COMMENT 'Yodlee participant account id.',
   participant_marital_status    STRING    COMMENT 'SINGLE | MARRIED | DIVORCED | WIDOWED.',
   spousal_consent_verified      BOOLEAN   COMMENT 'True when signed spousal consent is on file.',
   created_at                    TIMESTAMP COMMENT 'Row creation timestamp.'
