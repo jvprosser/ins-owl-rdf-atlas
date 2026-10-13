@@ -16,14 +16,11 @@ from . import agent_client
 
 GUI_ROOT = Path(__file__).resolve().parents[2]
 FRONTEND_DIST = GUI_ROOT / "frontend" / "dist"
-# CML injects CDSW_APP_PORT and the Application proxy only reaches that port.
-# ADJUSTER_GUI_PORT is the local override; 8010 avoids the Process Mapper's 8000.
+# CML sets CDSW_APP_PORT for Applications; default to 8010 for local dev
+# (the Process Mapper uses 8000). Bind all interfaces so the CML proxy can
+# reach the process.
 APP_HOST = os.environ.get("APP_HOST", "0.0.0.0")
-APP_PORT = int(
-    os.environ.get("CDSW_APP_PORT")
-    or os.environ.get("ADJUSTER_GUI_PORT")
-    or "8010"
-)
+APP_PORT = int(os.environ.get("CDSW_APP_PORT", os.environ.get("ADJUSTER_GUI_PORT", "8010")))
 # Uvicorn subprocess handle. Lives on this imported module so a CML kernel
 # re-run of backend/main.py still sees the server it already started.
 _server_proc = None

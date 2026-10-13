@@ -2,26 +2,27 @@
 
 Binds CDSW_APP_PORT when running as a Cloudera AI Application; 8010 locally.
 
-Cloudera AI Applications execute this script inside a notebook kernel. Starting
-uvicorn in that kernel hits asyncio event-loop conflicts, so uvicorn runs as a
-child process — the same pattern as the Process Mapper.
+Cloudera AI Applications execute this script inside a notebook/IPython kernel. Rather
+than starting uvicorn in that kernel (asyncio/event-loop conflicts), we spawn uvicorn
+as a **child process** with ``subprocess.Popen`` — the same pattern as the Process
+Mapper (AgentBPM).
 
-Re-running the entrypoint must not bind the port twice. If this server is already
-healthy, the re-run attaches to the existing subprocess.
+Re-running the entrypoint cell must not start a second server on the same port. If our
+server is already healthy, we attach to the existing subprocess (no-op restart).
 """
 
 from __future__ import annotations
 
 import os
-import signal
 import socket
 import subprocess
 import sys
-import threading
 import time
 import urllib.error
 import urllib.request
 
+# Resolve the backend dir robustly. In a pasted notebook cell __file__ is undefined,
+# so fall back to the CDSW project layout / cwd. Override with BACKEND_DIR if needed.
 try:
     _BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 except NameError:
@@ -64,188 +65,10 @@ def _health_ok(host: str, port: int) -> bool:
         return False
 
 
-def _bind_host(host: str) -> str:
-    return "0.0.0.0" if host in ("", "0.0.0.0") else host
-
-
 def _port_in_use(host: str, port: int) -> bool:
-    """True when uvicorn would fail to bind. A connect to 127.0.0.1 can miss that."""
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    try:
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind((_bind_host(host), port))
-    except OSError:
-        return True
-    finally:
-        sock.close()
-    return False
-
-
-def _listen_inodes(port: int) -> set[str]:
-    inodes: set[str] = set()
-    port_hex = f"{port:04X}"
-    for path in ("/proc/net/tcp", "/proc/net/tcp6"):
-        try:
-            with open(path, encoding="utf-8") as fh:
-                lines = fh.read().splitlines()[1:]
-        except OSError:
-            continue
-        for line in lines:
-            parts = line.split()
-            if len(parts) < 10:
-                continue
-            local_port = parts[1].rsplit(":", 1)[-1].upper()
-            if local_port == port_hex and parts[3] == "0A":
-                inodes.add(parts[9])
-    return inodes
-
-
-def _pids_listening_on(port: int) -> list[int]:
-    inodes = _listen_inodes(port)
-    if not inodes or not os.path.isdir("/proc"):
-        return []
-    found: list[int] = []
-    for name in os.listdir("/proc"):
-        if not name.isdigit():
-            continue
-        fd_dir = os.path.join("/proc", name, "fd")
-        try:
-            fds = os.listdir(fd_dir)
-        except OSError:
-            continue
-        for fd in fds:
-            try:
-                target = os.readlink(os.path.join(fd_dir, fd))
-            except OSError:
-                continue
-            if target.startswith("socket:[") and target[8:-1] in inodes:
-                found.append(int(name))
-                break
-    return found
-
-
-def _cmdline(pid: int) -> str:
-    try:
-        with open(f"/proc/{pid}/cmdline", "rb") as fh:
-            raw = fh.read()
-    except OSError:
-        return ""
-    return raw.replace(b"\x00", b" ").decode(errors="replace").strip()
-
-
-def _holders(port: int) -> list[str]:
-    described = [
-        f"{pid} {_cmdline(pid)}".strip() for pid in _pids_listening_on(port)
-    ]
-    return described or ["unidentified process"]
-
-
-def _engine_only(port: int) -> bool:
-    """True when the Cloudera editor, not another app, owns the port."""
-    pids = _pids_listening_on(port)
-    if not pids:
-        return False
-    for pid in pids:
-        cmd = _cmdline(pid)
-        if "app.main:app" in cmd:
-            return False
-        if pid != 1 and "jupyter-wsg-launcher" not in cmd and "engine-init" not in cmd:
-            return False
-    return True
-
-
-def _ensure_port_free(host: str, port: int) -> None:
-    """Stop a leftover adjuster uvicorn so a re-run can bind the port."""
-    if not _port_in_use(host, port):
-        return
-    if _engine_only(port):
-        raise RuntimeError(
-            f"Port {port} is used by the Cloudera editor ({'; '.join(_holders(port))})."
-        )
-    ours = [pid for pid in _pids_listening_on(port) if "app.main:app" in _cmdline(pid)]
-    for pid in ours:
-        try:
-            os.kill(pid, signal.SIGTERM)
-        except OSError:
-            pass
-    if ours and _wait_port_free(host, port, _PORT_FREE_TIMEOUT_S):
-        print(f"Stopped leftover adjuster server on port {port}.")
-        return
-    if not _port_in_use(host, port):
-        return
-    raise RuntimeError(
-        f"Port {port} is already in use ({'; '.join(_holders(port))}). "
-        "Stop that process or restart the CML engine."
-    )
-
-
-def _exposed_ports(primary: int) -> list[tuple[str, int]]:
-    """Cloudera-proxied ports, first choice first. Duplicates are skipped."""
-    found: list[tuple[str, int]] = []
-    seen: set[int] = set()
-
-    def push(name: str, raw: str | None) -> None:
-        if raw is None or str(raw).strip() == "":
-            return
-        try:
-            value = int(str(raw).strip())
-        except ValueError:
-            return
-        if value in seen:
-            return
-        seen.add(value)
-        found.append((name, value))
-
-    if os.environ.get("CDSW_APP_PORT"):
-        push("CDSW_APP_PORT", os.environ.get("CDSW_APP_PORT"))
-    else:
-        push("port", str(primary))
-    push("CDSW_READONLY_PORT", os.environ.get("CDSW_READONLY_PORT"))
-    public = os.environ.get("CDSW_PUBLIC_PORT")
-    if public:
-        push("CDSW_PUBLIC_PORT", public)
-    elif os.environ.get("CDSW_APP_PORT"):
-        # Documented default when the variable is unset.
-        push("CDSW_PUBLIC_PORT", "8080")
-    return found
-
-
-def _listen_url(name: str) -> str:
-    engine = os.environ.get("CDSW_ENGINE_ID", "<engine>")
-    domain = os.environ.get("CDSW_DOMAIN", "<domain>")
-    if name == "CDSW_READONLY_PORT":
-        return f"https://read-only-{engine}.{domain}"
-    if name == "CDSW_PUBLIC_PORT":
-        return f"https://public-{engine}.{domain}"
-    return f"https://{engine}.{domain}"
-
-
-def _choose_port(host: str, port: int) -> int:
-    """Bind the first Cloudera-proxied port the editor is not using.
-
-    Jupyter listens on CDSW_APP_PORT. CDSW_READONLY_PORT is often the same
-    number in that engine, so it is not a usable fallback by itself.
-    """
-    skipped: list[str] = []
-    for name, candidate in _exposed_ports(port):
-        if _port_in_use(host, candidate) and _engine_only(candidate):
-            skipped.append(f"{name} {candidate} is used by the Cloudera editor")
-            continue
-        if _port_in_use(host, candidate):
-            try:
-                _ensure_port_free(host, candidate)
-            except RuntimeError as exc:
-                skipped.append(str(exc))
-                continue
-        if _port_in_use(host, candidate):
-            skipped.append(f"{name} {candidate} is still in use")
-            continue
-        if name.startswith("CDSW_"):
-            print(f"Serving on {name} {candidate} ({_listen_url(name)}).")
-        return candidate
-    raise RuntimeError(
-        "No Cloudera web port is free. " + " ".join(skipped)
-    )
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(0.25)
+        return sock.connect_ex((_probe_host(host), port)) == 0
 
 
 def _wait_port_free(host: str, port: int, timeout: float) -> bool:
@@ -267,6 +90,7 @@ def _already_running() -> bool:
 
 
 def _stop_existing() -> None:
+    """Stop a uvicorn subprocess started by a previous run in this kernel."""
     proc = app_main._server_proc
     if proc is not None and proc.poll() is None:
         proc.terminate()
@@ -276,21 +100,11 @@ def _stop_existing() -> None:
             proc.kill()
             proc.wait(timeout=5)
     app_main._server_proc = None
-    _wait_port_free(app_main.APP_HOST, app_main.APP_PORT, 2.0)
-
-
-def _package_backend_dir() -> str:
-    """Directory that contains the app package actually imported in this kernel."""
-    return os.path.dirname(os.path.dirname(os.path.abspath(app_main.__file__)))
-
-
-def _child_env(backend_dir: str, port: int) -> dict[str, str]:
-    env = os.environ.copy()
-    prior = env.get("PYTHONPATH", "")
-    env["PYTHONPATH"] = backend_dir if not prior else backend_dir + os.pathsep + prior
-    # The child reads CDSW_APP_PORT when it imports app.main.
-    env["CDSW_APP_PORT"] = str(port)
-    return env
+    if not _wait_port_free(app_main.APP_HOST, app_main.APP_PORT, _PORT_FREE_TIMEOUT_S):
+        raise RuntimeError(
+            f"Port {app_main.APP_PORT} is still in use after shutdown. "
+            "Restart the CML kernel, or stop the other Application using this port."
+        )
 
 
 def _uvicorn_cmd() -> list[str]:
@@ -308,15 +122,6 @@ def _uvicorn_cmd() -> list[str]:
     ]
 
 
-def _pump_output(proc: subprocess.Popen[str], lines: list[str]) -> None:
-    if proc.stdout is None:
-        return
-    for line in proc.stdout:
-        lines.append(line)
-        sys.stderr.write(line)
-        sys.stderr.flush()
-
-
 def run() -> None:
     """Spawn uvicorn in a subprocess and block until it exits."""
     if _already_running():
@@ -330,36 +135,30 @@ def run() -> None:
             _stop_existing()
         return
 
-    _stop_existing()
-    app_main.APP_PORT = _choose_port(app_main.APP_HOST, app_main.APP_PORT)
+    if _port_in_use(app_main.APP_HOST, app_main.APP_PORT) and not _health_ok(
+        app_main.APP_HOST, app_main.APP_PORT
+    ):
+        raise RuntimeError(
+            f"Port {app_main.APP_PORT} is in use but is not our /health endpoint. "
+            "Restart the CML kernel or free the port before starting."
+        )
 
-    backend_dir = _package_backend_dir()
-    print(
-        f"Starting uvicorn from {backend_dir} "
-        f"on {app_main.APP_HOST}:{app_main.APP_PORT}"
-    )
+    _stop_existing()
+
     proc = subprocess.Popen(
         _uvicorn_cmd(),
-        cwd=backend_dir,
-        env=_child_env(backend_dir, app_main.APP_PORT),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
+        cwd=BACKEND_DIR,
+        env=os.environ.copy(),
     )
     app_main._server_proc = proc
-    output: list[str] = []
-    pump = threading.Thread(target=_pump_output, args=(proc, output), daemon=True)
-    pump.start()
 
     deadline = time.time() + _STARTUP_TIMEOUT_S
     while time.time() < deadline:
         code = proc.poll()
         if code is not None:
-            pump.join(timeout=2)
-            detail = "".join(output).strip() or "(no output)"
             raise RuntimeError(
-                f"Uvicorn exited during startup (code {code}) "
-                f"from {backend_dir} on port {app_main.APP_PORT}.\n{detail}"
+                f"Uvicorn exited during startup (code {code}). "
+                "Check stderr above for bind errors (e.g. address already in use)."
             )
         if _health_ok(app_main.APP_HOST, app_main.APP_PORT):
             print(f"Adjuster GUI serving on port {app_main.APP_PORT} (pid {proc.pid})")
