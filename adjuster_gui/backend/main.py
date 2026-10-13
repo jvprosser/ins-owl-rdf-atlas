@@ -13,6 +13,7 @@ healthy, the re-run attaches to the existing subprocess.
 from __future__ import annotations
 
 import os
+import signal
 import socket
 import subprocess
 import sys
@@ -63,10 +64,97 @@ def _health_ok(host: str, port: int) -> bool:
         return False
 
 
+def _bind_host(host: str) -> str:
+    return "0.0.0.0" if host in ("", "0.0.0.0") else host
+
+
 def _port_in_use(host: str, port: int) -> bool:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.settimeout(0.25)
-        return sock.connect_ex((_probe_host(host), port)) == 0
+    """True when uvicorn would fail to bind. A connect to 127.0.0.1 can miss that."""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind((_bind_host(host), port))
+    except OSError:
+        return True
+    finally:
+        sock.close()
+    return False
+
+
+def _listen_inodes(port: int) -> set[str]:
+    inodes: set[str] = set()
+    port_hex = f"{port:04X}"
+    for path in ("/proc/net/tcp", "/proc/net/tcp6"):
+        try:
+            with open(path, encoding="utf-8") as fh:
+                lines = fh.read().splitlines()[1:]
+        except OSError:
+            continue
+        for line in lines:
+            parts = line.split()
+            if len(parts) < 10:
+                continue
+            local_port = parts[1].rsplit(":", 1)[-1].upper()
+            if local_port == port_hex and parts[3] == "0A":
+                inodes.add(parts[9])
+    return inodes
+
+
+def _pids_listening_on(port: int) -> list[int]:
+    inodes = _listen_inodes(port)
+    if not inodes or not os.path.isdir("/proc"):
+        return []
+    found: list[int] = []
+    for name in os.listdir("/proc"):
+        if not name.isdigit():
+            continue
+        fd_dir = os.path.join("/proc", name, "fd")
+        try:
+            fds = os.listdir(fd_dir)
+        except OSError:
+            continue
+        for fd in fds:
+            try:
+                target = os.readlink(os.path.join(fd_dir, fd))
+            except OSError:
+                continue
+            if target.startswith("socket:[") and target[8:-1] in inodes:
+                found.append(int(name))
+                break
+    return found
+
+
+def _cmdline(pid: int) -> str:
+    try:
+        with open(f"/proc/{pid}/cmdline", "rb") as fh:
+            raw = fh.read()
+    except OSError:
+        return ""
+    return raw.replace(b"\x00", b" ").decode(errors="replace").strip()
+
+
+def _ensure_port_free(host: str, port: int) -> None:
+    """Stop a leftover adjuster uvicorn so a re-run can bind CDSW_APP_PORT."""
+    if not _port_in_use(host, port):
+        return
+    ours = [pid for pid in _pids_listening_on(port) if "app.main:app" in _cmdline(pid)]
+    for pid in ours:
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError:
+            pass
+    if ours and _wait_port_free(host, port, _PORT_FREE_TIMEOUT_S):
+        print(f"Stopped leftover adjuster server on port {port}.")
+        return
+    if not _port_in_use(host, port):
+        return
+    holders = [
+        f"{pid} {_cmdline(pid)}".strip() for pid in _pids_listening_on(port)
+    ] or ["unidentified process"]
+    raise RuntimeError(
+        f"Port {port} is already in use ({'; '.join(holders)}). "
+        "Stop that process or restart the CML engine."
+    )
 
 
 def _wait_port_free(host: str, port: int, timeout: float) -> bool:
@@ -97,11 +185,7 @@ def _stop_existing() -> None:
             proc.kill()
             proc.wait(timeout=5)
     app_main._server_proc = None
-    if not _wait_port_free(app_main.APP_HOST, app_main.APP_PORT, _PORT_FREE_TIMEOUT_S):
-        raise RuntimeError(
-            f"Port {app_main.APP_PORT} is still in use after shutdown. "
-            "Restart the CML kernel, or stop the other Application using this port."
-        )
+    _wait_port_free(app_main.APP_HOST, app_main.APP_PORT, 2.0)
 
 
 def _package_backend_dir() -> str:
@@ -153,15 +237,8 @@ def run() -> None:
             _stop_existing()
         return
 
-    if _port_in_use(app_main.APP_HOST, app_main.APP_PORT) and not _health_ok(
-        app_main.APP_HOST, app_main.APP_PORT
-    ):
-        raise RuntimeError(
-            f"Port {app_main.APP_PORT} is in use but is not our /health endpoint. "
-            "Restart the CML kernel or free the port before starting."
-        )
-
     _stop_existing()
+    _ensure_port_free(app_main.APP_HOST, app_main.APP_PORT)
 
     backend_dir = _package_backend_dir()
     print(
