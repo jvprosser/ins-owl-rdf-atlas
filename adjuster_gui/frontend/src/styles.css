@@ -1,0 +1,227 @@
+:root {
+  color-scheme: dark;
+  --bg: #0f1419;
+  --panel: #1a2332;
+  --text: #e7ecf3;
+  --muted: #93a1b5;
+  --line: #2c3a4f;
+  --accent: #3b82f6;
+  --current: #22c55e;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.8rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.topbar .spacer { flex: 1; }
+
+.gear {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  border-radius: 6px;
+  padding: 0.25rem 0.55rem;
+  cursor: pointer;
+  font-size: 1.1rem;
+}
+
+.body {
+  display: grid;
+  grid-template-columns: 180px 1fr 340px;
+  flex: 1;
+  min-height: 0;
+}
+
+.claims, .chat {
+  background: var(--panel);
+  overflow: auto;
+  min-height: 0;
+}
+
+.claims {
+  border-right: 1px solid var(--line);
+  padding: 0.6rem;
+}
+
+.claims h2, .chat h2 {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.claim-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 0.35rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.claim-btn.is-active, .claim-btn:hover {
+  border-color: var(--accent);
+}
+
+.claim-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.canvas-wrap {
+  min-width: 0;
+  min-height: 0;
+}
+
+.canvas-wrap .react-flow {
+  background: #121820;
+}
+
+.bpmn-node {
+  min-width: 140px;
+  max-width: 190px;
+  padding: 0.45rem 0.55rem;
+  background: var(--panel);
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.75rem;
+}
+
+.bpmn-node--event { border-radius: 999px; border-color: #2ea043; }
+.bpmn-node--gateway { border-color: #f59e0b; }
+
+.bpmn-node.is-current {
+  border-color: #f8fafc;
+  box-shadow: 0 0 0 3px var(--current);
+}
+
+.bpmn-node__type {
+  display: block;
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+.chat {
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  padding: 0.6rem;
+}
+
+.transcript {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.bubble {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.bubble--user { background: #243044; }
+.bubble--agent { background: #162033; }
+.bubble p { margin: 0.25rem 0; }
+.bubble pre {
+  white-space: pre-wrap;
+  font-family: inherit;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dialog {
+  width: min(440px, 92vw);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.dialog h2 { margin: 0 0 0.75rem; font-size: 1rem; }
+
+.dialog label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.7rem;
+  font-size: 0.85rem;
+}
+
+.dialog input {
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: #0f1419;
+  color: var(--text);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.btn {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  border-radius: 6px;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
+}
+
+.btn--accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.alert {
+  margin: 0.4rem 0.8rem 0;
+  color: #fecaca;
+  font-size: 0.85rem;
+}
