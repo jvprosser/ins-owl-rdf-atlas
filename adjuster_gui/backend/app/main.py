@@ -17,9 +17,12 @@ from . import agent_client
 GUI_ROOT = Path(__file__).resolve().parents[2]
 FRONTEND_DIST = GUI_ROOT / "frontend" / "dist"
 # CML sets CDSW_APP_PORT for Applications; default to 8010 for local dev
-# (the Process Mapper uses 8000). Bind all interfaces so the CML proxy can
-# reach the process.
-APP_HOST = os.environ.get("APP_HOST", "0.0.0.0")
+# (the Process Mapper uses 8000). On CML, bind 127.0.0.1 — that is the address
+# the platform proxy connects to. Binding 0.0.0.0 fails when the engine already
+# holds that port on another address.
+APP_HOST = os.environ.get("APP_HOST") or (
+    "127.0.0.1" if os.environ.get("CDSW_APP_PORT") else "0.0.0.0"
+)
 APP_PORT = int(os.environ.get("CDSW_APP_PORT", os.environ.get("ADJUSTER_GUI_PORT", "8010")))
 # Uvicorn subprocess handle. Lives on this imported module so a CML kernel
 # re-run of backend/main.py still sees the server it already started.

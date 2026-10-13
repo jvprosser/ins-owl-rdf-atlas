@@ -135,6 +135,11 @@ def run() -> None:
             _stop_existing()
         return
 
+    # A re-run in the same kernel keeps the already-imported APP_HOST. On CML
+    # that must be loopback even if an older import captured 0.0.0.0.
+    if os.environ.get("CDSW_APP_PORT") and not os.environ.get("APP_HOST"):
+        app_main.APP_HOST = "127.0.0.1"
+
     if _port_in_use(app_main.APP_HOST, app_main.APP_PORT) and not _health_ok(
         app_main.APP_HOST, app_main.APP_PORT
     ):

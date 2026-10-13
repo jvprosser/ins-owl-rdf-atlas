@@ -18,8 +18,9 @@ Same packaging as the Process Mapper. One process serves the built UI and the AP
 3. Create an Application:
    - **Command:** `python adjuster_gui/backend/main.py`
    - If the project root is `adjuster_gui` itself: `python backend/main.py`
-4. The process binds `CDSW_APP_PORT` on `0.0.0.0`, the same way the Process
-   Mapper does. Health check path: `/health`.
+4. The process binds `CDSW_APP_PORT` on `127.0.0.1`. Health check path:
+   `/health`. The platform proxy connects to that loopback address. Binding
+   `0.0.0.0` fails in this engine because that address is already in use.
 
 Open the gear and set the workflow base URL and bearer token. Those stay in the
 browser; they are not stored in the project.
