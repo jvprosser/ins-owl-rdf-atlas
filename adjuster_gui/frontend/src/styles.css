@@ -109,6 +109,14 @@ html, body, #root {
   background: #121820;
 }
 
+.canvas-wrap .react-flow__node {
+  cursor: grab;
+}
+
+.canvas-wrap .react-flow__node:active {
+  cursor: grabbing;
+}
+
 .bpmn-node {
   min-width: 140px;
   max-width: 190px;

@@ -22,8 +22,6 @@ class AgentClientTests(unittest.IsolatedAsyncioTestCase):
         def handler(request: httpx.Request) -> httpx.Response:
             body = json.loads(request.content.decode() or "{}")
             seen.append((request.url.path, body))
-            if request.url.path.endswith("createSession"):
-                return httpx.Response(200, json={"session_id": "sess-1"})
             if request.url.path.endswith("kickoff"):
                 return httpx.Response(200, json={"trace_id": "trace-1"})
             return httpx.Response(404)
@@ -33,14 +31,25 @@ class AgentClientTests(unittest.IsolatedAsyncioTestCase):
             result = await kickoff(client, "https://workflow.example", "secret", "process claim 401")
         self.assertEqual(result["trace_id"], "trace-1")
         self.assertEqual(result["conversation_id"], "trace-1")
-        self.assertEqual(seen[1][1]["inputs"]["user_input"], "process claim 401")
-        self.assertEqual(seen[1][1]["inputs"]["context"], "")
-        self.assertEqual(seen[0][1], {})
+        self.assertEqual(len(seen), 1)
+        self.assertTrue(seen[0][0].endswith("/kickoff"))
+        self.assertEqual(seen[0][1]["inputs"]["user_input"], "process claim 401")
+        self.assertEqual(seen[0][1]["inputs"]["context"], "")
+
+    async def test_kickoff_rejects_html_page(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            page = "<!DOCTYPE html><html><body>workflow ui</body></html>"
+            return httpx.Response(200, text=page, headers={"content-type": "text/html"})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            with self.assertRaises(ValueError) as raised:
+                await kickoff(client, "https://workflow.example", "secret", "process claim 401")
+        self.assertNotIn("<!DOCTYPE", str(raised.exception))
+        self.assertIn("web page", str(raised.exception))
 
     async def test_kickoff_reads_conversation_id(self) -> None:
         def handler(request: httpx.Request) -> httpx.Response:
-            if request.url.path.endswith("createSession"):
-                return httpx.Response(200, json={"session_id": "sess-1"})
             if request.url.path.endswith("kickoff"):
                 return httpx.Response(
                     200,

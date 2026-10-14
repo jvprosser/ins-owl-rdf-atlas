@@ -20,6 +20,37 @@ export interface AgentConfig {
 
 const URL_KEY = "adjuster-gui-base-url";
 const TOKEN_KEY = "adjuster-gui-token";
+const LAYOUT_PREFIX = "adjuster-gui-layout:";
+
+export interface NodePosition {
+  x: number;
+  y: number;
+}
+
+export function layoutStorageKey(nodeIds: string[]): string {
+  return LAYOUT_PREFIX + [...nodeIds].sort().join("\n");
+}
+
+export function loadLayout(key: string): Record<string, NodePosition> {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, NodePosition>;
+    const layout: Record<string, NodePosition> = {};
+    for (const [id, pos] of Object.entries(parsed)) {
+      if (pos && typeof pos.x === "number" && typeof pos.y === "number") {
+        layout[id] = { x: pos.x, y: pos.y };
+      }
+    }
+    return layout;
+  } catch {
+    return {};
+  }
+}
+
+export function saveLayout(key: string, layout: Record<string, NodePosition>): void {
+  localStorage.setItem(key, JSON.stringify(layout));
+}
 
 export function loadConfig(): AgentConfig {
   return {

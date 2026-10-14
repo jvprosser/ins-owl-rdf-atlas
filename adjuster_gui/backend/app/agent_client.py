@@ -1,6 +1,6 @@
 """Proxy the Agent Studio workflow calls used by the adjuster GUI.
 
-Same three calls as AgenticBPM: createSession, kickoff, events.
+Deployed workflow calls: kickoff, then events.
 """
 
 from __future__ import annotations
@@ -12,10 +12,15 @@ from typing import Any, Optional
 
 import httpx
 
-CREATE_SESSION_PATH = "/api/workflow/createSession"
 KICKOFF_PATH = "/api/workflow/kickoff"
 EVENTS_PATH = "/api/workflow/events"
-CREW_KICKOFF_COMPLETED = "crew_kickoff_completed"
+_COMPLETED_TYPES = frozenset(
+    {
+        "crew_kickoff_completed",
+        "crew_kickoff_complete",
+        "Crew.complete",
+    }
+)
 _NEXT_STEP = re.compile(r"Next step:\s*([A-Za-z0-9_.-]+)")
 
 
@@ -74,9 +79,16 @@ def parse_events_payload(payload: Any) -> list[Any]:
 
 def _find_completed(events: list[Any]) -> dict[str, Any] | None:
     for event in reversed(events):
-        if isinstance(event, dict) and event.get("type") == CREW_KICKOFF_COMPLETED:
+        if isinstance(event, dict) and event.get("type") in _COMPLETED_TYPES:
             return event
     return None
+
+
+def _looks_like_html(raw: str, content_type: str) -> bool:
+    if "html" in content_type.lower():
+        return True
+    stripped = raw.lstrip().lower()
+    return stripped.startswith("<!doctype") or stripped.startswith("<html")
 
 
 def _strings(value: Any, *, depth: int = 0) -> list[str]:
@@ -110,7 +122,7 @@ def response_texts(events: list[Any]) -> list[str]:
 
     def add(text: str) -> None:
         cleaned = text.strip()
-        if len(cleaned) < 2 or cleaned in seen:
+        if len(cleaned) < 2 or cleaned in seen or _looks_like_html(cleaned, ""):
             return
         seen.add(cleaned)
         found.append(cleaned)
@@ -150,6 +162,20 @@ def answer_from_events(events: list[Any]) -> tuple[bool, Optional[str], Optional
     return True, answer, next_step_from_answer(answer or "")
 
 
+def _json_body(response: httpx.Response, path: str, raw: str | None = None) -> Any:
+    body = response.text if raw is None else raw
+    if _looks_like_html(body, response.headers.get("content-type", "")):
+        raise ValueError(
+            f"{path} returned the workflow web page (HTTP {response.status_code}) instead of JSON. "
+            "Use the deployed workflow application URL, with no extra path."
+        )
+    response.raise_for_status()
+    try:
+        return json.loads(body) if body.strip() else None
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Workflow {path} did not return JSON") from exc
+
+
 async def _post_json(
     client: httpx.AsyncClient,
     base_url: str,
@@ -162,8 +188,7 @@ async def _post_json(
         headers=workflow_headers(token),
         json=payload,
     )
-    response.raise_for_status()
-    parsed = response.json()
+    parsed = _json_body(response, path)
     if not isinstance(parsed, dict):
         raise ValueError(f"Unexpected JSON from {path}")
     return parsed
@@ -187,10 +212,6 @@ async def kickoff(
     token: str,
     user_input: str,
 ) -> dict[str, str]:
-    session = await _post_json(client, base_url, CREATE_SESSION_PATH, token, {})
-    session_id = session.get("session_id") or _field(session, "session_id")
-    if not session_id:
-        raise ValueError("createSession response missing session_id")
     started = await _post_json(
         client,
         base_url,
@@ -211,7 +232,7 @@ async def kickoff(
     if not conversation_id:
         raise ValueError("kickoff response missing conversation_id")
     return {
-        "session_id": str(session_id),
+        "session_id": "",
         "trace_id": trace_id or conversation_id,
         "conversation_id": conversation_id,
     }
@@ -230,27 +251,18 @@ async def fetch_events(
         headers=workflow_headers(token, json_body=False),
         params={"trace_id": conversation_id, "conversation_id": conversation_id},
     ) as response:
-        response.raise_for_status()
         content_type = response.headers.get("content-type", "")
         if "text/event-stream" in content_type:
+            response.raise_for_status()
             events: list[Any] = []
             async for line in response.aiter_lines():
                 parsed = _parse_event_line(line)
                 if parsed is not None:
                     events.append(parsed)
         else:
-            raw = (await response.aread()).decode("utf-8", errors="replace").strip()
-            if not raw:
-                events = []
-            else:
-                try:
-                    events = parse_events_payload(json.loads(raw))
-                except json.JSONDecodeError:
-                    events = [
-                        parsed
-                        for line in raw.splitlines()
-                        if (parsed := _parse_event_line(line)) is not None
-                    ]
+            raw = (await response.aread()).decode("utf-8", errors="replace")
+            parsed_body = _json_body(response, EVENTS_PATH, raw)
+            events = [] if parsed_body is None else parse_events_payload(parsed_body)
     completed, answer, step = answer_from_events(events)
     return {
         "trace_id": conversation_id,

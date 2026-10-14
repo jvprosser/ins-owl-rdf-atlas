@@ -1,22 +1,28 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Background,
   Controls,
   MiniMap,
   ReactFlow,
+  applyNodeChanges,
   type Edge,
   type Node,
+  type OnNodesChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import ReactMarkdown from "react-markdown";
 import {
   kickoffMessage,
+  layoutStorageKey,
   loadClaims,
   loadConfig,
+  loadLayout,
   loadSampleBpmn,
   pollEvents,
   saveConfig,
+  saveLayout,
   type AgentConfig,
+  type NodePosition,
 } from "./api";
 import { nodeMatchesStep, parseBpmn, type BpmnGraph } from "./bpmn";
 import FlowNode, { type FlowNodeData } from "./FlowNode";
@@ -42,19 +48,22 @@ function categoryOf(bpmnType: string): FlowNodeData["category"] {
   return "task";
 }
 
-function toFlow(graph: BpmnGraph, step: string | null): { nodes: Node[]; edges: Edge[] } {
+function toFlow(
+  graph: BpmnGraph,
+  step: string | null,
+  layout: Record<string, NodePosition>
+): { nodes: Node[]; edges: Edge[] } {
   return {
     nodes: graph.nodes.map((node) => ({
       id: node.id,
       type: "bpmn",
-      position: { x: node.x, y: node.y },
+      position: layout[node.id] ?? { x: node.x, y: node.y },
       data: {
         label: node.name,
         bpmnType: node.type,
         category: categoryOf(node.type),
         current: nodeMatchesStep(node, step),
       } satisfies FlowNodeData,
-      draggable: false,
       connectable: false,
     })),
     edges: graph.edges.map((edge) => ({
@@ -74,6 +83,8 @@ function sleep(ms: number): Promise<void> {
 export default function App() {
   const [claims, setClaims] = useState<string[]>([]);
   const [graph, setGraph] = useState<BpmnGraph | null>(null);
+  const [nodes, setNodes] = useState<Node[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
   const [step, setStep] = useState<string | null>(null);
   const [activeClaim, setActiveClaim] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -86,11 +97,26 @@ export default function App() {
   const fileRef = useRef<HTMLInputElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
   const resizeRef = useRef<{ x: number; width: number } | null>(null);
+  const anchorUserId = useRef<string | null>(null);
+  const placedScroll = useRef<number | null>(null);
   const configRef = useRef<AgentConfig>(loadConfig());
 
   useEffect(() => {
     const el = transcriptRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    const id = anchorUserId.current;
+    if (!el || !id) return;
+    const node = el.querySelector<HTMLElement>(`[data-id="${CSS.escape(id)}"]`);
+    if (!node) return;
+    const delta = node.getBoundingClientRect().top - el.getBoundingClientRect().top;
+    if (delta <= 4) return;
+    const maxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
+    const following =
+      placedScroll.current === null ||
+      Math.abs(el.scrollTop - placedScroll.current) < 2 ||
+      el.scrollTop >= maxScroll - 2;
+    if (!following) return;
+    el.scrollTop += delta;
+    placedScroll.current = el.scrollTop;
   }, [messages]);
 
   useEffect(() => {
@@ -119,7 +145,45 @@ export default function App() {
       .catch((e: Error) => setError(e.message));
   }, []);
 
-  const flow = useMemo(() => (graph ? toFlow(graph, step) : { nodes: [], edges: [] }), [graph, step]);
+  useEffect(() => {
+    if (!graph) {
+      setNodes([]);
+      setEdges([]);
+      return;
+    }
+    const saved = loadLayout(layoutStorageKey(graph.nodes.map((node) => node.id)));
+    const flow = toFlow(graph, step, saved);
+    setNodes(flow.nodes);
+    setEdges(flow.edges);
+  }, [graph]);
+
+  useEffect(() => {
+    if (!graph) return;
+    setNodes((current) =>
+      current.map((node) => {
+        const source = graph.nodes.find((item) => item.id === node.id);
+        if (!source) return node;
+        const data = node.data as FlowNodeData;
+        const currentFlag = nodeMatchesStep(source, step);
+        if (data.current === currentFlag) return node;
+        return { ...node, data: { ...data, current: currentFlag } };
+      })
+    );
+  }, [step, graph]);
+
+  const onNodesChange: OnNodesChange = useCallback((changes) => {
+    setNodes((current) => applyNodeChanges(changes, current));
+  }, []);
+
+  const onNodeDragStop = useCallback(() => {
+    if (!graph) return;
+    setNodes((current) => {
+      const layout: Record<string, NodePosition> = {};
+      for (const node of current) layout[node.id] = { x: node.position.x, y: node.position.y };
+      saveLayout(layoutStorageKey(graph.nodes.map((node) => node.id)), layout);
+      return current;
+    });
+  }, [graph]);
 
   const onFile = (file: File) => {
     file.text().then((xml) => {
@@ -145,15 +209,27 @@ export default function App() {
   };
 
   const showTurn = useCallback((turnId: string, texts: string[]) => {
-    const bubbles: ChatMessage[] = (texts.length ? texts : ["Waiting for the agent…"]).map(
-      (text, index) => ({
-        id: `${turnId}-${index}`,
-        role: "agent",
-        text,
-        turnId,
-      })
-    );
-    setMessages((prev) => [...prev.filter((message) => message.turnId !== turnId), ...bubbles]);
+    const incoming = texts.map((text) => text.trim()).filter(Boolean);
+    if (!incoming.length) return;
+    setMessages((prev) => {
+      const withoutPending = prev.filter((message) => message.id !== `pending-${turnId}`);
+      const seen = new Set(
+        withoutPending
+          .filter((message) => message.turnId === turnId && message.role === "agent")
+          .map((message) => message.text)
+      );
+      const added = incoming.filter((text) => !seen.has(text));
+      if (!added.length) return withoutPending.length === prev.length ? prev : withoutPending;
+      return [
+        ...withoutPending,
+        ...added.map((text, index) => ({
+          id: `${turnId}-${seen.size + index}`,
+          role: "agent" as const,
+          text,
+          turnId,
+        })),
+      ];
+    });
   }, []);
 
   const sendText = useCallback(
@@ -166,14 +242,17 @@ export default function App() {
         return;
       }
       const turnId = `turn-${Date.now()}`;
+      const userId = `user-${turnId}`;
+      anchorUserId.current = userId;
+      placedScroll.current = null;
       setActiveClaim(claimId);
       setBusy(true);
       setError(null);
       setStep(null);
       setMessages((prev) => [
         ...prev,
-        { id: `user-${turnId}`, role: "user", text: userText },
-        { id: turnId, role: "agent", text: "Waiting for the agent…", turnId },
+        { id: userId, role: "user", text: userText },
+        { id: `pending-${turnId}`, role: "agent", text: "Waiting for the agent…", turnId },
       ]);
       try {
         const started = await kickoffMessage(config, userText);
@@ -264,10 +343,12 @@ export default function App() {
         </aside>
         <div className="canvas-wrap">
           <ReactFlow
-            nodes={flow.nodes}
-            edges={flow.edges}
+            nodes={nodes}
+            edges={edges}
             nodeTypes={nodeTypes}
-            nodesDraggable={false}
+            onNodesChange={onNodesChange}
+            onNodeDragStop={onNodeDragStop}
+            nodesDraggable
             nodesConnectable={false}
             elementsSelectable={false}
             deleteKeyCode={null}
@@ -298,7 +379,7 @@ export default function App() {
           <h2>Chat</h2>
           <div className="transcript" ref={transcriptRef}>
             {messages.map((message) => (
-              <div key={message.id} className={`bubble bubble--${message.role}`}>
+              <div key={message.id} data-id={message.id} className={`bubble bubble--${message.role}`}>
                 {message.role === "agent" ? (
                   <ReactMarkdown>{message.text}</ReactMarkdown>
                 ) : (
