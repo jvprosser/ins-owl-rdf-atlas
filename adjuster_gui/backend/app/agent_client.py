@@ -9,11 +9,12 @@ import json
 import os
 import re
 from typing import Any, Optional
+from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 
-KICKOFF_PATH = "/api/workflow/kickoff"
-EVENTS_PATH = "/api/workflow/events"
+_KICKOFF_PATHS = ("/api/workflow/kickoff", "/api/workflow")
+_EVENT_PATHS = ("/api/workflow/events", "/api/workflow")
 _COMPLETED_TYPES = frozenset(
     {
         "crew_kickoff_completed",
@@ -40,6 +41,23 @@ def workflow_headers(token: str, *, json_body: bool = True) -> dict[str, str]:
     if json_body:
         headers["Content-Type"] = "application/json"
     return headers
+
+
+class _WorkflowPage(ValueError):
+    def __init__(self, path: str, status: int) -> None:
+        self.status = status
+        super().__init__(
+            f"{path} returned the workflow web page (HTTP {status}) instead of JSON. "
+            "Use the deployed workflow application URL, with no extra path."
+        )
+
+
+def application_origin(base_url: str) -> str:
+    """Scheme and host only. A pasted page path makes /api/workflow 404 as HTML."""
+    parts = urlsplit(base_url.strip())
+    if parts.scheme not in {"http", "https"} or not parts.netloc:
+        raise ValueError("Workflow URL must start with http:// or https://.")
+    return urlunsplit((parts.scheme, parts.netloc, "", "", ""))
 
 
 def process_claim_text(claim_id: str) -> str:
@@ -165,10 +183,7 @@ def answer_from_events(events: list[Any]) -> tuple[bool, Optional[str], Optional
 def _json_body(response: httpx.Response, path: str, raw: str | None = None) -> Any:
     body = response.text if raw is None else raw
     if _looks_like_html(body, response.headers.get("content-type", "")):
-        raise ValueError(
-            f"{path} returned the workflow web page (HTTP {response.status_code}) instead of JSON. "
-            "Use the deployed workflow application URL, with no extra path."
-        )
+        raise _WorkflowPage(path, response.status_code)
     response.raise_for_status()
     try:
         return json.loads(body) if body.strip() else None
@@ -206,17 +221,38 @@ def _field(payload: dict[str, Any], key: str) -> Optional[str]:
     return None
 
 
+async def _post_workflow(
+    client: httpx.AsyncClient,
+    base_url: str,
+    token: str,
+    paths: tuple[str, ...],
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    origin = application_origin(base_url)
+    last_page: Optional[_WorkflowPage] = None
+    for path in paths:
+        try:
+            return await _post_json(client, origin, path, token, payload)
+        except _WorkflowPage as exc:
+            last_page = exc
+            if exc.status != 404:
+                raise
+    if last_page is not None:
+        raise last_page
+    raise ValueError("Workflow kickoff was not sent.")
+
+
 async def kickoff(
     client: httpx.AsyncClient,
     base_url: str,
     token: str,
     user_input: str,
 ) -> dict[str, str]:
-    started = await _post_json(
+    started = await _post_workflow(
         client,
         base_url,
-        KICKOFF_PATH,
         token,
+        _KICKOFF_PATHS,
         {
             "inputs": {
                 "user_input": user_input,
@@ -238,13 +274,14 @@ async def kickoff(
     }
 
 
-async def fetch_events(
+async def _fetch_events_at(
     client: httpx.AsyncClient,
-    base_url: str,
+    origin: str,
     token: str,
     conversation_id: str,
+    path: str,
 ) -> dict[str, Any]:
-    url = f"{base_url.rstrip('/')}{EVENTS_PATH}"
+    url = f"{origin}{path}"
     async with client.stream(
         "GET",
         url,
@@ -261,7 +298,7 @@ async def fetch_events(
                     events.append(parsed)
         else:
             raw = (await response.aread()).decode("utf-8", errors="replace")
-            parsed_body = _json_body(response, EVENTS_PATH, raw)
+            parsed_body = _json_body(response, path, raw)
             events = [] if parsed_body is None else parse_events_payload(parsed_body)
     completed, answer, step = answer_from_events(events)
     return {
@@ -272,3 +309,23 @@ async def fetch_events(
         "next_step": step,
         "responses": response_texts(events),
     }
+
+
+async def fetch_events(
+    client: httpx.AsyncClient,
+    base_url: str,
+    token: str,
+    conversation_id: str,
+) -> dict[str, Any]:
+    origin = application_origin(base_url)
+    last_page: Optional[_WorkflowPage] = None
+    for path in _EVENT_PATHS:
+        try:
+            return await _fetch_events_at(client, origin, token, conversation_id, path)
+        except _WorkflowPage as exc:
+            last_page = exc
+            if exc.status != 404:
+                raise
+    if last_page is not None:
+        raise last_page
+    raise ValueError("Workflow events were not requested.")

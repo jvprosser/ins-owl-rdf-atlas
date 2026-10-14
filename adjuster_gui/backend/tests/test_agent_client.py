@@ -28,13 +28,32 @@ class AgentClientTests(unittest.IsolatedAsyncioTestCase):
 
         transport = httpx.MockTransport(handler)
         async with httpx.AsyncClient(transport=transport) as client:
-            result = await kickoff(client, "https://workflow.example", "secret", "process claim 401")
+            result = await kickoff(
+                client, "https://workflow.example/ui", "secret", "process claim 401"
+            )
         self.assertEqual(result["trace_id"], "trace-1")
         self.assertEqual(result["conversation_id"], "trace-1")
-        self.assertEqual(len(seen), 1)
-        self.assertTrue(seen[0][0].endswith("/kickoff"))
-        self.assertEqual(seen[0][1]["inputs"]["user_input"], "process claim 401")
-        self.assertEqual(seen[0][1]["inputs"]["context"], "")
+        self.assertEqual(seen, [("/api/workflow/kickoff", {
+            "inputs": {"user_input": "process claim 401", "context": ""},
+        })])
+
+    async def test_kickoff_uses_workflow_route_when_kickoff_path_is_missing(self) -> None:
+        seen: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen.append(request.url.path)
+            if request.url.path == "/api/workflow/kickoff":
+                page = "<!DOCTYPE html><html><body>missing</body></html>"
+                return httpx.Response(404, text=page, headers={"content-type": "text/html"})
+            body = json.loads(request.content.decode() or "{}")
+            self.assertEqual(body["inputs"]["user_input"], "process claim 401")
+            return httpx.Response(200, json={"trace_id": "trace-2"})
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await kickoff(client, "https://workflow.example", "secret", "process claim 401")
+        self.assertEqual(seen, ["/api/workflow/kickoff", "/api/workflow"])
+        self.assertEqual(result["trace_id"], "trace-2")
 
     async def test_kickoff_rejects_html_page(self) -> None:
         def handler(request: httpx.Request) -> httpx.Response:
