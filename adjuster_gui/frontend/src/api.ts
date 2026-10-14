@@ -16,10 +16,13 @@ export interface EventsResult {
 export interface AgentConfig {
   baseUrl: string;
   token: string;
+  workflowId: string;
 }
 
 const URL_KEY = "adjuster-gui-base-url";
 const TOKEN_KEY = "adjuster-gui-token";
+const WORKFLOW_ID_KEY = "adjuster-gui-workflow-id";
+const DEFAULT_WORKFLOW_ID = "86f01f5a-c485-4c47-9182-30c844eeeaa2";
 const LAYOUT_PREFIX = "adjuster-gui-layout:";
 
 export interface NodePosition {
@@ -56,12 +59,14 @@ export function loadConfig(): AgentConfig {
   return {
     baseUrl: localStorage.getItem(URL_KEY) ?? "",
     token: localStorage.getItem(TOKEN_KEY) ?? "",
+    workflowId: localStorage.getItem(WORKFLOW_ID_KEY) ?? DEFAULT_WORKFLOW_ID,
   };
 }
 
 export function saveConfig(config: AgentConfig): void {
   localStorage.setItem(URL_KEY, config.baseUrl.trim());
   localStorage.setItem(TOKEN_KEY, config.token.trim());
+  localStorage.setItem(WORKFLOW_ID_KEY, config.workflowId.trim());
 }
 
 async function errorText(res: Response, fallback: string): Promise<string> {
@@ -95,6 +100,7 @@ export async function kickoffMessage(config: AgentConfig, userInput: string): Pr
       base_url: config.baseUrl,
       token: config.token,
       user_input: userInput,
+      workflow_id: config.workflowId ?? DEFAULT_WORKFLOW_ID,
     }),
   });
   if (!res.ok) throw new Error(await errorText(res, "Kickoff failed"));

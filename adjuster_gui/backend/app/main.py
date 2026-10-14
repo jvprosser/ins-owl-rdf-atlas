@@ -42,6 +42,7 @@ class KickoffRequest(BaseModel):
     token: str
     user_input: str = ""
     claim_id: str = ""
+    workflow_id: str = ""
 
 
 def _client() -> httpx.AsyncClient:
@@ -81,7 +82,11 @@ async def agent_kickoff(body: KickoffRequest) -> dict[str, str]:
     try:
         async with _client() as client:
             return await agent_client.kickoff(
-                client, body.base_url.strip(), body.token.strip(), user_input
+                client,
+                body.base_url.strip(),
+                body.token.strip(),
+                user_input,
+                body.workflow_id,
             )
     except httpx.HTTPStatusError as exc:
         detail = exc.response.text[:500] or str(exc)

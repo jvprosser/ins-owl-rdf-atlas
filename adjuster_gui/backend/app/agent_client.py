@@ -13,6 +13,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 
+_CREATE_SESSION_PATH = "/api/workflow/createSession"
 _KICKOFF_PATHS = ("/api/workflow/kickoff", "/api/workflow")
 _EVENT_PATHS = ("/api/workflow/events", "/api/workflow")
 _COMPLETED_TYPES = frozenset(
@@ -242,23 +243,60 @@ async def _post_workflow(
     raise ValueError("Workflow kickoff was not sent.")
 
 
+async def _session_id(
+    client: httpx.AsyncClient,
+    origin: str,
+    token: str,
+    workflow_id: str,
+) -> str:
+    try:
+        session = await _post_json(
+            client,
+            origin,
+            _CREATE_SESSION_PATH,
+            token,
+            {"workflow_id": workflow_id},
+        )
+    except _WorkflowPage as exc:
+        if exc.status == 404:
+            return ""
+        raise
+    if session.get("success") is False:
+        detail = session.get("error") or session.get("message") or "createSession failed"
+        raise ValueError(str(detail))
+    if session.get("error"):
+        raise ValueError(str(session.get("error")))
+    found = session.get("session_id") or _field(session, "session_id")
+    return str(found) if found else ""
+
+
 async def kickoff(
     client: httpx.AsyncClient,
     base_url: str,
     token: str,
     user_input: str,
+    workflow_id: str = "",
 ) -> dict[str, str]:
+    origin = application_origin(base_url)
+    workflow_id = workflow_id.strip()
+    payload: dict[str, Any] = {
+        "inputs": {
+            "user_input": user_input,
+            "context": "",
+        }
+    }
+    session_id = ""
+    if workflow_id:
+        payload["workflow_id"] = workflow_id
+        session_id = await _session_id(client, origin, token, workflow_id)
+        if session_id:
+            payload["session_id"] = session_id
     started = await _post_workflow(
         client,
-        base_url,
+        origin,
         token,
         _KICKOFF_PATHS,
-        {
-            "inputs": {
-                "user_input": user_input,
-                "context": "",
-            }
-        },
+        payload,
     )
     if started.get("success") is False:
         detail = started.get("error") or started.get("message") or "kickoff failed"
@@ -268,7 +306,7 @@ async def kickoff(
     if not conversation_id:
         raise ValueError("kickoff response missing conversation_id")
     return {
-        "session_id": "",
+        "session_id": session_id,
         "trace_id": trace_id or conversation_id,
         "conversation_id": conversation_id,
     }

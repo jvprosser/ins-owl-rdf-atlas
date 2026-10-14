@@ -93,7 +93,7 @@ export default function App() {
   const [composer, setComposer] = useState("");
   const [chatWidth, setChatWidth] = useState(340);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [draft, setDraft] = useState<AgentConfig>({ baseUrl: "", token: "" });
+  const [draft, setDraft] = useState<AgentConfig>({ baseUrl: "", token: "", workflowId: "" });
   const fileRef = useRef<HTMLInputElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
   const resizeRef = useRef<{ x: number; width: number } | null>(null);
@@ -204,7 +204,11 @@ export default function App() {
 
   const saveSettings = () => {
     saveConfig(draft);
-    configRef.current = { baseUrl: draft.baseUrl.trim(), token: draft.token.trim() };
+    configRef.current = {
+      baseUrl: draft.baseUrl.trim(),
+      token: draft.token.trim(),
+      workflowId: draft.workflowId.trim(),
+    };
     setSettingsOpen(false);
   };
 
@@ -423,6 +427,14 @@ export default function App() {
                 value={draft.baseUrl}
                 onChange={(event) => setDraft({ ...draft, baseUrl: event.target.value })}
                 placeholder="https://workflow.example"
+              />
+            </label>
+            <label>
+              Workflow ID
+              <input
+                value={draft.workflowId}
+                onChange={(event) => setDraft({ ...draft, workflowId: event.target.value })}
+                placeholder="86f01f5a-c485-4c47-9182-30c844eeeaa2"
               />
             </label>
             <label>

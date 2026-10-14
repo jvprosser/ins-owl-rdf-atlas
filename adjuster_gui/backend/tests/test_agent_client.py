@@ -55,6 +55,35 @@ class AgentClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(seen, ["/api/workflow/kickoff", "/api/workflow"])
         self.assertEqual(result["trace_id"], "trace-2")
 
+    async def test_kickoff_sends_workflow_id(self) -> None:
+        seen: list[tuple[str, dict]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            body = json.loads(request.content.decode() or "{}")
+            seen.append((request.url.path, body))
+            if request.url.path.endswith("createSession"):
+                return httpx.Response(200, json={"session_id": "sess-1"})
+            if request.url.path.endswith("kickoff"):
+                return httpx.Response(200, json={"trace_id": "trace-3"})
+            return httpx.Response(404)
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await kickoff(
+                client,
+                "https://cai-agent-studio.example/home",
+                "secret",
+                "process claim 401",
+                "86f01f5a-c485-4c47-9182-30c844eeeaa2",
+            )
+        self.assertEqual(result["trace_id"], "trace-3")
+        self.assertEqual(result["session_id"], "sess-1")
+        self.assertEqual(seen[0][0], "/api/workflow/createSession")
+        self.assertEqual(seen[0][1]["workflow_id"], "86f01f5a-c485-4c47-9182-30c844eeeaa2")
+        self.assertEqual(seen[1][1]["workflow_id"], "86f01f5a-c485-4c47-9182-30c844eeeaa2")
+        self.assertEqual(seen[1][1]["session_id"], "sess-1")
+        self.assertEqual(seen[1][1]["inputs"]["user_input"], "process claim 401")
+
     async def test_kickoff_rejects_html_page(self) -> None:
         def handler(request: httpx.Request) -> httpx.Response:
             page = "<!DOCTYPE html><html><body>workflow ui</body></html>"
