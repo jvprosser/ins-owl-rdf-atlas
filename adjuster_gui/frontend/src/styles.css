@@ -110,6 +110,9 @@ html, body, #root {
 }
 
 .canvas-wrap .react-flow__node {
+  /* The node wrapper sets pointer-events: all inline. Chromium drops that value on HTML,
+     the node inherits none from the pane, and a left-drag pans the graph. */
+  pointer-events: auto !important;
   cursor: grab;
 }
 

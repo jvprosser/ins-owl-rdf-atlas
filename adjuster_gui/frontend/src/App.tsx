@@ -355,6 +355,9 @@ export default function App() {
             nodesDraggable
             nodesConnectable={false}
             elementsSelectable={false}
+            panOnDrag={[1, 2]}
+            panOnScroll
+            autoPanOnNodeDrag={false}
             deleteKeyCode={null}
             fitView
             proOptions={{ hideAttribution: true }}
