@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Background,
   Controls,
@@ -25,7 +25,7 @@ import {
   type NodePosition,
 } from "./api";
 import { nodeMatchesStep, parseBpmn, type BpmnGraph } from "./bpmn";
-import FlowNode, { type FlowNodeData } from "./FlowNode";
+import FlowNode, { NodeDragContext, type FlowNodeData } from "./FlowNode";
 
 const POLL_MS = 2000;
 const POLL_TIMEOUT_MS = 300_000;
@@ -184,6 +184,15 @@ export default function App() {
       return current;
     });
   }, [graph]);
+
+  const moveNode = useCallback((id: string, position: { x: number; y: number }) => {
+    setNodes((current) => current.map((node) => (node.id === id ? { ...node, position } : node)));
+  }, []);
+
+  const nodeDrag = useMemo(
+    () => ({ move: moveNode, commit: onNodeDragStop }),
+    [moveNode, onNodeDragStop]
+  );
 
   const onFile = (file: File) => {
     file.text().then((xml) => {
@@ -346,32 +355,34 @@ export default function App() {
           ))}
         </aside>
         <div className="canvas-wrap">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            nodeTypes={nodeTypes}
-            onNodesChange={onNodesChange}
-            onNodeDragStop={onNodeDragStop}
-            nodesDraggable
-            nodesConnectable={false}
-            elementsSelectable={false}
-            panOnDrag={[1, 2]}
-            panOnScroll
-            autoPanOnNodeDrag={false}
-            deleteKeyCode={null}
-            fitView
-            proOptions={{ hideAttribution: true }}
-          >
-            <Background gap={16} />
-            <Controls showInteractive={false} />
-            <MiniMap
-              pannable
-              zoomable
-              bgColor="#121820"
-              maskColor="rgba(15, 20, 25, 0.65)"
-              nodeColor="#3b82f6"
-            />
-          </ReactFlow>
+          <NodeDragContext.Provider value={nodeDrag}>
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              nodeTypes={nodeTypes}
+              onNodesChange={onNodesChange}
+              onNodeDragStop={onNodeDragStop}
+              nodesDraggable
+              nodesConnectable={false}
+              elementsSelectable={false}
+              panOnDrag={false}
+              panOnScroll
+              autoPanOnNodeDrag={false}
+              deleteKeyCode={null}
+              fitView
+              proOptions={{ hideAttribution: true }}
+            >
+              <Background gap={16} />
+              <Controls showInteractive={false} />
+              <MiniMap
+                pannable
+                zoomable
+                bgColor="#121820"
+                maskColor="rgba(15, 20, 25, 0.65)"
+                nodeColor="#3b82f6"
+              />
+            </ReactFlow>
+          </NodeDragContext.Provider>
         </div>
         <aside className="chat">
           <div
