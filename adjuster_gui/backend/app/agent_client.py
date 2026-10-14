@@ -16,6 +16,8 @@ import httpx
 _CREATE_SESSION_PATH = "/api/workflow/createSession"
 _KICKOFF_PATHS = ("/api/workflow/kickoff", "/api/workflow")
 _EVENT_PATHS = ("/api/workflow/events", "/api/workflow")
+# Studio's own Test action. /api/workflow/kickoff is only for a deployed workflow app.
+_TEST_WORKFLOW_PATH = "/api/grpc/testWorkflow"
 _COMPLETED_TYPES = frozenset(
     {
         "crew_kickoff_completed",
@@ -44,6 +46,15 @@ def workflow_headers(token: str, *, json_body: bool = True) -> dict[str, str]:
     return headers
 
 
+def workflow_cookies(token: str) -> dict[str, str]:
+    """Workbench session cookie. Studio reads this when Authorization alone has no role."""
+    return {"_cdswuserstoken": token}
+
+
+def use_workflow_token(client: httpx.AsyncClient, token: str) -> None:
+    client.cookies.update(workflow_cookies(token))
+
+
 class _WorkflowPage(ValueError):
     def __init__(self, path: str, status: int) -> None:
         self.status = status
@@ -51,6 +62,12 @@ class _WorkflowPage(ValueError):
             f"{path} returned the workflow web page (HTTP {status}) instead of JSON. "
             "Use the deployed workflow application URL, with no extra path."
         )
+
+
+def _is_studio_application(origin: str) -> bool:
+    """Agent Studio application host, as opposed to a deployed workflow app."""
+    host = (urlsplit(origin).hostname or "").lower()
+    return host.startswith("cai-agent-studio")
 
 
 def application_origin(base_url: str) -> str:
@@ -270,6 +287,58 @@ async def _session_id(
     return str(found) if found else ""
 
 
+async def _studio_test(
+    client: httpx.AsyncClient,
+    origin: str,
+    token: str,
+    user_input: str,
+    workflow_id: str,
+) -> dict[str, str]:
+    """Start a run the way Studio's Test button does.
+
+    testWorkflow accepts an empty session_id. A token without session:create
+    still gets that far.
+    """
+    try:
+        session_id = await _session_id(client, origin, token, workflow_id)
+    except (httpx.HTTPStatusError, ValueError, _WorkflowPage):
+        session_id = ""
+    started = await _post_json(
+        client,
+        origin,
+        _TEST_WORKFLOW_PATH,
+        token,
+        {
+            "workflow_id": workflow_id,
+            "inputs": {
+                "user_input": user_input,
+                "context": "",
+            },
+            "tool_user_parameters": {},
+            "mcp_instance_env_vars": {},
+            "generation_config": "{}",
+            "session_id": session_id,
+        },
+    )
+    trace_id, conversation_id = _trace_ids(started)
+    return {
+        "session_id": session_id,
+        "trace_id": trace_id,
+        "conversation_id": conversation_id,
+    }
+
+
+def _trace_ids(started: dict[str, Any]) -> tuple[str, str]:
+    if started.get("success") is False:
+        detail = started.get("error") or started.get("message") or "kickoff failed"
+        raise ValueError(str(detail))
+    trace_id = _field(started, "trace_id")
+    conversation_id = _field(started, "conversation_id") or trace_id
+    if not conversation_id:
+        raise ValueError("kickoff response missing conversation_id")
+    return trace_id or conversation_id, conversation_id
+
+
 async def kickoff(
     client: httpx.AsyncClient,
     base_url: str,
@@ -278,19 +347,16 @@ async def kickoff(
     workflow_id: str = "",
 ) -> dict[str, str]:
     origin = application_origin(base_url)
+    use_workflow_token(client, token)
     workflow_id = workflow_id.strip()
+    if workflow_id and _is_studio_application(origin):
+        return await _studio_test(client, origin, token, user_input, workflow_id)
     payload: dict[str, Any] = {
         "inputs": {
             "user_input": user_input,
             "context": "",
         }
     }
-    session_id = ""
-    if workflow_id:
-        payload["workflow_id"] = workflow_id
-        session_id = await _session_id(client, origin, token, workflow_id)
-        if session_id:
-            payload["session_id"] = session_id
     started = await _post_workflow(
         client,
         origin,
@@ -298,16 +364,10 @@ async def kickoff(
         _KICKOFF_PATHS,
         payload,
     )
-    if started.get("success") is False:
-        detail = started.get("error") or started.get("message") or "kickoff failed"
-        raise ValueError(str(detail))
-    trace_id = _field(started, "trace_id")
-    conversation_id = _field(started, "conversation_id") or trace_id
-    if not conversation_id:
-        raise ValueError("kickoff response missing conversation_id")
+    trace_id, conversation_id = _trace_ids(started)
     return {
-        "session_id": session_id,
-        "trace_id": trace_id or conversation_id,
+        "session_id": "",
+        "trace_id": trace_id,
         "conversation_id": conversation_id,
     }
 
@@ -355,6 +415,7 @@ async def fetch_events(
     token: str,
     conversation_id: str,
 ) -> dict[str, Any]:
+    use_workflow_token(client, token)
     origin = application_origin(base_url)
     last_page: Optional[_WorkflowPage] = None
     for path in _EVENT_PATHS:

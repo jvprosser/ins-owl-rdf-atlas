@@ -63,7 +63,7 @@ class AgentClientTests(unittest.IsolatedAsyncioTestCase):
             seen.append((request.url.path, body))
             if request.url.path.endswith("createSession"):
                 return httpx.Response(200, json={"session_id": "sess-1"})
-            if request.url.path.endswith("kickoff"):
+            if request.url.path.endswith("testWorkflow"):
                 return httpx.Response(200, json={"trace_id": "trace-3"})
             return httpx.Response(404)
 
@@ -80,9 +80,46 @@ class AgentClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["session_id"], "sess-1")
         self.assertEqual(seen[0][0], "/api/workflow/createSession")
         self.assertEqual(seen[0][1]["workflow_id"], "86f01f5a-c485-4c47-9182-30c844eeeaa2")
+        self.assertEqual(seen[1][0], "/api/grpc/testWorkflow")
         self.assertEqual(seen[1][1]["workflow_id"], "86f01f5a-c485-4c47-9182-30c844eeeaa2")
         self.assertEqual(seen[1][1]["session_id"], "sess-1")
         self.assertEqual(seen[1][1]["inputs"]["user_input"], "process claim 401")
+        self.assertNotIn("/api/workflow/kickoff", [path for path, _body in seen])
+
+    async def test_studio_test_continues_without_session_permission(self) -> None:
+        seen: list[tuple[str, dict, str]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            body = json.loads(request.content.decode() or "{}")
+            seen.append((request.url.path, body, request.headers.get("cookie", "")))
+            if request.url.path.endswith("createSession"):
+                return httpx.Response(
+                    403,
+                    json={
+                        "error": "forbidden",
+                        "reason": "missing_header",
+                        "required": ["session:create"],
+                        "role": None,
+                    },
+                )
+            if request.url.path.endswith("testWorkflow"):
+                return httpx.Response(200, json={"trace_id": "trace-4"})
+            return httpx.Response(404)
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await kickoff(
+                client,
+                "https://cai-agent-studio.example",
+                "secret",
+                "process claim 401",
+                "86f01f5a-c485-4c47-9182-30c844eeeaa2",
+            )
+        self.assertEqual(result["trace_id"], "trace-4")
+        self.assertEqual(result["session_id"], "")
+        self.assertEqual(seen[1][0], "/api/grpc/testWorkflow")
+        self.assertEqual(seen[1][1]["session_id"], "")
+        self.assertIn("_cdswuserstoken=secret", seen[1][2])
 
     async def test_kickoff_rejects_html_page(self) -> None:
         def handler(request: httpx.Request) -> httpx.Response:
