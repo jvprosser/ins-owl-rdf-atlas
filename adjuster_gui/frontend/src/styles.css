@@ -27,20 +27,53 @@ html, body, #root {
 
 .topbar {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.55rem 0.8rem;
+  align-items: stretch;
   border-bottom: 1px solid var(--line);
   background: var(--panel);
+}
+
+.topbar-main {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0.55rem 0.6rem 0.55rem 0.8rem;
+}
+
+.topbar-end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: none;
+  box-sizing: border-box;
+  padding: 0.55rem 0.8rem 0.55rem 0.6rem;
 }
 
 .topbar h1 {
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
+  flex-shrink: 0;
 }
 
-.topbar .spacer { flex: 1; }
+.topbar .btn { flex-shrink: 0; }
+
+.status-line {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0.35rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: #0f1419;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1.2;
+}
+
+.status-line.is-error { color: #fecaca; }
 
 .gear {
   border: 1px solid var(--line);

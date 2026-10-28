@@ -1,4 +1,4 @@
-# Adjuster BPMN GUI
+# Claims Copilot
 
 One adjuster's canvas: a BPMN file, a list of demo claims, and a chat that sends
 `process claim {id}` to an Agent Studio workflow. The reply's `Next step:` line

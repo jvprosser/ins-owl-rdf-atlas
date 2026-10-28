@@ -12,13 +12,15 @@ import {
 import "@xyflow/react/dist/style.css";
 import ReactMarkdown from "react-markdown";
 import {
+  DEFAULT_BASE_URL,
   kickoffMessage,
   layoutStorageKey,
   loadClaims,
   loadConfig,
   loadLayout,
   loadSampleBpmn,
-  pollEvents,
+  saveBpmnLayout,
+  streamEvents,
   saveConfig,
   saveLayout,
   type AgentConfig,
@@ -26,9 +28,6 @@ import {
 } from "./api";
 import { nodeMatchesStep, parseBpmn, type BpmnGraph } from "./bpmn";
 import FlowNode, { NodeDragContext, type FlowNodeData } from "./FlowNode";
-
-const POLL_MS = 2000;
-const POLL_TIMEOUT_MS = 300_000;
 
 interface ChatMessage {
   id: string;
@@ -76,10 +75,6 @@ function toFlow(
   };
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 export default function App() {
   const [claims, setClaims] = useState<string[]>([]);
   const [graph, setGraph] = useState<BpmnGraph | null>(null);
@@ -93,6 +88,10 @@ export default function App() {
   const [composer, setComposer] = useState("");
   const [chatWidth, setChatWidth] = useState(340);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [savingLayout, setSavingLayout] = useState(false);
+  const [statusText, setStatusText] = useState("");
+  const [statusError, setStatusError] = useState(false);
+  const statusErrorRef = useRef(false);
   const [draft, setDraft] = useState<AgentConfig>({ baseUrl: "", token: "", workflowId: "" });
   const fileRef = useRef<HTMLInputElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
@@ -100,6 +99,12 @@ export default function App() {
   const anchorUserId = useRef<string | null>(null);
   const placedScroll = useRef<number | null>(null);
   const configRef = useRef<AgentConfig>(loadConfig());
+
+  const showStatus = useCallback((text: string, isError = false) => {
+    statusErrorRef.current = isError;
+    setStatusError(isError);
+    setStatusText(text);
+  }, []);
 
   useEffect(() => {
     const el = transcriptRef.current;
@@ -194,16 +199,39 @@ export default function App() {
     [moveNode, onNodeDragStop]
   );
 
+  const saveGraph = () => {
+    if (!graph || nodes.length === 0 || savingLayout) return;
+    const layout: Record<string, NodePosition> = {};
+    for (const node of nodes) layout[node.id] = { x: node.position.x, y: node.position.y };
+    setSavingLayout(true);
+    showStatus("Saving…");
+    saveBpmnLayout(layout)
+      .then(() => {
+        saveLayout(layoutStorageKey(graph.nodes.map((node) => node.id)), layout);
+        showStatus("Saved");
+      })
+      .catch((e: Error) => {
+        showStatus(e.message, true);
+      })
+      .finally(() => setSavingLayout(false));
+  };
+
   const onFile = (file: File) => {
-    file.text().then((xml) => {
-      try {
-        setGraph(parseBpmn(xml));
-        setStep(null);
-        setError(null);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-      }
-    });
+    showStatus(`Loading ${file.name}…`);
+    file
+      .text()
+      .then((xml) => {
+        try {
+          setGraph(parseBpmn(xml));
+          setStep(null);
+          showStatus(`Loaded ${file.name}`);
+        } catch (e) {
+          showStatus(e instanceof Error ? e.message : String(e), true);
+        }
+      })
+      .catch((e: Error) => {
+        showStatus(e.message, true);
+      });
   };
 
   const openSettings = () => {
@@ -269,37 +297,34 @@ export default function App() {
       ]);
       try {
         const started = await kickoffMessage(config, userText);
-        const conversationId = started.conversation_id || started.trace_id;
-        const deadline = Date.now() + POLL_TIMEOUT_MS;
-        let answer = "The agent did not finish before the poll timeout.";
+        const traceId = started.trace_id || started.conversation_id;
+        let answer = "The agent finished without a reply.";
         let nextStep: string | null = null;
         let rendered = false;
-        while (Date.now() < deadline) {
-          await sleep(POLL_MS);
-          const polled = await pollEvents(config, conversationId);
-          if (polled.responses?.length) {
-            showTurn(turnId, polled.responses);
+        await streamEvents(config, traceId, (update) => {
+          if (update.responses?.length) {
+            showTurn(turnId, update.responses);
             rendered = true;
           }
-          if (!polled.completed) continue;
-          const lastResponse = polled.responses?.[polled.responses.length - 1];
-          answer = polled.answer || lastResponse || "The agent finished without a reply.";
-          nextStep = polled.next_step;
+          if (!update.completed) return;
+          const lastResponse = update.responses?.[update.responses.length - 1];
+          answer = update.answer || lastResponse || answer;
+          nextStep = update.next_step;
           if (!rendered) showTurn(turnId, [answer]);
           rendered = true;
-          break;
-        }
+        });
         if (!rendered) showTurn(turnId, [answer]);
         setStep(nextStep);
+        if (statusErrorRef.current) showStatus("");
       } catch (e) {
         const text = e instanceof Error ? e.message : String(e);
-        setError(text);
-        showTurn(turnId, [text]);
+        showStatus(text, true);
+        setMessages((prev) => prev.filter((message) => message.id !== `pending-${turnId}`));
       } finally {
         setBusy(false);
       }
     },
-    [showTurn]
+    [showStatus, showTurn]
   );
 
   const runClaim = useCallback(
@@ -319,24 +344,38 @@ export default function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <h1>Adjuster</h1>
-        <button className="btn" type="button" onClick={() => fileRef.current?.click()}>
-          Load BPMN
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".bpmn,.xml"
-          hidden
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) onFile(file);
-          }}
-        />
-        <span className="spacer" />
-        <button className="gear" type="button" aria-label="Settings" onClick={openSettings}>
-          ⚙
-        </button>
+        <div className="topbar-main">
+          <h1>Claims Copilot</h1>
+          <button className="btn" type="button" onClick={() => fileRef.current?.click()}>
+            Load BPMN
+          </button>
+          <button className="btn" type="button" onClick={saveGraph} disabled={!graph || savingLayout}>
+            Save
+          </button>
+          <input
+            className={`status-line${statusError ? " is-error" : ""}`}
+            type="text"
+            readOnly
+            aria-label="Status"
+            value={statusText}
+          />
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".bpmn,.xml"
+            hidden
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (file) onFile(file);
+            }}
+          />
+        </div>
+        <div className="topbar-end" style={{ width: chatWidth }}>
+          <button className="gear" type="button" aria-label="Settings" onClick={openSettings}>
+            ⚙
+          </button>
+        </div>
       </header>
       {error ? <div className="alert">{error}</div> : null}
       <div className="body" style={{ gridTemplateColumns: `180px minmax(0, 1fr) ${chatWidth}px` }}>
@@ -365,8 +404,8 @@ export default function App() {
               nodesDraggable
               nodesConnectable={false}
               elementsSelectable={false}
-              panOnDrag={false}
-              panOnScroll
+              panOnDrag
+              zoomOnScroll
               autoPanOnNodeDrag={false}
               deleteKeyCode={null}
               fitView
@@ -440,7 +479,7 @@ export default function App() {
               <input
                 value={draft.baseUrl}
                 onChange={(event) => setDraft({ ...draft, baseUrl: event.target.value })}
-                placeholder="https://workflow.example"
+                placeholder={DEFAULT_BASE_URL}
               />
             </label>
             <label>

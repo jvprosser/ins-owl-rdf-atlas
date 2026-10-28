@@ -126,7 +126,7 @@ def run() -> None:
     """Spawn uvicorn in a subprocess and block until it exits."""
     if _already_running():
         print(
-            f"Adjuster GUI already serving on port {app_main.APP_PORT} "
+            f"Claims Copilot already serving on port {app_main.APP_PORT} "
             "(re-run attaches to the running server; no restart)."
         )
         try:
@@ -166,7 +166,7 @@ def run() -> None:
                 "Check stderr above for bind errors (e.g. address already in use)."
             )
         if _health_ok(app_main.APP_HOST, app_main.APP_PORT):
-            print(f"Adjuster GUI serving on port {app_main.APP_PORT} (pid {proc.pid})")
+            print(f"Claims Copilot serving on port {app_main.APP_PORT} (pid {proc.pid})")
             break
         time.sleep(0.2)
     else:

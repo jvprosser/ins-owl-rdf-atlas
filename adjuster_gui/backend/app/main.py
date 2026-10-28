@@ -1,18 +1,20 @@
-"""Adjuster GUI API: BPMN assets plus a proxy to the Agent Studio workflow."""
+"""Claims Copilot API: BPMN assets plus a proxy to the Agent Studio workflow."""
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import agent_client
+from .bpmn_layout import write_positions
 
 GUI_ROOT = Path(__file__).resolve().parents[2]
 FRONTEND_DIST = GUI_ROOT / "frontend" / "dist"
@@ -28,7 +30,7 @@ APP_PORT = int(os.environ.get("CDSW_APP_PORT", os.environ.get("ADJUSTER_GUI_PORT
 # re-run of backend/main.py still sees the server it already started.
 _server_proc = None
 
-app = FastAPI(title="Adjuster BPMN GUI", version="0.1.0")
+app = FastAPI(title="Claims Copilot", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -45,8 +47,24 @@ class KickoffRequest(BaseModel):
     workflow_id: str = ""
 
 
+class ShapePosition(BaseModel):
+    x: float
+    y: float
+
+
+class BpmnLayoutRequest(BaseModel):
+    positions: dict[str, ShapePosition]
+
+
 def _client() -> httpx.AsyncClient:
     return httpx.AsyncClient(timeout=120.0, verify=agent_client.ssl_verify())
+
+
+def _stream_client() -> httpx.AsyncClient:
+    return httpx.AsyncClient(
+        timeout=httpx.Timeout(300.0, connect=30.0),
+        verify=agent_client.ssl_verify(),
+    )
 
 
 @app.get("/health")
@@ -62,12 +80,29 @@ def claims_file() -> FileResponse:
     return FileResponse(path)
 
 
+def _sample_bpmn_path() -> Path:
+    return GUI_ROOT / "sample" / "claims_playbook.bpmn"
+
+
 @app.get("/sample/claims_playbook.bpmn")
 def sample_bpmn() -> FileResponse:
-    path = GUI_ROOT / "sample" / "claims_playbook.bpmn"
+    path = _sample_bpmn_path()
     if not path.is_file():
         raise HTTPException(status_code=404, detail="sample BPMN is missing")
     return FileResponse(path, media_type="application/xml")
+
+
+@app.post("/sample/claims_playbook.bpmn")
+def save_sample_bpmn(body: BpmnLayoutRequest) -> dict[str, int]:
+    path = _sample_bpmn_path()
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="sample BPMN is missing")
+    positions = {node_id: (pos.x, pos.y) for node_id, pos in body.positions.items()}
+    try:
+        count = write_positions(path, positions)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"updated": count}
 
 
 @app.post("/api/agent/kickoff")
@@ -93,6 +128,39 @@ async def agent_kickoff(body: KickoffRequest) -> dict[str, str]:
         raise HTTPException(status_code=502, detail=detail) from exc
     except (httpx.RequestError, ValueError) as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@app.get("/api/agent/events/stream")
+async def agent_events_stream(
+    base_url: str = Query(...),
+    token: str = Header(..., alias="X-Workflow-Token"),
+    conversation_id: str = Query(""),
+    trace_id: str = Query(""),
+) -> StreamingResponse:
+    poll_id = (trace_id or conversation_id).strip()
+    if not base_url.strip() or not token.strip() or not poll_id:
+        raise HTTPException(
+            status_code=400, detail="base_url, token, and trace_id are required."
+        )
+
+    async def generate():
+        try:
+            async with _stream_client() as client:
+                async for update in agent_client.iter_events(
+                    client, base_url.strip(), token.strip(), poll_id
+                ):
+                    yield json.dumps(update) + "\n"
+        except httpx.HTTPStatusError as exc:
+            detail = exc.response.text[:500] or str(exc)
+            yield json.dumps({"error": detail}) + "\n"
+        except (httpx.RequestError, ValueError) as exc:
+            yield json.dumps({"error": str(exc)}) + "\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="application/x-ndjson",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.get("/api/agent/events")

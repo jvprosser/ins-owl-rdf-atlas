@@ -1,6 +1,6 @@
 """Proxy the Agent Studio workflow calls used by the adjuster GUI.
 
-Deployed workflow calls: kickoff, then events.
+Deployed workflow calls: createSession, kickoff, then events.
 """
 
 from __future__ import annotations
@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from collections.abc import AsyncIterator
 from typing import Any, Optional
 from urllib.parse import urlsplit, urlunsplit
 
@@ -260,6 +261,31 @@ async def _post_workflow(
     raise ValueError("Workflow kickoff was not sent.")
 
 
+async def _deployed_session_id(
+    client: httpx.AsyncClient,
+    origin: str,
+    token: str,
+) -> str:
+    """Create the session a deployed workflow app requires before kickoff."""
+    try:
+        session = await _post_json(client, origin, _CREATE_SESSION_PATH, token, {})
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 404:
+            return ""
+        raise
+    except _WorkflowPage as exc:
+        if exc.status == 404:
+            return ""
+        raise
+    if session.get("success") is False:
+        detail = session.get("error") or session.get("message") or "createSession failed"
+        raise ValueError(str(detail))
+    if session.get("error"):
+        raise ValueError(str(session.get("error")))
+    found = session.get("session_id") or _field(session, "session_id")
+    return str(found) if found else ""
+
+
 async def _session_id(
     client: httpx.AsyncClient,
     origin: str,
@@ -351,12 +377,15 @@ async def kickoff(
     workflow_id = workflow_id.strip()
     if workflow_id and _is_studio_application(origin):
         return await _studio_test(client, origin, token, user_input, workflow_id)
+    session_id = await _deployed_session_id(client, origin, token)
     payload: dict[str, Any] = {
         "inputs": {
             "user_input": user_input,
             "context": "",
         }
     }
+    if session_id:
+        payload["session_id"] = session_id
     started = await _post_workflow(
         client,
         origin,
@@ -366,7 +395,7 @@ async def kickoff(
     )
     trace_id, conversation_id = _trace_ids(started)
     return {
-        "session_id": "",
+        "session_id": session_id,
         "trace_id": trace_id,
         "conversation_id": conversation_id,
     }
@@ -407,6 +436,82 @@ async def _fetch_events_at(
         "next_step": step,
         "responses": response_texts(events),
     }
+
+
+def _event_update(events: list[Any]) -> dict[str, Any]:
+    completed, answer, step = answer_from_events(events)
+    return {
+        "completed": completed,
+        "answer": answer,
+        "next_step": step,
+        "responses": response_texts(events),
+    }
+
+
+async def _iter_events_at(
+    client: httpx.AsyncClient,
+    origin: str,
+    token: str,
+    trace_id: str,
+    path: str,
+) -> AsyncIterator[dict[str, Any]]:
+    url = f"{origin}{path}"
+    async with client.stream(
+        "GET",
+        url,
+        headers=workflow_headers(token, json_body=False),
+        params={"trace_id": trace_id},
+    ) as response:
+        content_type = response.headers.get("content-type", "")
+        if "text/event-stream" in content_type:
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                parsed = _parse_event_line(line)
+                if parsed is None:
+                    continue
+                batch = parsed if isinstance(parsed, list) else [parsed]
+                update = _event_update(batch)
+                if update["responses"] or update["completed"]:
+                    yield update
+            return
+        raw = (await response.aread()).decode("utf-8", errors="replace")
+        parsed_body = _json_body(response, path, raw)
+        events = [] if parsed_body is None else parse_events_payload(parsed_body)
+        seen: list[str] = []
+        accumulated: list[Any] = []
+        for event in events:
+            accumulated.append(event)
+            update = _event_update(accumulated)
+            fresh = [text for text in update["responses"] if text not in seen]
+            seen.extend(fresh)
+            if not fresh and not update["completed"]:
+                continue
+            update["responses"] = fresh or update["responses"]
+            yield update
+
+
+async def iter_events(
+    client: httpx.AsyncClient,
+    base_url: str,
+    token: str,
+    trace_id: str,
+) -> AsyncIterator[dict[str, Any]]:
+    """Yield each workflow event as it arrives on the trace stream."""
+    use_workflow_token(client, token)
+    origin = application_origin(base_url)
+    last_page: Optional[_WorkflowPage] = None
+    for path in _EVENT_PATHS:
+        try:
+            async for update in _iter_events_at(client, origin, token, trace_id, path):
+                yield update
+            return
+        except _WorkflowPage as exc:
+            last_page = exc
+            if exc.status != 404:
+                raise
+    if last_page is not None:
+        raise last_page
+    raise ValueError("Workflow events were not requested.")
 
 
 async def fetch_events(

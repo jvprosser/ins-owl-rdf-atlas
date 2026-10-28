@@ -23,6 +23,8 @@ const URL_KEY = "adjuster-gui-base-url";
 const TOKEN_KEY = "adjuster-gui-token";
 const WORKFLOW_ID_KEY = "adjuster-gui-workflow-id";
 const DEFAULT_WORKFLOW_ID = "86f01f5a-c485-4c47-9182-30c844eeeaa2";
+export const DEFAULT_BASE_URL =
+  "https://workflow-86f01f5a-c485-4c47-9182-30c844eeeaa2.ml-dbfc64d1-783.go01-dem.ylcu-atmi.cloudera.site";
 const LAYOUT_PREFIX = "adjuster-gui-layout:";
 
 export interface NodePosition {
@@ -57,7 +59,7 @@ export function saveLayout(key: string, layout: Record<string, NodePosition>): v
 
 export function loadConfig(): AgentConfig {
   return {
-    baseUrl: localStorage.getItem(URL_KEY) ?? "",
+    baseUrl: localStorage.getItem(URL_KEY) ?? DEFAULT_BASE_URL,
     token: localStorage.getItem(TOKEN_KEY) ?? "",
     workflowId: localStorage.getItem(WORKFLOW_ID_KEY) ?? DEFAULT_WORKFLOW_ID,
   };
@@ -92,6 +94,15 @@ export async function loadSampleBpmn(): Promise<string> {
   return res.text();
 }
 
+export async function saveBpmnLayout(positions: Record<string, NodePosition>): Promise<void> {
+  const res = await fetch("/sample/claims_playbook.bpmn", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ positions }),
+  });
+  if (!res.ok) throw new Error(await errorText(res, "Failed to save BPMN"));
+}
+
 export async function kickoffMessage(config: AgentConfig, userInput: string): Promise<KickoffResult> {
   const res = await fetch("/api/agent/kickoff", {
     method: "POST",
@@ -105,6 +116,42 @@ export async function kickoffMessage(config: AgentConfig, userInput: string): Pr
   });
   if (!res.ok) throw new Error(await errorText(res, "Kickoff failed"));
   return res.json();
+}
+
+export async function streamEvents(
+  config: AgentConfig,
+  traceId: string,
+  onUpdate: (update: EventsResult) => void
+): Promise<void> {
+  const params = new URLSearchParams({
+    base_url: config.baseUrl,
+    trace_id: traceId,
+  });
+  const res = await fetch(`/api/agent/events/stream?${params}`, {
+    headers: { "X-Workflow-Token": config.token },
+  });
+  if (!res.ok) throw new Error(await errorText(res, "Event stream failed"));
+  if (!res.body) throw new Error("Event stream failed");
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  const take = (line: string) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    const update = JSON.parse(trimmed) as EventsResult & { error?: string };
+    if (update.error) throw new Error(update.error);
+    onUpdate(update);
+  };
+  while (true) {
+    const chunk = await reader.read();
+    if (chunk.done) break;
+    buffer += decoder.decode(chunk.value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) take(line);
+  }
+  buffer += decoder.decode();
+  if (buffer.trim()) take(buffer);
 }
 
 export async function pollEvents(

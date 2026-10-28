@@ -12,6 +12,7 @@
         <flowNodeRef>AssignAdjuster</flowNodeRef>
       </lane>
       <lane id="Lane_PD" name="PD">
+        <flowNodeRef>Gateway_Pd</flowNodeRef>
         <flowNodeRef>CollectIncidentReportNumber</flowNodeRef>
         <flowNodeRef>WaitForIncidentNumber</flowNodeRef>
         <flowNodeRef>RequestPoliceReport</flowNodeRef>
@@ -25,6 +26,7 @@
         <flowNodeRef>BiClaimsReview</flowNodeRef>
       </lane>
       <lane id="Lane_LITIGATION" name="LITIGATION">
+        <flowNodeRef>Gateway_Litigation</flowNodeRef>
         <flowNodeRef>CompleteLitigationFile</flowNodeRef>
         <flowNodeRef>EscalateDiscovery</flowNodeRef>
         <flowNodeRef>LitigationSupport</flowNodeRef>
@@ -42,13 +44,20 @@
         <flowNodeRef>CloseoutAudit</flowNodeRef>
       </lane>
       <lane id="Lane_GENERAL" name="GENERAL">
+        <flowNodeRef>InputReceived</flowNodeRef>
+        <flowNodeRef>Gateway_Classify</flowNodeRef>
+        <flowNodeRef>RecieveFNOLSubmission</flowNodeRef>
         <flowNodeRef>HumanCitationReview</flowNodeRef>
         <flowNodeRef>FollowUpOffer</flowNodeRef>
         <flowNodeRef>IssuePayment</flowNodeRef>
         <flowNodeRef>HumanReviewOrWait</flowNodeRef>
       </lane>
     </laneSet>
-    <startEvent id="RecieveFNOLSubmission" name="RecieveFNOLSubmission"/>
+    <startEvent id="InputReceived" name="Input received for claim"/>
+    <exclusiveGateway id="Gateway_Classify" name="Classify input" default="Flow_Classify_Fnol"/>
+    <userTask id="RecieveFNOLSubmission" name="RecieveFNOLSubmission"/>
+    <exclusiveGateway id="Gateway_Pd" name="PD next" default="Flow_Pd_Collect"/>
+    <exclusiveGateway id="Gateway_Litigation" name="Litigation next" default="Flow_Lit_Support"/>
     <exclusiveGateway id="Gateway_Route" name="Route" default="Flow_Branch_HumanReviewOrWait"/>
     <userTask id="FixDataQuality" name="FixDataQuality"/>
     <userTask id="CloseoutAudit" name="CloseoutAudit"/>
@@ -75,8 +84,19 @@
     <userTask id="PdClaimsReview" name="PdClaimsReview"/>
     <userTask id="HumanReviewOrWait" name="HumanReviewOrWait"/>
     <endEvent id="End" name="End"/>
-    <sequenceFlow id="Flow_RecieveFNOLSubmission" sourceRef="RecieveFNOLSubmission" targetRef="CollectIncidentReportNumber"/>
-    <sequenceFlow id="Flow_ToRoute" sourceRef="RecieveFNOLSubmission" targetRef="Gateway_Route"/>
+    <sequenceFlow id="Flow_In" sourceRef="InputReceived" targetRef="Gateway_Classify"/>
+    <sequenceFlow id="Flow_Classify_Fnol" name="FNOL" sourceRef="Gateway_Classify" targetRef="RecieveFNOLSubmission"/>
+    <sequenceFlow id="Flow_Classify_Pd" name="Incident number or police report" sourceRef="Gateway_Classify" targetRef="Gateway_Pd"/>
+    <sequenceFlow id="Flow_Classify_Litigation" name="Litigation" sourceRef="Gateway_Classify" targetRef="Gateway_Litigation"/>
+    <sequenceFlow id="Flow_Fnol_Route" sourceRef="RecieveFNOLSubmission" targetRef="Gateway_Route"/>
+    <sequenceFlow id="Flow_Pd_Collect" name="CollectIncidentReportNumber" sourceRef="Gateway_Pd" targetRef="CollectIncidentReportNumber"/>
+    <sequenceFlow id="Flow_Pd_Wait" name="WaitForIncidentNumber" sourceRef="Gateway_Pd" targetRef="WaitForIncidentNumber"/>
+    <sequenceFlow id="Flow_Pd_Request" name="RequestPoliceReport" sourceRef="Gateway_Pd" targetRef="RequestPoliceReport"/>
+    <sequenceFlow id="Flow_Pd_Fault" name="DetermineFault" sourceRef="Gateway_Pd" targetRef="DetermineFault"/>
+    <sequenceFlow id="Flow_Pd_Review" name="PdClaimsReview" sourceRef="Gateway_Pd" targetRef="PdClaimsReview"/>
+    <sequenceFlow id="Flow_Lit_File" name="CompleteLitigationFile" sourceRef="Gateway_Litigation" targetRef="CompleteLitigationFile"/>
+    <sequenceFlow id="Flow_Lit_Discovery" name="EscalateDiscovery" sourceRef="Gateway_Litigation" targetRef="EscalateDiscovery"/>
+    <sequenceFlow id="Flow_Lit_Support" name="LitigationSupport" sourceRef="Gateway_Litigation" targetRef="LitigationSupport"/>
     <sequenceFlow id="Flow_CollectIncidentReportNumber" sourceRef="CollectIncidentReportNumber" targetRef="WaitForIncidentNumber"/>
     <sequenceFlow id="Flow_WaitForIncidentNumber" sourceRef="WaitForIncidentNumber" targetRef="RequestPoliceReport"/>
     <sequenceFlow id="Flow_RequestPoliceReport" sourceRef="RequestPoliceReport" targetRef="DetermineFault"/>
@@ -110,17 +130,29 @@
   </process>
   <bpmndi:BPMNDiagram id="Diagram_ClaimsPlaybook">
     <bpmndi:BPMNPlane bpmnElement="ClaimsPlaybook">
+      <bpmndi:BPMNShape bpmnElement="InputReceived" id="Shape_InputReceived">
+        <dc:Bounds x="-1539.3" y="-137.2" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="Gateway_Classify" id="Shape_Gateway_Classify">
+        <dc:Bounds x="-1142.9" y="-138.4" width="50" height="50"/>
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="RecieveFNOLSubmission" id="Shape_RecieveFNOLSubmission">
-        <dc:Bounds x="330" y="166" width="50" height="50"/>
+        <dc:Bounds x="-314.5" y="182.6" width="180" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="Gateway_Pd" id="Shape_Gateway_Pd">
+        <dc:Bounds x="-1058" y="397.7" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="Gateway_Litigation" id="Shape_Gateway_Litigation">
+        <dc:Bounds x="-163.4" y="-174.2" width="50" height="50"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="Gateway_Route" id="Shape_Gateway_Route">
-        <dc:Bounds x="220" y="40" width="50" height="50"/>
+        <dc:Bounds x="-69.9" y="181.6" width="50" height="50"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="End" id="Shape_End">
-        <dc:Bounds x="40" y="1008" width="50" height="50"/>
+        <dc:Bounds x="1407.1" y="750" width="50" height="50"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="FixDataQuality" id="Shape_FixDataQuality">
-        <dc:Bounds x="420" y="36" width="180" height="70"/>
+        <dc:Bounds x="1012.4" y="-53.2" width="180" height="70"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="CloseoutAudit" id="Shape_CloseoutAudit">
         <dc:Bounds x="420" y="756" width="180" height="70"/>
@@ -141,34 +173,34 @@
         <dc:Bounds x="1068" y="636" width="180" height="70"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="CompleteLitigationFile" id="Shape_CompleteLitigationFile">
-        <dc:Bounds x="420" y="396" width="180" height="70"/>
+        <dc:Bounds x="994.2" y="-235.8" width="180" height="70"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="EscalateDiscovery" id="Shape_EscalateDiscovery">
-        <dc:Bounds x="636" y="396" width="180" height="70"/>
+        <dc:Bounds x="997.9" y="-147.4" width="180" height="70"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="LitigationSupport" id="Shape_LitigationSupport">
-        <dc:Bounds x="852" y="396" width="180" height="70"/>
+        <dc:Bounds x="-26.7" y="-57.7" width="180" height="70"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="SiuInvestigation" id="Shape_SiuInvestigation">
-        <dc:Bounds x="420" y="516" width="180" height="70"/>
+        <dc:Bounds x="1016.8" y="267.6" width="180" height="70"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="AssignAdjuster" id="Shape_AssignAdjuster">
-        <dc:Bounds x="636" y="36" width="180" height="70"/>
+        <dc:Bounds x="1024.5" y="183.3" width="180" height="70"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="CollectIncidentReportNumber" id="Shape_CollectIncidentReportNumber">
-        <dc:Bounds x="420" y="156" width="180" height="70"/>
+        <dc:Bounds x="-879.6" y="692.5" width="180" height="70"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="WaitForIncidentNumber" id="Shape_WaitForIncidentNumber">
-        <dc:Bounds x="636" y="156" width="180" height="70"/>
+        <dc:Bounds x="-563.5" y="699.6" width="180" height="70"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="RequestPoliceReport" id="Shape_RequestPoliceReport">
-        <dc:Bounds x="852" y="156" width="180" height="70"/>
+        <dc:Bounds x="-318.2" y="708.2" width="180" height="70"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="DetermineFault" id="Shape_DetermineFault">
-        <dc:Bounds x="1068" y="156" width="180" height="70"/>
+        <dc:Bounds x="-107.8" y="707.5" width="180" height="70"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="CaptureInjuryDetails" id="Shape_CaptureInjuryDetails">
-        <dc:Bounds x="420" y="276" width="180" height="70"/>
+        <dc:Bounds x="404.2" y="-515.5" width="180" height="70"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="FollowUpOffer" id="Shape_FollowUpOffer">
         <dc:Bounds x="636" y="876" width="180" height="70"/>
@@ -177,16 +209,16 @@
         <dc:Bounds x="852" y="876" width="180" height="70"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="OpenSubrogationCase" id="Shape_OpenSubrogationCase">
-        <dc:Bounds x="1284" y="156" width="180" height="70"/>
+        <dc:Bounds x="1018" y="113" width="180" height="70"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="PursueSubrogationRecovery" id="Shape_PursueSubrogationRecovery">
-        <dc:Bounds x="1500" y="156" width="180" height="70"/>
+        <dc:Bounds x="1012.3" y="26.5" width="180" height="70"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="BiClaimsReview" id="Shape_BiClaimsReview">
-        <dc:Bounds x="636" y="276" width="180" height="70"/>
+        <dc:Bounds x="225.6" y="-613.4" width="180" height="70"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="PdClaimsReview" id="Shape_PdClaimsReview">
-        <dc:Bounds x="1716" y="156" width="180" height="70"/>
+        <dc:Bounds x="123.4" y="709.6" width="180" height="70"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="HumanReviewOrWait" id="Shape_HumanReviewOrWait">
         <dc:Bounds x="1068" y="876" width="180" height="70"/>

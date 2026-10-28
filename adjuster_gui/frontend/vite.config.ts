@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      "/api": "http://localhost:8010",
+      "/api": { target: "http://localhost:8010", timeout: 300_000, proxyTimeout: 300_000 },
       "/health": "http://localhost:8010",
       "/claims.json": "http://localhost:8010",
       "/sample": "http://localhost:8010",

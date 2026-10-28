@@ -7,7 +7,13 @@ import unittest
 
 import httpx
 
-from app.agent_client import answer_from_events, kickoff, next_step_from_answer, process_claim_text
+from app.agent_client import (
+    answer_from_events,
+    iter_events,
+    kickoff,
+    next_step_from_answer,
+    process_claim_text,
+)
 
 
 class AgentClientTests(unittest.IsolatedAsyncioTestCase):
@@ -33,16 +39,20 @@ class AgentClientTests(unittest.IsolatedAsyncioTestCase):
             )
         self.assertEqual(result["trace_id"], "trace-1")
         self.assertEqual(result["conversation_id"], "trace-1")
-        self.assertEqual(seen, [("/api/workflow/kickoff", {
-            "inputs": {"user_input": "process claim 401", "context": ""},
-        })])
+        self.assertEqual(result["session_id"], "")
+        self.assertEqual(seen, [
+            ("/api/workflow/createSession", {}),
+            ("/api/workflow/kickoff", {
+                "inputs": {"user_input": "process claim 401", "context": ""},
+            }),
+        ])
 
     async def test_kickoff_uses_workflow_route_when_kickoff_path_is_missing(self) -> None:
         seen: list[str] = []
 
         def handler(request: httpx.Request) -> httpx.Response:
             seen.append(request.url.path)
-            if request.url.path == "/api/workflow/kickoff":
+            if request.url.path in {"/api/workflow/createSession", "/api/workflow/kickoff"}:
                 page = "<!DOCTYPE html><html><body>missing</body></html>"
                 return httpx.Response(404, text=page, headers={"content-type": "text/html"})
             body = json.loads(request.content.decode() or "{}")
@@ -52,7 +62,7 @@ class AgentClientTests(unittest.IsolatedAsyncioTestCase):
         transport = httpx.MockTransport(handler)
         async with httpx.AsyncClient(transport=transport) as client:
             result = await kickoff(client, "https://workflow.example", "secret", "process claim 401")
-        self.assertEqual(seen, ["/api/workflow/kickoff", "/api/workflow"])
+        self.assertEqual(seen, ["/api/workflow/createSession", "/api/workflow/kickoff", "/api/workflow"])
         self.assertEqual(result["trace_id"], "trace-2")
 
     async def test_kickoff_sends_workflow_id(self) -> None:
@@ -120,6 +130,71 @@ class AgentClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(seen[1][0], "/api/grpc/testWorkflow")
         self.assertEqual(seen[1][1]["session_id"], "")
         self.assertIn("_cdswuserstoken=secret", seen[1][2])
+
+    async def test_deployed_kickoff_creates_session_then_sends_input(self) -> None:
+        seen: list[tuple[str, dict]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            body = json.loads(request.content.decode() or "{}")
+            seen.append((request.url.path, body))
+            if request.url.path.endswith("createSession"):
+                self.assertEqual(body, {})
+                return httpx.Response(
+                    200,
+                    json={
+                        "session_id": "8ea548",
+                        "session_directory": "agent-studio/studio-data/session/8ea548/",
+                    },
+                )
+            if request.url.path.endswith("kickoff"):
+                return httpx.Response(200, json={"trace_id": "trace-5"})
+            return httpx.Response(404)
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await kickoff(
+                client,
+                "https://workflow-86f01f5a.example",
+                "secret",
+                "process claim 401",
+            )
+        self.assertEqual(result["session_id"], "8ea548")
+        self.assertEqual(result["trace_id"], "trace-5")
+        self.assertEqual(seen[0], ("/api/workflow/createSession", {}))
+        self.assertEqual(seen[1][0], "/api/workflow/kickoff")
+        self.assertEqual(seen[1][1]["session_id"], "8ea548")
+        self.assertEqual(seen[1][1]["inputs"]["user_input"], "process claim 401")
+        self.assertEqual(seen[1][1]["inputs"]["context"], "")
+
+    async def test_event_stream_yields_each_update(self) -> None:
+        body = "\n".join(
+            [
+                'data: {"type": "agent_output", "output": "Checking claim 401."}',
+                'data: {"type": "crew_kickoff_completed", "output": "Next step: RequestPoliceReport"}',
+            ]
+        )
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            self.assertEqual(request.url.params.get("trace_id"), "trace-5")
+            return httpx.Response(
+                200,
+                text=body,
+                headers={"content-type": "text/event-stream"},
+            )
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            updates = [
+                update
+                async for update in iter_events(
+                    client, "https://workflow.example", "secret", "trace-5"
+                )
+            ]
+        self.assertEqual(updates[0]["responses"], ["Checking claim 401."])
+        self.assertFalse(updates[0]["completed"])
+        self.assertTrue(updates[1]["completed"])
+        self.assertEqual(updates[1]["next_step"], "RequestPoliceReport")
+        self.assertIn("RequestPoliceReport", updates[1]["responses"][0])
 
     async def test_kickoff_rejects_html_page(self) -> None:
         def handler(request: httpx.Request) -> httpx.Response:
