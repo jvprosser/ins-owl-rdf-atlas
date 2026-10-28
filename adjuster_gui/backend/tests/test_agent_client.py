@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import unittest
+from unittest.mock import patch
 
 import httpx
 
@@ -218,6 +219,50 @@ class AgentClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(updates[1]["completed"])
         self.assertEqual(updates[1]["next_step"], "RequestPoliceReport")
         self.assertIn("RequestPoliceReport", updates[1]["responses"][0])
+
+    async def test_event_poll_waits_until_the_workflow_finishes(self) -> None:
+        calls = {"n": 0}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls["n"] += 1
+            if calls["n"] == 1:
+                return httpx.Response(200, json={"events": []})
+            if calls["n"] == 2:
+                return httpx.Response(
+                    200,
+                    json={
+                        "events": [
+                            {"type": "agent_execution_completed", "output": "Looking up claim 401."}
+                        ]
+                    },
+                )
+            return httpx.Response(
+                200,
+                json={
+                    "events": [
+                        {
+                            "type": "crew_kickoff_completed",
+                            "output": "Claim 401 is open. Next step: RequestPoliceReport",
+                        }
+                    ]
+                },
+            )
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            with patch("app.agent_client._EVENT_POLL_INTERVAL_S", 0):
+                updates = [
+                    update
+                    async for update in iter_events(
+                        client, "https://workflow.example", "secret", "trace-5"
+                    )
+                ]
+        self.assertGreaterEqual(calls["n"], 3)
+        self.assertEqual(updates[0]["responses"], ["Looking up claim 401."])
+        self.assertFalse(updates[0]["completed"])
+        self.assertTrue(updates[-1]["completed"])
+        self.assertIn("Claim 401 is open.", updates[-1]["answer"])
+        self.assertEqual(updates[-1]["next_step"], "RequestPoliceReport")
 
     async def test_kickoff_rejects_html_page(self) -> None:
         def handler(request: httpx.Request) -> httpx.Response:

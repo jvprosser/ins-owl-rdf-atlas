@@ -5,9 +5,11 @@ Deployed workflow calls: createSession, kickoff, then events.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import re
+import time
 from collections.abc import AsyncIterator
 from typing import Any, Optional
 from urllib.parse import urlsplit, urlunsplit
@@ -23,9 +25,13 @@ _COMPLETED_TYPES = frozenset(
     {
         "crew_kickoff_completed",
         "crew_kickoff_complete",
+        "crew_kickoff_failed",
         "Crew.complete",
     }
 )
+# The events route drains a queue. An immediate read is often empty.
+_EVENT_POLL_INTERVAL_S = 1.0
+_EVENT_POLL_TIMEOUT_S = 300.0
 _NEXT_STEP = re.compile(r"Next step:\s*([A-Za-z0-9_.-]+)")
 
 
@@ -148,7 +154,17 @@ def _strings(value: Any, *, depth: int = 0) -> list[str]:
 
 
 _OUTPUT_KEYS = frozenset(
-    {"output", "result", "content", "message", "text", "answer", "raw", "final_output"}
+    {
+        "output",
+        "outout",
+        "result",
+        "content",
+        "message",
+        "text",
+        "answer",
+        "raw",
+        "final_output",
+    }
 )
 
 
@@ -481,19 +497,33 @@ async def _iter_events_at(
                     yield update
             return
         raw = (await response.aread()).decode("utf-8", errors="replace")
+    deadline = time.monotonic() + _EVENT_POLL_TIMEOUT_S
+    seen: list[str] = []
+    accumulated: list[Any] = []
+    while True:
+        if raw is None:
+            response = await client.get(
+                url,
+                headers=workflow_headers(token, json_body=False),
+                params={"trace_id": trace_id},
+            )
+            raw = response.text
         parsed_body = _json_body(response, path, raw)
+        raw = None
         events = [] if parsed_body is None else parse_events_payload(parsed_body)
-        seen: list[str] = []
-        accumulated: list[Any] = []
-        for event in events:
-            accumulated.append(event)
+        if events:
+            accumulated.extend(events)
             update = _event_update(accumulated)
             fresh = [text for text in update["responses"] if text not in seen]
             seen.extend(fresh)
-            if not fresh and not update["completed"]:
-                continue
-            update["responses"] = fresh or update["responses"]
-            yield update
+            if fresh or update["completed"]:
+                update["responses"] = fresh
+                yield update
+            if update["completed"]:
+                return
+        if time.monotonic() >= deadline:
+            raise ValueError("The workflow did not finish in time.")
+        await asyncio.sleep(_EVENT_POLL_INTERVAL_S)
 
 
 async def iter_events(

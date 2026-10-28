@@ -304,19 +304,27 @@ export default function App() {
         let answer = "The agent finished without a reply.";
         let nextStep: string | null = null;
         let rendered = false;
+        let completed = false;
         await streamEvents(config, traceId, (update) => {
           if (update.responses?.length) {
             showTurn(turnId, update.responses);
             rendered = true;
           }
           if (!update.completed) return;
+          completed = true;
           const lastResponse = update.responses?.[update.responses.length - 1];
           answer = update.answer || lastResponse || answer;
           nextStep = update.next_step;
-          if (!rendered) showTurn(turnId, [answer]);
+          showTurn(turnId, [answer]);
           rendered = true;
         });
-        if (!rendered) showTurn(turnId, [answer]);
+        if (!rendered) {
+          if (completed) showTurn(turnId, [answer]);
+          else {
+            showStatus("The workflow closed before it sent a reply.", true);
+            setMessages((prev) => prev.filter((message) => message.id !== `pending-${turnId}`));
+          }
+        }
         setStep(nextStep);
         if (statusErrorRef.current) showStatus("");
       } catch (e) {
