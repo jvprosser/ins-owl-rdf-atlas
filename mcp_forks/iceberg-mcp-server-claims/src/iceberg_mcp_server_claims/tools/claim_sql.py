@@ -92,6 +92,29 @@ LIMIT 1
 """.strip()
 
 
+def list_adjuster_open_claims_sql(party_id: int | str, database: str) -> str:
+    """Claims currently assigned to an adjuster and not CLOSED."""
+    db = validate_ident(database, "database")
+    pid = int(party_id)
+    return f"""
+SELECT
+  c.claim_id,
+  c.claim_number,
+  c.claim_status_code,
+  pe.first_name,
+  pe.last_name
+FROM {db}.claim c
+INNER JOIN {db}.claim_party_role r
+  ON r.claim_id = c.claim_id
+ AND r.role_type_code = 'ADJUSTER'
+ AND r.is_current_assignment = TRUE
+ AND r.party_id = {pid}
+LEFT JOIN {db}.person pe ON pe.party_id = r.party_id
+WHERE UPPER(COALESCE(c.claim_status_code, '')) <> 'CLOSED'
+ORDER BY c.claim_id
+""".strip()
+
+
 def claim_roles_sql(claim_id: int | str, database: str) -> str:
     db = validate_ident(database, "database")
     cid = int(claim_id)
@@ -281,3 +304,191 @@ def claim_recovery_ids_sql(claim_id: int | str, database: str) -> str:
     db = validate_ident(database, "database")
     cid = int(claim_id)
     return f"SELECT claim_recovery_id FROM {db}.claim_recovery WHERE claim_id = {cid}"
+
+
+def parse_fnol_id(value: int | str) -> int:
+    """Accept 88 or FNOL-2026-00088 (trailing numeric group)."""
+    text = str(value).strip()
+    if text.upper().startswith("FNOL-"):
+        tail = text.rsplit("-", 1)[-1]
+        return int(tail)
+    return int(text)
+
+
+def fnol_converted_claim_id(fnol_id: int) -> int:
+    return 80000 + int(fnol_id)
+
+
+def fnol_spine_sql(fnol_id: int | str, database: str) -> str:
+    db = validate_ident(database, "database")
+    fid = parse_fnol_id(fnol_id)
+    return f"""
+SELECT
+  f.fnol_id,
+  f.fnol_number,
+  f.report_timestamp,
+  f.reported_by_relationship,
+  f.intake_channel,
+  f.intake_purpose_code,
+  f.triage_status_code,
+  f.estimated_loss_amount,
+  f.claim_id,
+  f.policy_id,
+  f.insurable_object_id,
+  f.loss_event_id,
+  p.policy_number,
+  p.policy_status_code,
+  p.effective_date,
+  p.expiration_date,
+  p.cancellation_date,
+  le.loss_cause_code,
+  le.loss_date,
+  v.vin,
+  CASE WHEN pio.policy_id IS NOT NULL THEN TRUE ELSE FALSE END AS vehicle_listed_on_policy,
+  pc.policy_coverage_id,
+  cov.coverage_type_code,
+  pc.deductible_amount,
+  CASE WHEN pc.policy_coverage_id IS NOT NULL THEN TRUE ELSE FALSE END AS peril_covered
+FROM {db}.fnol f
+LEFT JOIN {db}.loss_event le ON f.loss_event_id = le.loss_event_id
+LEFT JOIN {db}.insurance_policy p ON f.policy_id = p.policy_id
+LEFT JOIN {db}.vehicle v ON f.insurable_object_id = v.insurable_object_id
+LEFT JOIN {db}.policy_insurable_object pio
+  ON pio.policy_id = f.policy_id
+ AND pio.insurable_object_id = f.insurable_object_id
+ AND pio.expiration_date IS NULL
+LEFT JOIN {db}.policy_coverage pc
+  ON pc.policy_id = f.policy_id
+ AND pc.is_active = TRUE
+ AND pc.expiration_date IS NULL
+LEFT JOIN {db}.coverage cov ON cov.coverage_id = pc.coverage_id
+ AND (
+   (UPPER(COALESCE(le.loss_cause_code, '')) = 'COLLISION'
+    AND cov.coverage_type_code = 'COLLISION')
+   OR (UPPER(COALESCE(le.loss_cause_code, '')) <> 'COLLISION'
+    AND cov.coverage_type_code = 'COMPREHENSIVE')
+ )
+WHERE f.fnol_id = {fid}
+LIMIT 1
+""".strip()
+
+
+def fnol_routing_signals_sql(fnol_id: int | str, database: str) -> str:
+    """Impala-friendly FNOL signals (aggregate CTEs; no scalar COUNT(*)>0)."""
+    db = validate_ident(database, "database")
+    fid = parse_fnol_id(fnol_id)
+    return f"""
+WITH
+inj AS (
+  SELECT COUNT(*) AS cnt FROM {db}.fnol_injury WHERE fnol_id = {fid}
+),
+tpv AS (
+  SELECT COUNT(*) AS cnt FROM {db}.fnol_third_party_vehicle WHERE fnol_id = {fid}
+),
+unl AS (
+  SELECT COUNT(*) AS cnt
+  FROM {db}.fnol f
+  INNER JOIN {db}.loss_driver ld
+    ON ld.loss_event_id = f.loss_event_id
+   AND ld.driver_role_code = 'INSURED_OPERATOR'
+  LEFT JOIN {db}.policy_driver pd
+    ON pd.policy_id = f.policy_id
+   AND pd.driver_id = ld.driver_id
+   AND pd.expiration_date IS NULL
+  WHERE f.fnol_id = {fid}
+    AND pd.driver_id IS NULL
+)
+SELECT
+  (inj.cnt > 0) AS has_injury,
+  (tpv.cnt > 0) AS has_third_party_vehicle,
+  (unl.cnt > 0) AS has_unlisted_insured_operator
+FROM inj
+CROSS JOIN tpv
+CROSS JOIN unl
+""".strip()
+
+
+def fnol_status_sql(fnol_id: int | str, database: str) -> str:
+    db = validate_ident(database, "database")
+    fid = parse_fnol_id(fnol_id)
+    return (
+        "SELECT fnol_id, fnol_number, triage_status_code, claim_id, "
+        "policy_id, insurable_object_id, loss_event_id, estimated_loss_amount, "
+        "report_timestamp, intake_purpose_code "
+        f"FROM {db}.fnol WHERE fnol_id = {fid} LIMIT 1"
+    )
+
+
+def fnol_matching_coverage_sql(fnol_id: int | str, database: str) -> str:
+    db = validate_ident(database, "database")
+    fid = parse_fnol_id(fnol_id)
+    return f"""
+SELECT pc.policy_coverage_id, pc.deductible_amount, cov.coverage_type_code
+FROM {db}.fnol f
+INNER JOIN {db}.loss_event le ON le.loss_event_id = f.loss_event_id
+INNER JOIN {db}.policy_coverage pc
+  ON pc.policy_id = f.policy_id
+ AND pc.is_active = TRUE
+ AND pc.expiration_date IS NULL
+INNER JOIN {db}.coverage cov ON cov.coverage_id = pc.coverage_id
+ AND (
+   (UPPER(COALESCE(le.loss_cause_code, '')) = 'COLLISION'
+    AND cov.coverage_type_code = 'COLLISION')
+   OR (UPPER(COALESCE(le.loss_cause_code, '')) <> 'COLLISION'
+    AND cov.coverage_type_code = 'COMPREHENSIVE')
+ )
+WHERE f.fnol_id = {fid}
+LIMIT 1
+""".strip()
+
+
+def update_fnol_status_sql(
+    database: str, fnol_id: int, status: str, *, claim_id: int | None = None
+) -> str:
+    db = validate_ident(database, "database")
+    fid = int(fnol_id)
+    claim_set = (
+        f", claim_id = {int(claim_id)}" if claim_id is not None else ""
+    )
+    return (
+        f"UPDATE {db}.fnol SET triage_status_code = {sql_quote(status)}{claim_set} "
+        f"WHERE fnol_id = {fid} "
+        "AND UPPER(COALESCE(triage_status_code, '')) IN "
+        "('OPEN', 'ADJUSTER_REVIEW')"
+    )
+
+
+def insert_converted_claim_sql(database: str, row: dict[str, Any]) -> str:
+    db = validate_ident(database, "database")
+    cov = row.get("policy_coverage_id")
+    cov_sql = "NULL" if cov in (None, "") else str(int(cov))
+    loss = row.get("loss_event_id")
+    loss_sql = "NULL" if loss in (None, "") else str(int(loss))
+    obj = row.get("insurable_object_id")
+    obj_sql = "NULL" if obj in (None, "") else str(int(obj))
+    return (
+        f"INSERT INTO {db}.claim ("
+        "claim_id, claim_number, loss_event_id, policy_id, insurable_object_id, "
+        "policy_coverage_id, fnol_report_datetime, claim_status_code, "
+        "fraudulent_claim_indicator, litigation_indicator, "
+        "subrogation_indicator, total_loss_indicator, created_at"
+        ") VALUES ("
+        f"{int(row['claim_id'])}, {sql_quote(row['claim_number'])}, {loss_sql}, "
+        f"{int(row['policy_id'])}, {obj_sql}, {cov_sql}, "
+        "CURRENT_TIMESTAMP(), 'OPEN', FALSE, FALSE, FALSE, FALSE, "
+        "CURRENT_TIMESTAMP())"
+    )
+
+
+def insert_converted_reserve_sql(database: str, row: dict[str, Any]) -> str:
+    db = validate_ident(database, "database")
+    amount = row["amount"]
+    return (
+        f"INSERT INTO {db}.claim_reserve ("
+        "claim_reserve_id, claim_id, reserve_status_code, currency_code, "
+        "initial_loss_reserve_amount, revised_reserve_total_amount, "
+        "is_current, last_updated_at, created_at"
+        ") VALUES ("
+        f"{int(row['claim_reserve_id'])}, {int(row['claim_id'])}, 'OPEN', 'USD', "
+        f"{amount}, {amount}, TRUE, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP())"
+    )

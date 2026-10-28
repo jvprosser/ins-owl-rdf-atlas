@@ -48,6 +48,9 @@ Distributions live on a separate MCP (`iceberg-mcp-server-finserv`). They are no
 | [`get_pd_view`](#get_pd_view) | `claim_id` | police, fault, intake, last SMS |
 | [`get_deny_view`](#get_deny_view) | `claim_id` | three SELECTs |
 | [`get_schema`](#get_schema) | optional `database` | `SHOW TABLES` |
+| [`get_fnol_spine`](#get_fnol_spine) | `fnol_id` | FNOL + policy + vehicle + matching peril coverage |
+| [`get_fnol_routing_signals`](#get_fnol_routing_signals) | `fnol_id` | CTE counts for injury / third-party / unlisted operator |
+| [`list_adjuster_open_claims`](#list_adjuster_open_claims) | `party_id` | assigned ADJUSTER, not CLOSED |
 
 ### Writes (`run_named_write`)
 
@@ -63,6 +66,10 @@ Distributions live on a separate MCP (`iceberg-mcp-server-finserv`). They are no
 | [`create_litigation_task`](#create_litigation_task) | `run_id`, `event_json` | INSERT `litigation_task` |
 | [`create_pd_task`](#create_pd_task) | `run_id`, `event_json` | INSERT `pd_task` + INSERT `agent_run_audit` |
 | [`deny_claim`](#deny_claim) | `run_id`, `event_json` | SELECT status, UPDATE `claim`, INSERT audit |
+| [`deny_fnol`](#deny_fnol) | `run_id`, `event_json` | UPDATE `fnol` DENIED, INSERT audit |
+| [`close_fnol_incident_only`](#close_fnol_incident_only) | `run_id`, `event_json` | UPDATE `fnol` INCIDENT_ONLY, INSERT audit |
+| [`convert_fnol_to_claim`](#convert_fnol_to_claim) | `run_id`, `event_json` | INSERT `claim` + optional `claim_reserve`; set `fnol.claim_id` |
+| [`review_fnol`](#review_fnol) | `run_id`, `event_json` | UPDATE `fnol` ADJUSTER_REVIEW, INSERT audit |
 
 ---
 
@@ -603,3 +610,150 @@ WHERE claim_id = ${var:claim_id}
 ### Audit receipt
 
 Same `INSERT INTO ${var:database}.agent_run_audit …` as `write_audit_event`.
+
+---
+
+## get_fnol_spine
+
+Notice grain. `fnol_id` 88 or `FNOL-2026-00088`. Matching coverage is COLLISION when `loss_cause_code` is COLLISION, otherwise COMPREHENSIVE.
+
+```sql
+SET VAR:database=car_insurance_claims;
+SET VAR:fnol_id=88;
+
+SELECT
+  f.fnol_id,
+  f.fnol_number,
+  f.intake_purpose_code,
+  f.triage_status_code,
+  f.estimated_loss_amount,
+  f.claim_id,
+  f.policy_id,
+  p.policy_status_code,
+  le.loss_cause_code,
+  le.loss_date,
+  CASE WHEN pio.policy_id IS NOT NULL THEN TRUE ELSE FALSE END AS vehicle_listed_on_policy,
+  pc.deductible_amount,
+  CASE WHEN pc.policy_coverage_id IS NOT NULL THEN TRUE ELSE FALSE END AS peril_covered
+FROM ${var:database}.fnol f
+LEFT JOIN ${var:database}.loss_event le ON f.loss_event_id = le.loss_event_id
+LEFT JOIN ${var:database}.insurance_policy p ON f.policy_id = p.policy_id
+LEFT JOIN ${var:database}.policy_insurable_object pio
+  ON pio.policy_id = f.policy_id
+ AND pio.insurable_object_id = f.insurable_object_id
+ AND pio.expiration_date IS NULL
+LEFT JOIN ${var:database}.policy_coverage pc
+  ON pc.policy_id = f.policy_id AND pc.is_active = TRUE AND pc.expiration_date IS NULL
+LEFT JOIN ${var:database}.coverage cov ON cov.coverage_id = pc.coverage_id
+ AND (
+   (UPPER(COALESCE(le.loss_cause_code, '')) = 'COLLISION' AND cov.coverage_type_code = 'COLLISION')
+   OR (UPPER(COALESCE(le.loss_cause_code, '')) <> 'COLLISION' AND cov.coverage_type_code = 'COMPREHENSIVE')
+ )
+WHERE f.fnol_id = ${var:fnol_id}
+LIMIT 1;
+```
+
+---
+
+## get_fnol_routing_signals
+
+Aggregate CTEs + CROSS JOIN. No scalar `COUNT(*)>0`.
+
+```sql
+WITH
+inj AS (
+  SELECT COUNT(*) AS cnt FROM ${var:database}.fnol_injury WHERE fnol_id = ${var:fnol_id}
+),
+tpv AS (
+  SELECT COUNT(*) AS cnt FROM ${var:database}.fnol_third_party_vehicle WHERE fnol_id = ${var:fnol_id}
+),
+unl AS (
+  SELECT COUNT(*) AS cnt
+  FROM ${var:database}.fnol f
+  INNER JOIN ${var:database}.loss_driver ld
+    ON ld.loss_event_id = f.loss_event_id
+   AND ld.driver_role_code = 'INSURED_OPERATOR'
+  LEFT JOIN ${var:database}.policy_driver pd
+    ON pd.policy_id = f.policy_id
+   AND pd.driver_id = ld.driver_id
+   AND pd.expiration_date IS NULL
+  WHERE f.fnol_id = ${var:fnol_id}
+    AND pd.driver_id IS NULL
+)
+SELECT
+  (inj.cnt > 0) AS has_injury,
+  (tpv.cnt > 0) AS has_third_party_vehicle,
+  (unl.cnt > 0) AS has_unlisted_insured_operator
+FROM inj
+CROSS JOIN tpv
+CROSS JOIN unl;
+```
+
+---
+
+## deny_fnol
+
+`event_json.next_step` must be `DenyFnolNoCoverage` or `DenyFnolExcludedPeril`. No `claim` row. Do not call `deny_claim`.
+
+```sql
+UPDATE ${var:database}.fnol SET triage_status_code = 'DENIED'
+WHERE fnol_id = ${var:fnol_id}
+  AND UPPER(COALESCE(triage_status_code, '')) IN ('OPEN', 'ADJUSTER_REVIEW');
+```
+
+---
+
+## close_fnol_incident_only
+
+`event_json.next_step` must be `ConvertFnolToIncidentOnly`.
+
+```sql
+UPDATE ${var:database}.fnol SET triage_status_code = 'INCIDENT_ONLY'
+WHERE fnol_id = ${var:fnol_id}
+  AND UPPER(COALESCE(triage_status_code, '')) IN ('OPEN', 'ADJUSTER_REVIEW');
+```
+
+---
+
+## convert_fnol_to_claim
+
+Idempotent: if `fnol.claim_id` is already set, skip INSERT and return that id. New claims use `claim_id = 80000 + fnol_id` (88 → 80088). Optional current `claim_reserve` when a matching coverage and estimated amount exist.
+
+---
+
+## review_fnol
+
+`event_json.next_step` must be `FnolAdjusterReview`. No claim yet.
+
+```sql
+UPDATE ${var:database}.fnol SET triage_status_code = 'ADJUSTER_REVIEW'
+WHERE fnol_id = ${var:fnol_id}
+  AND UPPER(COALESCE(triage_status_code, '')) IN ('OPEN', 'ADJUSTER_REVIEW');
+```
+
+---
+
+## list_adjuster_open_claims
+
+Currently assigned `ADJUSTER` role (`is_current_assignment` true) and `claim_status_code` not `CLOSED`. Demo party **4** (Alice Ng) returns **401**, **402**, **404**. **403** is assigned but CLOSED, so it is omitted.
+
+```sql
+SET VAR:database=car_insurance_claims;
+SET VAR:party_id=4;
+
+SELECT
+  c.claim_id,
+  c.claim_number,
+  c.claim_status_code,
+  pe.first_name,
+  pe.last_name
+FROM ${var:database}.claim c
+INNER JOIN ${var:database}.claim_party_role r
+  ON r.claim_id = c.claim_id
+ AND r.role_type_code = 'ADJUSTER'
+ AND r.is_current_assignment = TRUE
+ AND r.party_id = ${var:party_id}
+LEFT JOIN ${var:database}.person pe ON pe.party_id = r.party_id
+WHERE UPPER(COALESCE(c.claim_status_code, '')) <> 'CLOSED'
+ORDER BY c.claim_id;
+```

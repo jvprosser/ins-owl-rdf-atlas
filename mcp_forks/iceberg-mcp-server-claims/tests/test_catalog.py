@@ -129,6 +129,9 @@ def test_write_dispatches_litigation_task(monkeypatch):
         "get_litigation_view",
         "get_pd_view",
         "get_deny_view",
+        "get_fnol_spine",
+        "get_fnol_routing_signals",
+        "list_adjuster_open_claims",
         "get_schema",
     } <= reads
     assert {
@@ -137,6 +140,10 @@ def test_write_dispatches_litigation_task(monkeypatch):
         "create_litigation_task",
         "create_pd_task",
         "deny_claim",
+        "deny_fnol",
+        "close_fnol_incident_only",
+        "convert_fnol_to_claim",
+        "review_fnol",
     } <= writes
 
 
@@ -193,3 +200,37 @@ def test_write_dispatches_deny_claim(monkeypatch):
     assert payload["named_op"] == "deny_claim"
     assert payload["named_op_kind"] == "write"
     assert payload["claim_status_code"] == "DENIED"
+
+
+def test_write_dispatches_convert_fnol(monkeypatch):
+    monkeypatch.setattr(
+        catalog.fnol_writes,
+        "convert_fnol_to_claim",
+        lambda run_id, event_json, database=None: json.dumps(
+            {
+                "ok": True,
+                "run_id": run_id,
+                "table": "claim",
+                "fnol_id": 88,
+                "claim_id": 80088,
+                "already_applied": False,
+            }
+        ),
+    )
+    payload = json.loads(
+        catalog.run_named_write(
+            "convert_fnol_to_claim",
+            json.dumps(
+                {
+                    "run_id": "demo-fnol-88-convert",
+                    "event_json": {
+                        "fnol_id": "88",
+                        "next_step": "ConvertFnolToClaim",
+                    },
+                }
+            ),
+        )
+    )
+    assert payload["ok"] is True
+    assert payload["named_op"] == "convert_fnol_to_claim"
+    assert payload["claim_id"] == 80088

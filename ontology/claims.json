@@ -44,6 +44,17 @@
     "insured_operators": {
       "type": "object[]",
       "comment": "INSURED_OPERATOR rows: was_cited_indicator, impairment_suspected_indicator, license_status_code, on_policy, is_excluded_driver"
-    }
+    },
+    "fnol_id": { "type": "string", "comment": "Notice id; absent on claim intake" },
+    "fnol_exists": { "type": "boolean", "comment": "true only for FNOL case JSON; claim cases are false so F* probes skip" },
+    "fnol_number": { "type": "string" },
+    "intake_purpose_code": { "type": "string", "comment": "RECORD_ONLY_NOTIFICATION | CLAIM_INTAKE" },
+    "triage_status_code": { "type": "string", "comment": "OPEN | DENIED | INCIDENT_ONLY | ADJUSTER_REVIEW | CONVERTED" },
+    "estimated_loss_amount": { "type": "number" },
+    "deductible_amount": { "type": "number" },
+    "has_third_party_vehicle": { "type": "boolean" },
+    "vehicle_listed_on_policy": { "type": "boolean" },
+    "peril_covered": { "type": "boolean" },
+    "has_unlisted_insured_operator": { "type": "boolean" }
   }
 }

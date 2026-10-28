@@ -25,6 +25,9 @@ def build_claim_graph(
         spine = iceberg.get_claim_spine(claim_id, database=database)
     if signals is None and iceberg is not None:
         signals = iceberg.get_claim_routing_signals(claim_id, database=database)
+    spine_n = normalize_spine_payload(spine or {})
+    if spine_n.get("fnol_id") is not None:
+        return build_fnol_case(claim_id, spine=spine, signals=signals or {})
     return build_claim_case(claim_id, spine=spine, signals=signals or {})
 
 
@@ -94,6 +97,7 @@ def build_claim_case(
     return {
         "claim_id": str(claim_id),
         "claim_exists": True,
+        "fnol_exists": False,
         "claim_number": spine.get("claim_number"),
         "claim_status_code": spine.get("claim_status_code"),
         "litigation_indicator": litigation_indicator,
@@ -156,6 +160,78 @@ def build_claim_case(
         "spine": spine,
         "signals": signals,
     }
+
+
+def build_fnol_case(
+    case_id: int | str,
+    *,
+    spine: dict[str, Any] | str | None = None,
+    signals: dict[str, Any] | str | None = None,
+) -> dict[str, Any]:
+    """Notice-grain case JSON. F* probes only; claim_exists stays false."""
+    spine = normalize_spine_payload(spine or {})
+    signals = normalize_signals_payload(signals or {})
+    merged: dict[str, Any] = {}
+    merged.update(spine)
+    merged.update(signals)
+
+    policy_id = merged.get("policy_id")
+    vehicle_id = merged.get("insurable_object_id")
+    listed = merged.get("vehicle_listed_on_policy")
+    if listed is None:
+        listed = merged.get("policy_covers_vehicle")
+    has_policy = policy_id is not None and policy_id != ""
+    has_vehicle = vehicle_id is not None and vehicle_id != ""
+    converted_claim = merged.get("claim_id")
+    fnol_id = merged.get("fnol_id") or case_id
+
+    case: dict[str, Any] = {
+        "claim_id": str(case_id),
+        "fnol_id": str(fnol_id),
+        "fnol_number": merged.get("fnol_number"),
+        "fnol_exists": True,
+        "claim_exists": False,
+        "claim_status_code": None,
+        "triage_status_code": _iso_date_or_str(merged.get("triage_status_code")),
+        "intake_purpose_code": _iso_date_or_str(merged.get("intake_purpose_code")),
+        "converted_claim_id": _id_str(converted_claim),
+        "policy_id": policy_id,
+        "policy_number": merged.get("policy_number"),
+        "policy_status_code": _iso_date_or_str(merged.get("policy_status_code")),
+        "effective_date": _iso_date_or_str(merged.get("effective_date")),
+        "expiration_date": _iso_date_or_str(merged.get("expiration_date")),
+        "cancellation_date": _iso_date_or_str(merged.get("cancellation_date")),
+        "loss_date": _iso_date_or_str(merged.get("loss_date")),
+        "insurable_object_id": vehicle_id,
+        "vin": merged.get("vin"),
+        "has_policy": has_policy,
+        "has_vehicle": has_vehicle,
+        "vehicle_listed_on_policy": _optional_bool(merged, "vehicle_listed_on_policy", listed),
+        "peril_covered": _optional_bool(merged, "peril_covered"),
+        "has_injury": _optional_bool(merged, "has_injury"),
+        "has_third_party_vehicle": _optional_bool(merged, "has_third_party_vehicle"),
+        "has_unlisted_insured_operator": _optional_bool(
+            merged, "has_unlisted_insured_operator"
+        ),
+        "estimated_loss_amount": merged.get("estimated_loss_amount"),
+        "deductible_amount": merged.get("deductible_amount"),
+        "coverage_type_codes": (
+            [merged["coverage_type_code"]]
+            if merged.get("coverage_type_code")
+            else []
+        ),
+        "spine": spine,
+        "signals": signals,
+    }
+    return case
+
+
+def _optional_bool(source: dict[str, Any], key: str, fallback: Any = None) -> bool | None:
+    if key in source:
+        return _as_bool(source.get(key))
+    if fallback is None:
+        return None
+    return _as_bool(fallback)
 
 
 def build_pack_case(

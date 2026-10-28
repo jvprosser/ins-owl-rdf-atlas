@@ -1,9 +1,11 @@
 # Deny Agent (configured in Agent Studio)
 
 Use when `route_claim` assigns `DenyAgent` / `DenyUnlawfulOperation` /
-`DenyExcludedDriver` / `DenyLapsedPolicy` / `DenyAudit`. YAML already chose
-`next_step`. You do not re-decide the lane. CLOSED (approved) files stay with
-Closeout Agent — never call `deny_claim` on a CLOSED claim.
+`DenyExcludedDriver` / `DenyLapsedPolicy` / `DenyAudit` / `DenyFnolNoCoverage` /
+`DenyFnolExcludedPeril`. YAML already chose `next_step`. You do not re-decide
+the lane. CLOSED (approved) files stay with Closeout Agent — never call
+`deny_claim` on a CLOSED claim. Never call `deny_claim` on an FNOL notice
+(`DenyFnol*`); that write is `deny_fnol` and does not insert a claim.
 
 A denial letter is **recommended** (`letter_on_request`); draft it only when
 the user asks. Do not send mail.
@@ -38,8 +40,16 @@ YAML probes already chose next_step. You do not re-decide the lane.
 
 ### Goal
 ```text
-Given claim_id, run_id, and next_step from Orchestrator
+Given claim_id or fnol_id, run_id, and next_step from Orchestrator
 (default claim_id=404, run_id=demo-404-deny, next_step=DenyUnlawfulOperation):
+
+FNOL DENY (next_step DenyFnolNoCoverage or DenyFnolExcludedPeril):
+Call run_named_query ONCE:
+{"label":"get_fnol_spine","fnol_id":"<fnol_id>"}
+Then run_named_write ONCE. Do NOT call deny_claim.
+{"label":"deny_fnol","run_id":"<run_id>",
+ "event_json":"{\"fnol_id\":\"<fnol_id>\",\"next_step\":\"<next_step>\"}"}
+Final Answer summary + exact write JSON. STOP.
 
 WRITE LETTER (only if the user asked to write, draft, or generate a letter
 or denial letter). next_step must be DenyUnlawfulOperation, DenyExcludedDriver,
@@ -96,6 +106,7 @@ Attach the claims MCP (V7: `run_named_query` / `run_named_write`) and Studio
 |---|---|---|
 | Read | `run_named_query` | `{"label":"get_deny_view","claim_id":"404"}` |
 | Deny write | `run_named_write` | `{"label":"deny_claim","run_id":"demo-404-deny","event_json":"{...}"}` |
+| FNOL deny | `run_named_write` | `{"label":"deny_fnol","run_id":"demo-fnol-88-e2e","event_json":"{...}"}` |
 | Audit | `run_named_write` | `{"label":"write_audit_event","run_id":"demo-404-deny","event_json":"{...}"}` |
 | Promote | `run_named_write` | `{"label":"promote_audit_run","run_id":"demo-404-deny"}` |
 | Letter file | `save_claim_letter` | `{"claim_id":"404","run_id":"demo-404-deny","next_step":"DenyUnlawfulOperation","body":"Subject: ...\\n\\n..."}` |

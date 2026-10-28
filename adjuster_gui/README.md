@@ -1,8 +1,13 @@
 # Claims Copilot
 
-One adjuster's canvas: a BPMN file, a list of demo claims, and a chat that sends
-`process claim {id}` to an Agent Studio workflow. The reply's `Next step:` line
-highlights that box.
+One adjuster's canvas: a BPMN file, a list of claims assigned to the adjuster,
+and a chat that sends `process claim {id}` to an Agent Studio workflow. The
+reply's `Next step:` line highlights that box.
+
+The claim dropdown is live when `IMPALA_HOST` is set: same SQL as MCP
+`list_adjuster_open_claims` for `ADJUSTER_PARTY_ID` (default **4**, Alice Ng).
+Non-CLOSED assigned claims only (**401**, **402**, **404** on the seed; **403**
+is CLOSED). Without Impala, the static `claims.json` file is used.
 
 ## Cloudera AI Application
 

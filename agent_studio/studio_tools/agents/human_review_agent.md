@@ -1,8 +1,10 @@
 # Human Review Agent (configured in Agent Studio)
 
 Use when `route_claim` assigns `HumanReviewAgent` / `HumanCitationReview`
-(insured operator was cited). A citation is a reason to look, not proof of
+(insured operator was cited) or `FnolAdjusterReview` (FNOL grey band or
+unlisted operator). A citation is a reason to look, not proof of
 DUI or racing. **Do not** call `deny_claim`. **Do not** set `DENIED`.
+**Do not** convert an FNOL to a claim.
 
 Default playbook fallback `HumanReviewOrWait` is still route-JSON-only on
 Orchestrator; this agent is configured in Agent Studio for `HumanCitationReview`.
@@ -36,8 +38,17 @@ lane and you do not deny the claim.
 
 ### Goal
 ```text
-Given claim_id, run_id, and next_step from Orchestrator
+Given claim_id or fnol_id, run_id, and next_step from Orchestrator
 (default claim_id=401, run_id=demo-401-cite, next_step=HumanCitationReview):
+
+FNOL ADJUSTER REVIEW (next_step FnolAdjusterReview):
+1) Call run_named_query ONCE:
+   {"label":"get_fnol_routing_signals","fnol_id":"<fnol_id>"}
+2) Call run_named_write ONCE:
+   {"label":"review_fnol","run_id":"<run_id>",
+    "event_json":"{\"fnol_id\":\"<fnol_id>\",\"next_step\":\"FnolAdjusterReview\"}"}
+   Do NOT convert_fnol_to_claim. Do NOT deny_fnol. Do NOT deny_claim.
+   Final Answer packet + PENDING + exact write JSON. STOP.
 
 1) Call run_named_query ONCE:
    {"label":"get_deny_view","claim_id":"<claim_id>"}
@@ -67,6 +78,7 @@ Attach the claims MCP (V7: `run_named_query` / `run_named_write`).
 |---|---|---|
 | Read | `run_named_query` | `{"label":"get_deny_view","claim_id":"401"}` |
 | Audit | `run_named_write` | `{"label":"write_audit_event","run_id":"demo-401-cite","event_json":"{...}"}` |
+| FNOL review | `run_named_write` | `{"label":"review_fnol","run_id":"demo-fnol-88-e2e","event_json":"{...}"}` |
 
 Do not attach spine/signals or build/validate/route. Do not call `deny_claim`.
 Do not attach `save_claim_letter`.

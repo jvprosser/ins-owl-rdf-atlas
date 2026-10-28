@@ -185,3 +185,52 @@ def get_claim_routing_signals(
         },
         default=str,
     )
+
+
+def list_adjuster_open_claims(
+    party_id: str,
+    database: str | None = None,
+    *,
+    query_rows: QueryFn | None = None,
+) -> str:
+    """Return non-CLOSED claims currently assigned to an adjuster."""
+    qr = query_rows
+    if qr is None:
+        from iceberg_mcp_server_claims.tools.impala_tools import query_rows as _qr
+
+        qr = _qr
+    db = claim_sql.validate_ident(_default_database(database), "database")
+    try:
+        pid = int(party_id)
+    except (TypeError, ValueError) as exc:
+        return json.dumps({"error": f"invalid party_id: {exc}", "party_id": party_id})
+
+    try:
+        rows = qr(claim_sql.list_adjuster_open_claims_sql(pid, db))
+    except Exception as exc:
+        return json.dumps({"error": str(exc), "party_id": pid, "database": db})
+
+    claims = [
+        {
+            "claim_id": r.get("claim_id"),
+            "claim_number": r.get("claim_number"),
+            "claim_status_code": r.get("claim_status_code"),
+        }
+        for r in rows
+    ]
+    first = rows[0] if rows else {}
+    first_name = first.get("first_name")
+    last_name = first.get("last_name")
+    adjuster_name = None
+    parts = [str(p).strip() for p in (first_name, last_name) if p not in (None, "")]
+    if parts:
+        adjuster_name = " ".join(parts)
+    return json.dumps(
+        {
+            "party_id": pid,
+            "adjuster_name": adjuster_name,
+            "database": db,
+            "claims": claims,
+        },
+        default=str,
+    )

@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from . import agent_client
 from .bpmn_layout import write_positions
+from .claim_queue import load_claims_payload
 
 GUI_ROOT = Path(__file__).resolve().parents[2]
 FRONTEND_DIST = GUI_ROOT / "frontend" / "dist"
@@ -96,11 +97,9 @@ def version() -> dict[str, str]:
 
 
 @app.get("/claims.json")
-def claims_file() -> FileResponse:
-    path = GUI_ROOT / "claims.json"
-    if not path.is_file():
-        raise HTTPException(status_code=404, detail="claims.json is missing")
-    return FileResponse(path)
+def claims_file() -> dict:
+    """Live adjuster queue when IMPALA_HOST is set; else static claims.json."""
+    return load_claims_payload()
 
 
 def _sample_bpmn_path() -> Path:
@@ -147,7 +146,11 @@ async def agent_kickoff(body: KickoffRequest) -> dict[str, str]:
                 body.workflow_id,
             )
     except httpx.HTTPStatusError as exc:
-        detail = exc.response.text[:500] or str(exc)
+        body_text = exc.response.text[:500] or str(exc)
+        detail = (
+            f"{exc.request.method} {exc.request.url} "
+            f"returned {exc.response.status_code}: {body_text}"
+        )
         raise HTTPException(status_code=502, detail=detail) from exc
     except (httpx.RequestError, ValueError) as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc

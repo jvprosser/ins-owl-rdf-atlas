@@ -53,14 +53,19 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
     claim_id = args.claim_id
     spine = studio_io.normalize_spine_payload(args.spine_json)
     pack = current_pack()
+    named_op = None
     if pack is not None and pack.graph.get("builder") == "generic":
         signals = studio_io.normalize_signals_payload(args.signals_json)
         case = build_case_graph(claim_id, pack=pack, spine=spine, signals=signals)
     else:
         observation = studio_io.assert_signals_json_is_mcp_observation(args.signals_json)
+        named_op = observation.get("named_op")
         signals = studio_io.normalize_signals_payload(observation)
         studio_io.assert_spine_has_triangle_fields(spine)
-        studio_io.assert_signals_has_intake_fields(signals)
+        if named_op == "get_fnol_routing_signals":
+            studio_io.assert_signals_has_fnol_fields(signals)
+        else:
+            studio_io.assert_signals_has_intake_fields(signals)
         case = build_claim_graph(claim_id, spine=spine, signals=signals)
 
     case_path = studio_io.graph_artifact_path(claim_id)
@@ -82,7 +87,7 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
         "has_incident_report_number": case.get("has_incident_report_number"),
         "has_collect_incident_sms": case.get("has_collect_incident_sms"),
         "incident_report_number": case.get("incident_report_number"),
-        "signals_named_op": "get_claim_routing_signals",
+        "signals_named_op": named_op,
         "graph_artifact": str(case_path.resolve()),
         "session_directory": str(studio_io.session_dir()),
         "workflow_data_directory": str(assets),

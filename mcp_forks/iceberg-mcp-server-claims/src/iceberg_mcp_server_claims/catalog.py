@@ -10,6 +10,8 @@ from iceberg_mcp_server_claims.tools import (
     audit_tools,
     claim_tools,
     deny_claim,
+    fnol_tools,
+    fnol_writes,
     impala_tools,
     litigation_tasks,
     pd_tasks,
@@ -81,6 +83,30 @@ READ_OPS: dict[str, dict[str, Any]] = {
         "optional": ("database",),
         "summary": "List tables",
         "handler": lambda p: impala_tools.get_schema(p.get("database")),
+    },
+    "get_fnol_spine": {
+        "required": ("fnol_id",),
+        "optional": ("database",),
+        "summary": "FNOL notice spine for graph build (not a claim)",
+        "handler": lambda p: fnol_tools.get_fnol_spine(
+            str(p["fnol_id"]), p.get("database")
+        ),
+    },
+    "get_fnol_routing_signals": {
+        "required": ("fnol_id",),
+        "optional": ("database",),
+        "summary": "FNOL routing signals: injury, third party, listed asset, peril, deductible",
+        "handler": lambda p: fnol_tools.get_fnol_routing_signals(
+            str(p["fnol_id"]), p.get("database")
+        ),
+    },
+    "list_adjuster_open_claims": {
+        "required": ("party_id",),
+        "optional": ("database",),
+        "summary": "Non-CLOSED claims currently assigned to an adjuster",
+        "handler": lambda p: claim_tools.list_adjuster_open_claims(
+            str(p["party_id"]), p.get("database")
+        ),
     },
 }
 
@@ -179,12 +205,52 @@ WRITE_OPS: dict[str, dict[str, Any]] = {
             p.get("database"),
         ),
     },
+    "deny_fnol": {
+        "required": ("run_id", "event_json"),
+        "optional": ("database",),
+        "summary": "Set fnol.triage_status_code DENIED (no claim row)",
+        "handler": lambda p: fnol_writes.deny_fnol(
+            str(p["run_id"]),
+            _as_json_string(p["event_json"]),
+            p.get("database"),
+        ),
+    },
+    "close_fnol_incident_only": {
+        "required": ("run_id", "event_json"),
+        "optional": ("database",),
+        "summary": "Set fnol.triage_status_code INCIDENT_ONLY (STP record-only)",
+        "handler": lambda p: fnol_writes.close_fnol_incident_only(
+            str(p["run_id"]),
+            _as_json_string(p["event_json"]),
+            p.get("database"),
+        ),
+    },
+    "convert_fnol_to_claim": {
+        "required": ("run_id", "event_json"),
+        "optional": ("database",),
+        "summary": "INSERT claim + optional reserve and set fnol.claim_id (idempotent)",
+        "handler": lambda p: fnol_writes.convert_fnol_to_claim(
+            str(p["run_id"]),
+            _as_json_string(p["event_json"]),
+            p.get("database"),
+        ),
+    },
+    "review_fnol": {
+        "required": ("run_id", "event_json"),
+        "optional": ("database",),
+        "summary": "Set fnol.triage_status_code ADJUSTER_REVIEW (no claim yet)",
+        "handler": lambda p: fnol_writes.review_fnol(
+            str(p["run_id"]),
+            _as_json_string(p["event_json"]),
+            p.get("database"),
+        ),
+    },
 }
 
 # Env-gated: PACK_ROOT / pack.yaml + catalog_fixtures.json (demo packs).
 PACK_ID = merge_pack_catalog(READ_OPS, WRITE_OPS)
 
-_ALIAS_KEYS = frozenset({"case_id", "claim_id"})
+_ALIAS_KEYS = frozenset({"case_id", "claim_id", "fnol_id", "party_id"})
 
 
 def _as_json_string(value: Any) -> str:
@@ -267,6 +333,8 @@ def _merge_params(
         params["claim_id"] = params["case_id"]
     if not params.get("case_id") and params.get("claim_id"):
         params["case_id"] = params["claim_id"]
+    if not params.get("fnol_id") and params.get("claim_id"):
+        params["fnol_id"] = params["claim_id"]
     return params
 
 
@@ -330,9 +398,11 @@ def run_named_query(
     *,
     claim_id: str | None = None,
     case_id: str | None = None,
+    fnol_id: str | None = None,
+    party_id: str | None = None,
     database: str | None = None,
 ) -> str:
-    """Run a catalog read by label. Flat claim_id / case_id is Studio-safe."""
+    """Run a catalog read by label. Flat claim_id / case_id / fnol_id / party_id is Studio-safe."""
     cid = claim_id or case_id
     return _dispatch(
         label,
@@ -341,7 +411,13 @@ def run_named_query(
         kind="read",
         other_ops=WRITE_OPS,
         other_kind="write",
-        extra_params={"claim_id": cid, "case_id": cid, "database": database},
+        extra_params={
+            "claim_id": cid,
+            "case_id": cid,
+            "fnol_id": fnol_id,
+            "party_id": party_id,
+            "database": database,
+        },
     )
 
 

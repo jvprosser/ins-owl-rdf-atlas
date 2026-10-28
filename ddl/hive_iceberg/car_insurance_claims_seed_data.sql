@@ -630,6 +630,10 @@ SELECT * FROM (
 ) s;
 
 
+-- FNOL 88 (Marcus Vance RECORD_ONLY) is additive and isolated from 401-404:
+--   ddl/hive_iceberg/car_insurance_claims_seed_fnol_88.sql
+-- Prerequisite tables: car_insurance_claims_fnol.sql (or this iceberg.sql).
+
 -- =============================================================================
 -- END OF SEED DATA
 -- =============================================================================

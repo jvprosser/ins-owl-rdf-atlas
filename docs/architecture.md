@@ -44,7 +44,7 @@ MCP V7 registers four tools: `get_server_info`, `list_named_queries`, `run_named
 
 The **catalog** is compiled into the MCP package (`READ_OPS` / `WRITE_OPS`). Each label has required/optional params and a Python handler that runs curated Impala. Agents discover labels via `list_named_queries` and via Goal text. Invented SQL or unknown labels fail closed.
 
-Claims labels (live lake): `get_claim_spine`, `get_claim_routing_signals`, specialist views (`get_litigation_view`, `get_bi_view`, `get_subrogation_view`, `get_pd_view`, `get_deny_view`), `get_schema`, audit writes (`write_audit_event`, `promote_audit_run`, …), `create_litigation_task`, `create_pd_task`, and `deny_claim`.
+Claims labels (live lake): `get_claim_spine`, `get_claim_routing_signals`, `get_fnol_spine`, `get_fnol_routing_signals`, `list_adjuster_open_claims`, specialist views (`get_litigation_view`, `get_bi_view`, `get_subrogation_view`, `get_pd_view`, `get_deny_view`), `get_schema`, audit writes (`write_audit_event`, `promote_audit_run`, …), `create_litigation_task`, `create_pd_task`, `deny_claim`, and FNOL writes (`deny_fnol`, `close_fnol_incident_only`, `convert_fnol_to_claim`, `review_fnol`).
 
 Audit lands in Iceberg (`agent_run_audit` / `agent_run_evidence`), partitioned by `run_id`. Impala mode is **table-append**; `promote_audit_run` is a no-op success (`mode=table_append`). Hive WAP branches are a later fork, not this path.
 
@@ -68,7 +68,9 @@ Probes bind CEL expressions to the case document (`litigation_indicator`, `trian
 
 The playbook can name specialists that have not been configured in Agent Studio yet (`SiuAgent`, `SettlementAgent`, `DataQualityAgent`). Orchestrator must Final Answer the route JSON rather than invent a Role. `DenyAgent` and `HumanCitationReview` are now configured in Agent Studio.
 
-FNOL → payout is **not** one crew run. The claims platform (or BPA) writes Iceberg rows; this stack classifies the current snapshot. Re-chat the Orchestrator with the same claim id after the data changes (`Please process claim 401.`). Do not pass `run_id` or `next_step` in the chat.
+A **notice is not a claim**. First notice lives on `fnol` (`fnol_id` 88 / `FNOL-2026-00088`) until `convert_fnol_to_claim` inserts a `claim` row. `deny_fnol` never calls `deny_claim`. Claim chats stay `Please process claim 401.` FNOL chats are `Please process FNOL 88.` After convert, a later `Please process claim 80088` uses the existing claim playbook.
+
+FNOL → payout is **not** one crew run. The claims platform (or BPA) writes Iceberg rows; this stack classifies the current snapshot. Re-chat the Orchestrator with the same claim id after the data changes (`Please process claim 401.`). Do not pass `run_id` or `next_step` in the chat. Live FNOL runbook: [fnol-path-demo.md](fnol-path-demo.md).
 
 ### Typical PD path (separate calls)
 

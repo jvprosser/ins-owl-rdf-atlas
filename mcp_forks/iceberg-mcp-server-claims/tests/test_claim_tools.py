@@ -154,3 +154,49 @@ def test_invalid_database_rejected():
         assert False, "expected ValueError"
     except ValueError:
         pass
+
+
+def test_list_adjuster_open_claims_sql_excludes_closed():
+    sql = claim_sql.list_adjuster_open_claims_sql(4, "car_insurance_claims")
+    assert "party_id = 4" in sql
+    assert "ADJUSTER" in sql
+    assert "is_current_assignment = TRUE" in sql
+    assert "<> 'CLOSED'" in sql
+    assert "ORDER BY c.claim_id" in sql
+
+
+def test_list_adjuster_open_claims_shapes_payload():
+    def fake_query(sql: str):
+        return [
+            {
+                "claim_id": 401,
+                "claim_number": "CLM-2025-000401",
+                "claim_status_code": "OPEN",
+                "first_name": "Alice",
+                "last_name": "Ng",
+            },
+            {
+                "claim_id": 402,
+                "claim_number": "CLM-2025-000402",
+                "claim_status_code": "IN_LITIGATION",
+                "first_name": "Alice",
+                "last_name": "Ng",
+            },
+            {
+                "claim_id": 404,
+                "claim_number": "CLM-2025-000404",
+                "claim_status_code": "OPEN",
+                "first_name": "Alice",
+                "last_name": "Ng",
+            },
+        ]
+
+    raw = claim_tools.list_adjuster_open_claims(
+        "4", "car_insurance_claims", query_rows=fake_query
+    )
+    payload = json.loads(raw)
+    assert payload["party_id"] == 4
+    assert payload["adjuster_name"] == "Alice Ng"
+    ids = [row["claim_id"] for row in payload["claims"]]
+    assert ids == [401, 402, 404]
+    assert 403 not in ids

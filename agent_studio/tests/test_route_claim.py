@@ -539,3 +539,133 @@ def test_route_pd_lane():
     assert decision["later_checks_not_run"] is False
     assert decision["later_checks_note"] is None
     assert decision["checks"][-1]["status"] == "assigned"
+
+
+def _spine_fnol_88(**overrides: object) -> dict:
+    row: dict = {
+        "fnol_id": 88,
+        "fnol_number": "FNOL-2026-00088",
+        "triage_status_code": "OPEN",
+        "intake_purpose_code": "RECORD_ONLY_NOTIFICATION",
+        "estimated_loss_amount": 450,
+        "deductible_amount": 1000,
+        "policy_id": 1088,
+        "policy_number": "PA-9018442-01",
+        "policy_status_code": "ACTIVE",
+        "effective_date": "2026-01-01",
+        "expiration_date": "2027-01-01",
+        "cancellation_date": "",
+        "loss_date": "2026-10-20",
+        "insurable_object_id": 288,
+        "vin": "4T1B11HK5NU123456",
+        "vehicle_listed_on_policy": True,
+        "peril_covered": True,
+        "coverage_type_code": "COLLISION",
+    }
+    row.update(overrides)
+    return row
+
+
+def _signals_fnol_88(**overrides: object) -> dict:
+    row: dict = {
+        "fnol_exists": True,
+        "has_injury": False,
+        "has_third_party_vehicle": False,
+        "has_unlisted_insured_operator": False,
+        "vehicle_listed_on_policy": True,
+        "peril_covered": True,
+        "estimated_loss_amount": 450,
+        "deductible_amount": 1000,
+        "intake_purpose_code": "RECORD_ONLY_NOTIFICATION",
+        "triage_status_code": "OPEN",
+    }
+    row.update(overrides)
+    return row
+
+
+def test_route_fnol_88_incident_only():
+    case = build_claim_graph(88, spine=_spine_fnol_88(), signals=_signals_fnol_88())
+    report = validate_claim_graph(case, 88)
+    assert report["passed"] is True
+    assert case["fnol_exists"] is True
+    assert case["claim_exists"] is False
+    decision = route_claim(case, 88)
+    assert decision["next_step"] == "ConvertFnolToIncidentOnly"
+    assert decision["agent_role"] == "FnolAgent"
+    assert decision["coworker"] == "FNOL Agent"
+    assert decision["write"] == "close_fnol_incident_only"
+    assert decision["lane"] == "FNOL"
+
+
+def test_route_fnol_injury_converts():
+    case = build_claim_graph(
+        88,
+        spine=_spine_fnol_88(),
+        signals=_signals_fnol_88(has_injury=True),
+    )
+    decision = route_claim(case, 88)
+    assert decision["next_step"] == "ConvertFnolToClaim"
+    assert decision["write"] == "convert_fnol_to_claim"
+
+
+def test_route_fnol_third_party_converts():
+    case = build_claim_graph(
+        88,
+        spine=_spine_fnol_88(),
+        signals=_signals_fnol_88(has_third_party_vehicle=True),
+    )
+    decision = route_claim(case, 88)
+    assert decision["next_step"] == "ConvertFnolToClaim"
+
+
+def test_route_fnol_lapsed_denies():
+    case = build_claim_graph(
+        88,
+        spine=_spine_fnol_88(policy_status_code="LAPSED"),
+        signals=_signals_fnol_88(),
+    )
+    decision = route_claim(case, 88)
+    assert decision["next_step"] == "DenyFnolNoCoverage"
+    assert decision["write"] == "deny_fnol"
+    assert decision["coworker"] == "Deny Agent"
+
+
+def test_route_fnol_grey_band_human_review():
+    case = build_claim_graph(
+        88,
+        spine=_spine_fnol_88(estimated_loss_amount=800),
+        signals=_signals_fnol_88(estimated_loss_amount=800),
+    )
+    decision = route_claim(case, 88)
+    assert decision["next_step"] == "FnolAdjusterReview"
+    assert decision["write"] == "review_fnol"
+    assert decision["coworker"] == "Human Review Agent"
+
+
+def test_route_fnol_over_deductible_converts():
+    case = build_claim_graph(
+        88,
+        spine=_spine_fnol_88(estimated_loss_amount=1500),
+        signals=_signals_fnol_88(estimated_loss_amount=1500),
+    )
+    decision = route_claim(case, 88)
+    assert decision["next_step"] == "ConvertFnolToClaim"
+
+
+def test_route_fnol_already_converted():
+    case = build_claim_graph(
+        88,
+        spine=_spine_fnol_88(triage_status_code="CONVERTED", claim_id=80088),
+        signals=_signals_fnol_88(triage_status_code="CONVERTED"),
+    )
+    decision = route_claim(case, 88)
+    assert decision["next_step"] == "FnolAlreadyTriaged"
+    assert decision["terminal"] is True
+
+
+def test_route_claim_401_skips_fnol_probes():
+    case = build_claim_graph(401, spine=_spine_401(), signals=_signals_ready_for_subro())
+    assert case["fnol_exists"] is False
+    decision = route_claim(case, 401)
+    assert decision["next_step"] == "OpenSubrogationCase"
+    assert all(not str(c.get("probe_id", "")).startswith("F") or c["status"] != "assigned" for c in decision["checks"])

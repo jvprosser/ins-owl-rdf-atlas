@@ -15,6 +15,8 @@ Citation is **not** auto-deny. Narrative is **not** a YAML probe. `R6.1` is the 
 | Status only | `What's the status of claim <ID>?` |
 | Has an SMS been sent | `Has an SMS been sent for claim <ID>?` |
 | Do the next work | `Please process claim <ID>.` |
+| FNOL notice | `Please process FNOL 88.` |
+| My open claims | `What are my current open claims?` |
 | Draft the recommended letter | `Please write the recommended letter for claim <ID>.` |
 
 Offline (no Studio): `cd agent_studio && pytest tests/test_route_claim.py tests/test_packs.py`.
@@ -23,10 +25,19 @@ Offline (no Studio): `cd agent_studio && pytest tests/test_route_claim.py tests/
 
 ## Claims (`playbook/playbook.yaml`)
 
-Studio project: live Impala catalog, Workflow Data = repo `ontology/` + `playbook/`. Proven e2e: **402** (Litigation), **403** (Closeout). Seed **401** is PD / subro. Seed **404** is deny (`PA-1003`). Repeatable PD demo: [pd-path-demo.md](pd-path-demo.md). Repeatable DENIED demo: [deny-path-demo.md](deny-path-demo.md). Snapshot-by-snapshot PD path (case JSON → `next_step`): [architecture.md — typical PD path](architecture.md#typical-pd-path-separate-calls).
+Studio project: live Impala catalog, Workflow Data = repo `ontology/` + `playbook/`. Proven e2e: **402** (Litigation), **403** (Closeout). Seed **401** is PD / subro. Seed **404** is deny (`PA-1003`). Seed **FNOL 88** is RECORD_ONLY STP. Repeatable PD demo: [pd-path-demo.md](pd-path-demo.md). Repeatable DENIED demo: [deny-path-demo.md](deny-path-demo.md). Repeatable FNOL demo: [fnol-path-demo.md](fnol-path-demo.md). Snapshot-by-snapshot PD path (case JSON → `next_step`): [architecture.md — typical PD path](architecture.md#typical-pd-path-separate-calls).
 
 | Probe | When | `next_step` / `agent_role` / lane | How to fire | Studio id |
 |---|---|---|---|---|
+| F0 | ASK_TRUE already triaged | `FnolAlreadyTriaged` / `FnolAgent` / FNOL | `triage_status_code` not OPEN | pytest `test_route_fnol_already_converted` |
+| F1 | ASK_TRUE policy not in force | `DenyFnolNoCoverage` / `DenyAgent` / DENY | FNOL policy LAPSED/CANCELLED/EXPIRED or DOL outside term | pytest `test_route_fnol_lapsed_denies` |
+| F2 | ASK_TRUE injury or third-party vehicle | `ConvertFnolToClaim` / `FnolAgent` / FNOL | `has_injury` or `has_third_party_vehicle` | pytest `test_route_fnol_injury_converts` |
+| F3 | ASK_TRUE unlisted asset or uncovered peril | `DenyFnolExcludedPeril` / `DenyAgent` / DENY | `vehicle_listed_on_policy` false or `peril_covered` false | inject flags |
+| F4 | ASK_TRUE unlisted insured operator | `FnolAdjusterReview` / `HumanReviewAgent` / GENERAL | `has_unlisted_insured_operator` | inject flag |
+| F5 | ASK_TRUE loss > deductible | `ConvertFnolToClaim` / `FnolAgent` / FNOL | estimated 1500 vs deductible 1000 | pytest `test_route_fnol_over_deductible_converts` |
+| F4b | ASK_TRUE 60–110% of deductible | `FnolAdjusterReview` / `HumanReviewAgent` / GENERAL | estimated 800 vs deductible 1000 | pytest `test_route_fnol_grey_band_human_review` |
+| F6 | ASK_TRUE STP record-only | `ConvertFnolToIncidentOnly` / `FnolAgent` / FNOL | seed **88** garage scrape | pytest `test_route_fnol_88_incident_only`; live **FNOL 88** |
+| F7 | ASK_TRUE leftover FNOL | `FnolAdjusterReview` / `HumanReviewAgent` / GENERAL | open notice, no earlier F* | opt-in missing / other boundary |
 | R0.1 | ASK_FALSE | `FixDataQuality` / `DataQualityAgent` / DATA_QUALITY | Graph has no `AutoClaim` at the claim IRI (builder usually prevents this) | none |
 | R0.4 | ASK_FALSE | `FixDataQuality` / `DataQualityAgent` / DATA_QUALITY | Claim exists but triangle broken (no policy↔vehicle) | none |
 | R1.1 | ASK_TRUE `claim_status_code == "CLOSED"` | `CloseoutAudit` / `CloseoutAgent` / CLOSEOUT | Status CLOSED | **403** |

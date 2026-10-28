@@ -36,6 +36,9 @@ _STR_KEYS = (
     "participant_marital_status",
     "distribution_type_code",
     "request_status_code",
+    "intake_purpose_code",
+    "triage_status_code",
+    "fnol_number",
 )
 _NUM_KEYS = (
     "rmd_shortfall_amount",
@@ -44,8 +47,11 @@ _NUM_KEYS = (
     "estimated_tax_withholding_amount",
     "available_plan_loan_capacity",
     "prior_emergency_distributions_this_year",
+    "estimated_loss_amount",
+    "deductible_amount",
 )
 _BOOL_KEYS = (
+    "fnol_exists",
     "hold_or_aml_flag",
     "has_participant_self_certified",
     "requires_substantiation_audit",
@@ -85,12 +91,14 @@ def flatten_case(case: dict[str, Any]) -> dict[str, Any]:
     for key in _NUM_KEYS:
         raw = out.get(key)
         if isinstance(raw, bool) or raw in (None, ""):
-            out[key] = 0
-        elif not isinstance(raw, (int, float)):
+            out[key] = 0.0
+        elif isinstance(raw, (int, float)):
+            out[key] = float(raw)
+        else:
             try:
                 out[key] = float(raw)
             except (TypeError, ValueError):
-                out[key] = 0
+                out[key] = 0.0
     for key in _BOOL_KEYS:
         value = out.get(key)
         if value in (None, ""):

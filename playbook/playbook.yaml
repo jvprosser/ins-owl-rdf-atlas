@@ -13,6 +13,10 @@ schema_relpath: ontology/claims.json
 expr: cel
 
 # Priority evaluation order (first-match-wins):
+#   FNOL notice:        F0 already triaged, F1 no coverage, F2 injury/third-party,
+#                       F3 excluded peril/asset, F4 unlisted operator, F5 over
+#                       deductible, F4b grey-band, F6 STP incident-only, F7 leftover
+#                       (fnol_exists==true). Claim intake leaves fnol_exists false.
 #   Data integrity:     R0.1 claim exists, R0.4 validation triangle complete
 #   Fast-path lanes:    R1.1 closed (approved) audit, R1.1d denied audit,
 #                       R5.2 insured citation review, R6.* coverage exclusions,
@@ -24,6 +28,15 @@ expr: cel
 #   Financials & subro: R3.2 / R3.4 offers/payments, R4.1 / R4.3 subrogation
 #   Standard review:    R1.3 bodily injury, R1.4 property damage
 priorities:
+  - F0
+  - F1
+  - F2
+  - F3
+  - F4
+  - F5
+  - F4b
+  - F6
+  - F7
   - R0.1
   - R0.4
   - R1.1
@@ -55,6 +68,60 @@ priorities:
 #   when_true / when_false: ASK outcome sentences
 #   cel: expression over flattened case JSON (MCP facts; not lake SQL)
 probes:
+  F0:
+    form: ASK
+    title: FNOL already triaged
+    when_true: Notice is already denied, incident-only, in adjuster review, or converted
+    when_false: Notice is still open for triage
+    cel: 'fnol_exists == true && size(triage_status_code) > 0 && triage_status_code != "OPEN"'
+  F1:
+    form: ASK
+    title: FNOL policy in force on loss date
+    when_true: Policy was not in force on the loss date
+    when_false: Policy was in force on the loss date
+    cel: 'fnol_exists == true && (policy_status_code == "LAPSED" || policy_status_code == "CANCELLED" || policy_status_code == "EXPIRED" || (size(effective_date) > 0 && size(loss_date) > 0 && loss_date < effective_date) || (size(expiration_date) > 0 && size(loss_date) > 0 && loss_date > expiration_date) || (size(cancellation_date) > 0 && size(loss_date) > 0 && cancellation_date <= loss_date))'
+  F2:
+    form: ASK
+    title: FNOL injury or third-party vehicle
+    when_true: Notice reports injury or a third-party vehicle
+    when_false: Notice reports no injury and no third-party vehicle
+    cel: 'fnol_exists == true && (has_injury == true || has_third_party_vehicle == true)'
+  F3:
+    form: ASK
+    title: FNOL listed asset and covered peril
+    when_true: Vehicle is not listed or the peril is not covered
+    when_false: Vehicle is listed and the peril is covered
+    cel: 'fnol_exists == true && (vehicle_listed_on_policy == false || peril_covered == false)'
+  F4:
+    form: ASK
+    title: FNOL unlisted insured operator
+    when_true: Insured operator is not listed on the policy
+    when_false: Insured operator is listed or not reported
+    cel: 'fnol_exists == true && has_unlisted_insured_operator == true'
+  F5:
+    form: ASK
+    title: FNOL estimated loss above deductible
+    when_true: Estimated loss is greater than the deductible
+    when_false: Estimated loss is not greater than the deductible
+    cel: 'fnol_exists == true && estimated_loss_amount > deductible_amount'
+  F4b:
+    form: ASK
+    title: FNOL loss in adjuster review band
+    when_true: Estimated loss is 60 to 110 percent of the deductible
+    when_false: Estimated loss is outside the adjuster review band
+    cel: 'fnol_exists == true && estimated_loss_amount >= 0.6 * deductible_amount && estimated_loss_amount <= 1.1 * deductible_amount'
+  F6:
+    form: ASK
+    title: FNOL STP record-only incident
+    when_true: Record-only notice with no exposure and loss under 60 percent of deductible
+    when_false: Notice is not an STP incident-only close
+    cel: 'fnol_exists == true && has_injury == false && has_third_party_vehicle == false && vehicle_listed_on_policy == true && peril_covered == true && estimated_loss_amount < 0.6 * deductible_amount && intake_purpose_code == "RECORD_ONLY_NOTIFICATION"'
+  F7:
+    form: ASK
+    title: FNOL leftover adjuster review
+    when_true: Open notice did not match an earlier FNOL probe
+    when_false: Not an FNOL leftover
+    cel: 'fnol_exists == true'
   R0.1:
     form: ASK
     title: Claim exists in the case file
@@ -210,6 +277,86 @@ probes:
 #   letter_on_request: a letter is recommended next work; do not auto-draft
 #   letter_note: copied into routing_summary (user-facing; no probe ids)
 actions:
+  F0:
+    - when: ASK_TRUE
+      step: FnolAlreadyTriaged
+      agent: FnolAgent
+      lane: FNOL
+      write: write_audit_event
+      tools: [get_fnol_spine, write_audit_event]
+      terminal: true
+  F1:
+    - when: ASK_TRUE
+      step: DenyFnolNoCoverage
+      agent: DenyAgent
+      coworker: Deny Agent
+      lane: DENY
+      write: deny_fnol
+      tools: [get_fnol_spine, deny_fnol]
+      terminal: true
+  F2:
+    - when: ASK_TRUE
+      step: ConvertFnolToClaim
+      agent: FnolAgent
+      coworker: FNOL Agent
+      lane: FNOL
+      write: convert_fnol_to_claim
+      tools: [get_fnol_spine, convert_fnol_to_claim]
+      terminal: true
+  F3:
+    - when: ASK_TRUE
+      step: DenyFnolExcludedPeril
+      agent: DenyAgent
+      coworker: Deny Agent
+      lane: DENY
+      write: deny_fnol
+      tools: [get_fnol_spine, deny_fnol]
+      terminal: true
+  F4:
+    - when: ASK_TRUE
+      step: FnolAdjusterReview
+      agent: HumanReviewAgent
+      coworker: Human Review Agent
+      lane: GENERAL
+      write: review_fnol
+      tools: [get_fnol_routing_signals, review_fnol]
+      terminal: true
+  F5:
+    - when: ASK_TRUE
+      step: ConvertFnolToClaim
+      agent: FnolAgent
+      coworker: FNOL Agent
+      lane: FNOL
+      write: convert_fnol_to_claim
+      tools: [get_fnol_spine, convert_fnol_to_claim]
+      terminal: true
+  F4b:
+    - when: ASK_TRUE
+      step: FnolAdjusterReview
+      agent: HumanReviewAgent
+      coworker: Human Review Agent
+      lane: GENERAL
+      write: review_fnol
+      tools: [get_fnol_routing_signals, review_fnol]
+      terminal: true
+  F6:
+    - when: ASK_TRUE
+      step: ConvertFnolToIncidentOnly
+      agent: FnolAgent
+      coworker: FNOL Agent
+      lane: FNOL
+      write: close_fnol_incident_only
+      tools: [get_fnol_spine, close_fnol_incident_only]
+      terminal: true
+  F7:
+    - when: ASK_TRUE
+      step: FnolAdjusterReview
+      agent: HumanReviewAgent
+      coworker: Human Review Agent
+      lane: GENERAL
+      write: review_fnol
+      tools: [get_fnol_routing_signals, review_fnol]
+      terminal: true
   R0.1:
     - when: ASK_FALSE
       step: FixDataQuality

@@ -16,6 +16,12 @@ After `route_claim`, the decision’s `coworker` + `write` name the next worker 
 | `create_pd_task` | `run_named_write` label `create_pd_task` |
 | `get_deny_view` | `run_named_query` label `get_deny_view` |
 | `deny_claim` | `run_named_write` label `deny_claim` |
+| `get_fnol_spine` | `run_named_query` label `get_fnol_spine` |
+| `get_fnol_routing_signals` | `run_named_query` label `get_fnol_routing_signals` |
+| `deny_fnol` | `run_named_write` label `deny_fnol` |
+| `close_fnol_incident_only` | `run_named_write` label `close_fnol_incident_only` |
+| `convert_fnol_to_claim` | `run_named_write` label `convert_fnol_to_claim` |
+| `review_fnol` | `run_named_write` label `review_fnol` |
 | `write_audit_event` | `run_named_write` label `write_audit_event` |
 | `promote_audit_run` | `run_named_write` label `promote_audit_run` |
 | `save_claim_letter` | Studio custom tool: writes `SESSION_DIRECTORY/claim_{id}_letter.txt` |
@@ -45,6 +51,7 @@ NL front door; delegates structured claim intake, unstructured pre-route, and po
 | Closeout | `Closeout Agent` | `CloseoutAgent` |
 | Deny | `Deny Agent` | `DenyAgent` |
 | Human review | `Human Review Agent` | `HumanReviewAgent` |
+| FNOL | `FNOL Agent` | `FnolAgent` |
 | SIU | `SIU Agent` | `SiuAgent` |
 | Settlement | `Settlement Agent` | `SettlementAgent` |
 | Data quality | `Data Quality Agent` | `DataQualityAgent` |
@@ -123,24 +130,35 @@ Use when route returns `CloseoutAgent` / `CloseoutAudit` (seed **403** is CLOSED
 ### Deny Agent (MCP + `save_claim_letter` on request)
 **Paste-ready definition:** [`agents/deny_agent.md`](agents/deny_agent.md)
 
-Use when route returns `DenyAgent` / `DenyUnlawfulOperation` / `DenyExcludedDriver` / `DenyLapsedPolicy` / `DenyAudit`. Closeout stays CLOSED-only.
+Use when route returns `DenyAgent` / `DenyUnlawfulOperation` / `DenyExcludedDriver` / `DenyLapsedPolicy` / `DenyAudit` / `DenyFnolNoCoverage` / `DenyFnolExcludedPeril`. Closeout stays CLOSED-only.
 
 | Field | Value |
 |---|---|
 | Name / Role (exact coworker) | `Deny Agent` |
-| Tools | `run_named_query` label `get_deny_view`; R6.* `run_named_write` `deny_claim`; `DenyAudit` `write_audit_event` then `promote_audit_run`. Studio `save_claim_letter` only when the user asks |
+| Tools | `run_named_query` label `get_deny_view`; R6.* `run_named_write` `deny_claim`; FNOL `deny_fnol` (never `deny_claim` on a notice). `DenyAudit` `write_audit_event` then `promote_audit_run`. Studio `save_claim_letter` only when the user asks |
 | Lake smoke | Flip **404** only (impairment on `PA-1003`). Restore afterward. Full two-snapshot runbook: [`docs/deny-path-demo.md`](../../docs/deny-path-demo.md). |
 
 ### Human Review Agent (citation analysis; MCP audit only)
 **Paste-ready definition:** [`agents/human_review_agent.md`](agents/human_review_agent.md)
 
-Use when route returns `HumanReviewAgent` / `HumanCitationReview` (insured operator cited). Orchestrator still Final Answers the route JSON for `HumanReviewOrWait`.
+Use when route returns `HumanReviewAgent` / `HumanCitationReview` (insured operator cited) or `FnolAdjusterReview`. Orchestrator still Final Answers the route JSON for `HumanReviewOrWait`.
 
 | Field | Value |
 |---|---|
 | Name / Role (exact coworker) | `Human Review Agent` |
-| Tools | `run_named_query` label `get_deny_view`; `run_named_write` `write_audit_event`. Never `deny_claim`. No letter |
-| Lake smoke | Flip **401** insured `was_cited_indicator` true. Status stays OPEN. Restore afterward. |
+| Tools | `run_named_query` label `get_deny_view`; citation `write_audit_event`. FNOL `get_fnol_routing_signals` + `review_fnol`. Never `deny_claim`. No letter |
+| Lake smoke | Flip **401** insured `was_cited_indicator` true. Status stays OPEN. Restore afterward. FNOL grey band: estimated 800 vs deductible 1000 on **88**. |
+
+### FNOL Agent (notice convert / incident-only)
+**Paste-ready definition:** [`agents/fnol_agent.md`](agents/fnol_agent.md)
+
+Use when route returns `FnolAgent` / `ConvertFnolToClaim` / `ConvertFnolToIncidentOnly`. A notice is not a claim.
+
+| Field | Value |
+|---|---|
+| Name / Role (exact coworker) | `FNOL Agent` |
+| Tools | `run_named_query` label `get_fnol_spine`; `close_fnol_incident_only` or `convert_fnol_to_claim`. Never `deny_claim` |
+| Lake smoke | FNOL **88** RECORD_ONLY → `ConvertFnolToIncidentOnly`. Full runbook: [`docs/fnol-path-demo.md`](../../docs/fnol-path-demo.md). |
 
 ### Settlement / SIU / Data Quality (MCP audit only)
 For roles whose playbook tools are still only `write_audit_event`: attach MCP audit tools; prompt to append an event and return a short summary. Defer richer views until needed.
@@ -175,4 +193,4 @@ Paste Orchestrator Goal from [`agents/orchestrator_agent.md`](agents/orchestrato
 
 ## Restart note
 
-Restart `iceberg-mcp-server-claims` after pulling main so identity is **`INS_CLAIMS_MCP_V11`** / **`0.5.0`**.
+Restart `iceberg-mcp-server-claims` after pulling main so identity is **`INS_CLAIMS_MCP_V13`** / **`0.7.0`**. Re-paste Orchestrator, Deny, Human Review, FNOL, and Intake Goals.

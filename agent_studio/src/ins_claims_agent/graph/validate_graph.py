@@ -20,6 +20,19 @@ def validate_claim_graph(case: dict[str, Any], claim_id: int | str) -> dict[str,
             "checks": [{"check": "case_exists", "passed": ok}],
         }
 
+    if case.get("fnol_exists"):
+        checks = [
+            {"check": "fnol_exists", "passed": True},
+            {"check": "has_policy", "passed": bool(case.get("has_policy"))},
+            {"check": "has_vehicle", "passed": bool(case.get("has_vehicle"))},
+        ]
+        return {
+            "claim_id": str(claim_id),
+            "fnol_id": str(case.get("fnol_id") or claim_id),
+            "passed": all(c["passed"] for c in checks),
+            "checks": checks,
+        }
+
     checks = [
         {"check": "claim_exists", "passed": bool(case.get("claim_exists"))},
         {"check": "has_policy", "passed": bool(case.get("has_policy"))},

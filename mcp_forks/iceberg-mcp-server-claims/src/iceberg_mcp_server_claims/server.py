@@ -47,6 +47,8 @@ def run_named_query(
     label: str,
     claim_id: str | None = None,
     case_id: str | None = None,
+    fnol_id: str | None = None,
+    party_id: str | None = None,
     database: str | None = None,
     params_json: str = "{}",
 ) -> str:
@@ -54,11 +56,19 @@ def run_named_query(
 
     Flat Action Input example:
       {"label":"get_litigation_view","claim_id":"402"}
-    Read labels: get_claim_spine, get_claim_routing_signals, get_litigation_view,
-    get_bi_view, get_subrogation_view, get_pd_view, get_deny_view, get_schema. Pack fixtures may add labels.
+    Read labels: get_claim_spine, get_claim_routing_signals, get_fnol_spine,
+    get_fnol_routing_signals, list_adjuster_open_claims, get_litigation_view,
+    get_bi_view, get_subrogation_view, get_pd_view, get_deny_view, get_schema.
+    Pack fixtures may add labels.
     """
     return catalog.run_named_query(
-        label, params_json, claim_id=claim_id or case_id, case_id=case_id, database=database
+        label,
+        params_json,
+        claim_id=claim_id or case_id,
+        case_id=case_id,
+        fnol_id=fnol_id,
+        party_id=party_id,
+        database=database,
     )
 
 
@@ -78,7 +88,8 @@ def run_named_write(
       {"label":"write_audit_event","run_id":"demo-402","event_json":"{\\"claim_id\\":\\"402\\"}"}
     Write labels: write_audit_event, promote_audit_run, begin_agent_audit_run,
     append_agent_audit_event, append_agent_audit_evidence, abandon_agent_audit_run,
-    create_litigation_task, create_pd_task, deny_claim.
+    create_litigation_task, create_pd_task, deny_claim, deny_fnol,
+    close_fnol_incident_only, convert_fnol_to_claim, review_fnol.
     """
     return catalog.run_named_write(
         label,

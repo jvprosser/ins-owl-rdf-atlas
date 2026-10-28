@@ -83,6 +83,37 @@ def test_assert_signals_intake_fields_when_police_missing():
         assert "has_collect_incident_sms" in str(exc)
 
 
+def test_assert_signals_fnol_fields_omit_guard():
+    from ins_claims_agent.studio_io import (
+        assert_signals_has_fnol_fields,
+        assert_signals_json_is_mcp_observation,
+    )
+
+    complete = {
+        "has_injury": False,
+        "has_third_party_vehicle": False,
+        "vehicle_listed_on_policy": True,
+        "peril_covered": True,
+        "has_unlisted_insured_operator": False,
+        "estimated_loss_amount": 450,
+        "deductible_amount": 1000,
+        "intake_purpose_code": "RECORD_ONLY_NOTIFICATION",
+    }
+    assert_signals_has_fnol_fields(complete)
+    try:
+        assert_signals_has_fnol_fields({"has_injury": False})
+        assert False, "expected ValueError"
+    except ValueError as exc:
+        assert "has_third_party_vehicle" in str(exc)
+
+    mcp = {
+        "named_op": "get_fnol_routing_signals",
+        "signals": {"has_injury": False, **complete},
+    }
+    observation = assert_signals_json_is_mcp_observation(mcp)
+    assert observation["named_op"] == "get_fnol_routing_signals"
+
+
 def test_assert_signals_json_requires_mcp_named_op():
     from ins_claims_agent.studio_io import (
         assert_signals_json_is_mcp_observation,
