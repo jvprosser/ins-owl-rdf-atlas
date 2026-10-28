@@ -166,6 +166,29 @@ class AgentClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(seen[1][1]["inputs"]["user_input"], "process claim 401")
         self.assertEqual(seen[1][1]["inputs"]["context"], "")
 
+    async def test_kickoff_continues_when_create_session_method_is_not_allowed(self) -> None:
+        seen: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen.append(request.url.path)
+            if request.url.path.endswith("createSession"):
+                return httpx.Response(405, json={"detail": "Method Not Allowed"})
+            if request.url.path.endswith("kickoff"):
+                body = json.loads(request.content.decode() or "{}")
+                self.assertNotIn("session_id", body)
+                self.assertEqual(body["inputs"]["user_input"], "process claim 401")
+                return httpx.Response(200, json={"trace_id": "trace-405"})
+            return httpx.Response(404)
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await kickoff(
+                client, "https://workflow.example", "secret", "process claim 401"
+            )
+        self.assertEqual(result["trace_id"], "trace-405")
+        self.assertEqual(result["session_id"], "")
+        self.assertEqual(seen, ["/api/workflow/createSession", "/api/workflow/kickoff"])
+
     async def test_event_stream_yields_each_update(self) -> None:
         body = "\n".join(
             [

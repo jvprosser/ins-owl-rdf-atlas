@@ -248,16 +248,22 @@ async def _post_workflow(
     payload: dict[str, Any],
 ) -> dict[str, Any]:
     origin = application_origin(base_url)
-    last_page: Optional[_WorkflowPage] = None
-    for path in paths:
+    last_error: Optional[Exception] = None
+    for index, path in enumerate(paths):
         try:
             return await _post_json(client, origin, path, token, payload)
         except _WorkflowPage as exc:
-            last_page = exc
-            if exc.status != 404:
+            last_error = exc
+            if exc.status not in (404, 405):
                 raise
-    if last_page is not None:
-        raise last_page
+        except httpx.HTTPStatusError as exc:
+            # A GET-only catch-all answers unknown POSTs with 405, not 404.
+            if exc.response.status_code == 405 and index < len(paths) - 1:
+                last_error = exc
+                continue
+            raise
+    if last_error is not None:
+        raise last_error
     raise ValueError("Workflow kickoff was not sent.")
 
 
@@ -270,11 +276,11 @@ async def _deployed_session_id(
     try:
         session = await _post_json(client, origin, _CREATE_SESSION_PATH, token, {})
     except httpx.HTTPStatusError as exc:
-        if exc.response.status_code == 404:
+        if exc.response.status_code in (404, 405):
             return ""
         raise
     except _WorkflowPage as exc:
-        if exc.status == 404:
+        if exc.status in (404, 405):
             return ""
         raise
     if session.get("success") is False:

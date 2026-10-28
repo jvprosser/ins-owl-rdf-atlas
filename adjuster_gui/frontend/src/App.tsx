@@ -279,7 +279,7 @@ export default function App() {
       if (!config.baseUrl || !config.token) {
         setDraft(config);
         setSettingsOpen(true);
-        setError("Set the workflow URL and bearer token first.");
+        showStatus("Set the workflow URL and bearer token first.", true);
         return;
       }
       const turnId = `turn-${Date.now()}`;
@@ -458,6 +458,11 @@ export default function App() {
               placeholder="Message the agent"
               disabled={busy}
               onChange={(event) => setComposer(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" || event.shiftKey) return;
+                event.preventDefault();
+                sendComposer();
+              }}
             />
             <button className="btn btn--accent" type="submit" disabled={busy || !composer.trim()}>
               Send
