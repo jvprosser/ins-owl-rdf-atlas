@@ -86,6 +86,13 @@ async function errorText(res: Response, fallback: string): Promise<string> {
   return `${fallback} (${res.status})`;
 }
 
+export async function loadVersion(): Promise<string> {
+  const res = await fetch(appUrl("/api/version"));
+  if (!res.ok) return "";
+  const body = (await res.json()) as { version?: string };
+  return body.version ?? "";
+}
+
 export async function loadClaims(): Promise<string[]> {
   const res = await fetch(appUrl("/claims.json"));
   if (!res.ok) throw new Error(await errorText(res, "Failed to load claims"));

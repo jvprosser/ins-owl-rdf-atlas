@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 from pathlib import Path
 
 import httpx
@@ -67,9 +68,31 @@ def _stream_client() -> httpx.AsyncClient:
     )
 
 
+def _git_version() -> str:
+    try:
+        out = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=GUI_ROOT.parent,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=2,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return out.strip()
+
+
+GIT_VERSION = _git_version()
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "adjuster-gui"}
+
+
+@app.get("/api/version")
+def version() -> dict[str, str]:
+    return {"version": GIT_VERSION}
 
 
 @app.get("/claims.json")

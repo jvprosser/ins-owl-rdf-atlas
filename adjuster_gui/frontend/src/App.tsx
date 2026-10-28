@@ -17,6 +17,7 @@ import {
   layoutStorageKey,
   loadClaims,
   loadConfig,
+  loadVersion,
   loadLayout,
   loadSampleBpmn,
   saveBpmnLayout,
@@ -77,6 +78,7 @@ function toFlow(
 
 export default function App() {
   const [claims, setClaims] = useState<string[]>([]);
+  const [gitVersion, setGitVersion] = useState("");
   const [graph, setGraph] = useState<BpmnGraph | null>(null);
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
@@ -144,6 +146,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    loadVersion().then(setGitVersion).catch(() => setGitVersion(""));
     loadClaims().then(setClaims).catch((e: Error) => setError(e.message));
     loadSampleBpmn()
       .then((xml) => setGraph(parseBpmn(xml)))
@@ -381,17 +384,20 @@ export default function App() {
       <div className="body" style={{ gridTemplateColumns: `180px minmax(0, 1fr) ${chatWidth}px` }}>
         <aside className="claims">
           <h2>Claims</h2>
-          {claims.map((claimId) => (
-            <button
-              key={claimId}
-              type="button"
-              className={`claim-btn${activeClaim === claimId ? " is-active" : ""}`}
-              disabled={busy}
-              onClick={() => void runClaim(claimId)}
-            >
-              {claimId}
-            </button>
-          ))}
+          <div className="claims-list">
+            {claims.map((claimId) => (
+              <button
+                key={claimId}
+                type="button"
+                className={`claim-btn${activeClaim === claimId ? " is-active" : ""}`}
+                disabled={busy}
+                onClick={() => void runClaim(claimId)}
+              >
+                {claimId}
+              </button>
+            ))}
+          </div>
+          {gitVersion ? <p className="git-version">{gitVersion}</p> : null}
         </aside>
         <div className="canvas-wrap">
           <NodeDragContext.Provider value={nodeDrag}>

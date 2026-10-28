@@ -101,8 +101,26 @@ html, body, #root {
 }
 
 .claims {
+  display: flex;
+  flex-direction: column;
   border-right: 1px solid var(--line);
   padding: 0.6rem;
+  overflow: hidden;
+}
+
+.claims-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.git-version {
+  flex: none;
+  margin: 0.4rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 .claims h2, .chat h2 {
