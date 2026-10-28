@@ -2,6 +2,9 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
+  // Relative URLs so the built UI works under a Cloudera AI Application path
+  // prefix (the browser page is not served at the host root).
+  base: "./",
   plugins: [react()],
   server: {
     proxy: {

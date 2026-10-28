@@ -27,6 +27,11 @@ export const DEFAULT_BASE_URL =
   "https://workflow-86f01f5a-c485-4c47-9182-30c844eeeaa2.ml-dbfc64d1-783.go01-dem.ylcu-atmi.cloudera.site";
 const LAYOUT_PREFIX = "adjuster-gui-layout:";
 
+/** Page-relative URL. Absolute /paths miss the Cloudera AI Application prefix. */
+function appUrl(path: string): string {
+  return `${import.meta.env.BASE_URL}${path.replace(/^\//, "")}`;
+}
+
 export interface NodePosition {
   x: number;
   y: number;
@@ -82,20 +87,20 @@ async function errorText(res: Response, fallback: string): Promise<string> {
 }
 
 export async function loadClaims(): Promise<string[]> {
-  const res = await fetch("/claims.json");
+  const res = await fetch(appUrl("/claims.json"));
   if (!res.ok) throw new Error(await errorText(res, "Failed to load claims"));
   const body = (await res.json()) as { claims?: string[] };
   return body.claims ?? [];
 }
 
 export async function loadSampleBpmn(): Promise<string> {
-  const res = await fetch("/sample/claims_playbook.bpmn");
+  const res = await fetch(appUrl("/sample/claims_playbook.bpmn"));
   if (!res.ok) throw new Error(await errorText(res, "Failed to load sample BPMN"));
   return res.text();
 }
 
 export async function saveBpmnLayout(positions: Record<string, NodePosition>): Promise<void> {
-  const res = await fetch("/sample/claims_playbook.bpmn", {
+  const res = await fetch(appUrl("/sample/claims_playbook.bpmn"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ positions }),
@@ -104,7 +109,7 @@ export async function saveBpmnLayout(positions: Record<string, NodePosition>): P
 }
 
 export async function kickoffMessage(config: AgentConfig, userInput: string): Promise<KickoffResult> {
-  const res = await fetch("/api/agent/kickoff", {
+  const res = await fetch(appUrl("/api/agent/kickoff"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -127,7 +132,7 @@ export async function streamEvents(
     base_url: config.baseUrl,
     trace_id: traceId,
   });
-  const res = await fetch(`/api/agent/events/stream?${params}`, {
+  const res = await fetch(appUrl(`/api/agent/events/stream?${params}`), {
     headers: { "X-Workflow-Token": config.token },
   });
   if (!res.ok) throw new Error(await errorText(res, "Event stream failed"));
@@ -162,7 +167,7 @@ export async function pollEvents(
     base_url: config.baseUrl,
     conversation_id: conversationId,
   });
-  const res = await fetch(`/api/agent/events?${params}`, {
+  const res = await fetch(appUrl(`/api/agent/events?${params}`), {
     headers: { "X-Workflow-Token": config.token },
   });
   if (!res.ok) throw new Error(await errorText(res, "Event poll failed"));
