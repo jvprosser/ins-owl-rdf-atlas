@@ -158,7 +158,7 @@ Use when route returns `FnolAgent` / `ConvertFnolToClaim` / `ConvertFnolToIncide
 |---|---|
 | Name / Role (exact coworker) | `FNOL Agent` |
 | Tools | `run_named_query` label `get_fnol_spine`; `close_fnol_incident_only` or `convert_fnol_to_claim`. Never `deny_claim` |
-| Lake smoke | FNOL **88** RECORD_ONLY → `ConvertFnolToIncidentOnly`. Full runbook: [`docs/fnol-path-demo.md`](../../docs/fnol-path-demo.md). |
+| Lake smoke | FNOL **88** RECORD_ONLY → `ConvertFnolToIncidentOnly`. Over deductible → convert **80088**, then PD. Full runbook: [`docs/fnol-path-demo.md`](../../docs/fnol-path-demo.md). |
 
 ### Settlement / SIU / Data Quality (MCP audit only)
 For roles whose playbook tools are still only `write_audit_event`: attach MCP audit tools; prompt to append an event and return a short summary. Defer richer views until needed.
@@ -193,4 +193,4 @@ Paste Orchestrator Goal from [`agents/orchestrator_agent.md`](agents/orchestrato
 
 ## Restart note
 
-Restart `iceberg-mcp-server-claims` after pulling main so identity is **`INS_CLAIMS_MCP_V13`** / **`0.7.0`**. Re-paste Orchestrator, Deny, Human Review, FNOL, and Intake Goals.
+Restart `iceberg-mcp-server-claims` after pulling main so identity is **`INS_CLAIMS_MCP_V14`** / **`0.8.0`**. Re-paste Orchestrator, Deny, Human Review, FNOL, and Intake Goals.

@@ -15,7 +15,9 @@ from iceberg_mcp_server_claims.tools.audit_tools import (
 from iceberg_mcp_server_claims.tools.claim_sql import (
     fnol_converted_claim_id,
     fnol_matching_coverage_sql,
+    fnol_policyholder_party_sql,
     fnol_status_sql,
+    insert_converted_claim_role_sql,
     insert_converted_claim_sql,
     insert_converted_reserve_sql,
     parse_fnol_id,
@@ -31,6 +33,7 @@ _DENY_STEPS = frozenset({"DenyFnolNoCoverage", "DenyFnolExcludedPeril"})
 _CLOSE_STEPS = frozenset({"ConvertFnolToIncidentOnly"})
 _CONVERT_STEPS = frozenset({"ConvertFnolToClaim"})
 _REVIEW_STEPS = frozenset({"FnolAdjusterReview"})
+_DEFAULT_ADJUSTER_PARTY_ID = 4
 
 
 def _default_database(database: str | None) -> str:
@@ -263,6 +266,13 @@ def _reserve_id(run_id: str, claim_id: int) -> int:
     return int(digest[:15], 16)
 
 
+def _role_id(run_id: str, claim_id: int, role_type: str) -> int:
+    digest = hashlib.sha256(
+        f"{run_id}:{claim_id}:{role_type}".encode()
+    ).hexdigest()
+    return int(digest[:15], 16)
+
+
 def convert_fnol_to_claim(
     run_id: str,
     event_json: str,
@@ -350,6 +360,37 @@ def convert_fnol_to_claim(
         return json.dumps(
             {"error": result, "run_id": rid, "database": db, "fnol_id": fid}
         )
+
+    holder_rows = qr(fnol_policyholder_party_sql(int(policy_id), db))
+    holder = holder_rows[0].get("party_id") if holder_rows else None
+    roles: list[tuple[str, int]] = []
+    if holder not in (None, ""):
+        roles.append(("INSURED", int(holder)))
+    roles.append(("ADJUSTER", _DEFAULT_ADJUSTER_PARTY_ID))
+    for role_type, party_id in roles:
+        role_result = dml(
+            insert_converted_claim_role_sql(
+                db,
+                {
+                    "claim_party_role_id": _role_id(rid, cid, role_type),
+                    "claim_id": cid,
+                    "party_id": party_id,
+                    "role_type_code": role_type,
+                },
+            )
+        )
+        if isinstance(role_result, str) and role_result.startswith("Error:"):
+            return json.dumps(
+                {
+                    "ok": False,
+                    "error": role_result,
+                    "run_id": rid,
+                    "database": db,
+                    "fnol_id": fid,
+                    "claim_id": cid,
+                }
+            )
+
     reserve_written = False
     if amount not in (None, "") and cov.get("policy_coverage_id") not in (None, ""):
         reserve_result = dml(

@@ -17,7 +17,7 @@ Claims fork of Cloudera’s Impala Iceberg MCP for the car-insurance claims agen
 
 | Tool | Notes |
 |---|---|
-| `get_server_info()` | One-shot identity. Expect **`INS_CLAIMS_MCP_V13`** / **`0.7.0`**. Prompt: “Call get_server_info once and stop.” |
+| `get_server_info()` | One-shot identity. Expect **`INS_CLAIMS_MCP_V14`** / **`0.8.0`**. Prompt: “Call get_server_info once and stop.” |
 
 ### Named catalog (only lake I/O)
 
@@ -33,7 +33,7 @@ Read labels: `get_claim_spine`, `get_claim_routing_signals`, `get_fnol_spine`, `
 
 Write labels: `write_audit_event`, `append_agent_audit_event`, `append_agent_audit_evidence`, `begin_agent_audit_run`, `promote_audit_run`, `promote_agent_audit_run`, `abandon_agent_audit_run`, `create_litigation_task`, `create_pd_task`, `deny_claim`, `deny_fnol`, `close_fnol_incident_only`, `convert_fnol_to_claim`, `review_fnol`.
 
-Impala audit writes are table-append (no Iceberg WAP branch). `promote_audit_run` returns `mode=table_append`. `create_pd_task` inserts one `pd_task` row and one `agent_run_audit` receipt; `COLLECT_INCIDENT_NUMBER` inserts `claim_outbound_message` unless that purpose row already exists. `REQUEST_POLICE_REPORT` requires `claim_police_intake.incident_report_number`. `deny_claim` updates `claim.claim_status_code` to `DENIED` (refuses CLOSED and already-DENIED) and inserts one `agent_run_audit` receipt. FNOL writes stamp `fnol.triage_status_code` (`deny_fnol` / `close_fnol_incident_only` / `review_fnol`); `convert_fnol_to_claim` INSERTs `claim` (id `80000+fnol_id`) plus an optional current reserve and is a no-op INSERT when `fnol.claim_id` is already set. Prerequisite: audit DDL plus `litigation_task` / `pd_task` / intake / FNOL tables from `ddl/hive_iceberg/` in the target database.
+Impala audit writes are table-append (no Iceberg WAP branch). `promote_audit_run` returns `mode=table_append`. `create_pd_task` inserts one `pd_task` row and one `agent_run_audit` receipt; `COLLECT_INCIDENT_NUMBER` inserts `claim_outbound_message` unless that purpose row already exists. `REQUEST_POLICE_REPORT` requires `claim_police_intake.incident_report_number`. `deny_claim` updates `claim.claim_status_code` to `DENIED` (refuses CLOSED and already-DENIED) and inserts one `agent_run_audit` receipt. FNOL writes stamp `fnol.triage_status_code` (`deny_fnol` / `close_fnol_incident_only` / `review_fnol`); `convert_fnol_to_claim` INSERTs `claim` (id `80000+fnol_id`), current `INSURED` (policy POLICYHOLDER) and `ADJUSTER` (party 4), plus an optional current reserve, and is a no-op INSERT when `fnol.claim_id` is already set. Prerequisite: audit DDL plus `litigation_task` / `pd_task` / intake / FNOL tables from `ddl/hive_iceberg/` in the target database.
 
 ## Agent Studio registration
 
@@ -213,7 +213,7 @@ Operator checks (not handler chats). Chat Orchestrator. Do not run intake.
 Call get_server_info once and stop.
 ```
 
-Expect `content_id` = `INS_CLAIMS_MCP_V13`. Then:
+Expect `content_id` = `INS_CLAIMS_MCP_V14`. Then:
 
 ```text
 Call list_named_queries once and stop.

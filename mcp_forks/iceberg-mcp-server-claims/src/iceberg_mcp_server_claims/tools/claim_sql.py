@@ -357,17 +357,18 @@ LEFT JOIN {db}.policy_insurable_object pio
   ON pio.policy_id = f.policy_id
  AND pio.insurable_object_id = f.insurable_object_id
  AND pio.expiration_date IS NULL
+LEFT JOIN {db}.coverage cov
+  ON (
+    (UPPER(COALESCE(le.loss_cause_code, '')) = 'COLLISION'
+     AND cov.coverage_type_code = 'COLLISION')
+    OR (UPPER(COALESCE(le.loss_cause_code, '')) <> 'COLLISION'
+     AND cov.coverage_type_code = 'COMPREHENSIVE')
+  )
 LEFT JOIN {db}.policy_coverage pc
   ON pc.policy_id = f.policy_id
+ AND pc.coverage_id = cov.coverage_id
  AND pc.is_active = TRUE
  AND pc.expiration_date IS NULL
-LEFT JOIN {db}.coverage cov ON cov.coverage_id = pc.coverage_id
- AND (
-   (UPPER(COALESCE(le.loss_cause_code, '')) = 'COLLISION'
-    AND cov.coverage_type_code = 'COLLISION')
-   OR (UPPER(COALESCE(le.loss_cause_code, '')) <> 'COLLISION'
-    AND cov.coverage_type_code = 'COMPREHENSIVE')
- )
 WHERE f.fnol_id = {fid}
 LIMIT 1
 """.strip()
@@ -455,6 +456,29 @@ def update_fnol_status_sql(
         f"WHERE fnol_id = {fid} "
         "AND UPPER(COALESCE(triage_status_code, '')) IN "
         "('OPEN', 'ADJUSTER_REVIEW')"
+    )
+
+
+def fnol_policyholder_party_sql(policy_id: int, database: str) -> str:
+    db = validate_ident(database, "database")
+    return (
+        f"SELECT party_id FROM {db}.policy_party_role "
+        f"WHERE policy_id = {int(policy_id)} "
+        "AND role_type_code = 'POLICYHOLDER' "
+        "AND expiration_date IS NULL LIMIT 1"
+    )
+
+
+def insert_converted_claim_role_sql(database: str, row: dict[str, Any]) -> str:
+    db = validate_ident(database, "database")
+    return (
+        f"INSERT INTO {db}.claim_party_role ("
+        "claim_party_role_id, claim_id, party_id, role_type_code, "
+        "assigned_at, unassigned_at, is_current_assignment, created_at"
+        ") VALUES ("
+        f"{int(row['claim_party_role_id'])}, {int(row['claim_id'])}, "
+        f"{int(row['party_id'])}, {sql_quote(row['role_type_code'])}, "
+        "CURRENT_TIMESTAMP(), NULL, TRUE, CURRENT_TIMESTAMP())"
     )
 
 

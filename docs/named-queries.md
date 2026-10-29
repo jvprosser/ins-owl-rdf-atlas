@@ -642,13 +642,16 @@ LEFT JOIN ${var:database}.policy_insurable_object pio
   ON pio.policy_id = f.policy_id
  AND pio.insurable_object_id = f.insurable_object_id
  AND pio.expiration_date IS NULL
+LEFT JOIN ${var:database}.coverage cov
+  ON (
+    (UPPER(COALESCE(le.loss_cause_code, '')) = 'COLLISION' AND cov.coverage_type_code = 'COLLISION')
+    OR (UPPER(COALESCE(le.loss_cause_code, '')) <> 'COLLISION' AND cov.coverage_type_code = 'COMPREHENSIVE')
+  )
 LEFT JOIN ${var:database}.policy_coverage pc
-  ON pc.policy_id = f.policy_id AND pc.is_active = TRUE AND pc.expiration_date IS NULL
-LEFT JOIN ${var:database}.coverage cov ON cov.coverage_id = pc.coverage_id
- AND (
-   (UPPER(COALESCE(le.loss_cause_code, '')) = 'COLLISION' AND cov.coverage_type_code = 'COLLISION')
-   OR (UPPER(COALESCE(le.loss_cause_code, '')) <> 'COLLISION' AND cov.coverage_type_code = 'COMPREHENSIVE')
- )
+  ON pc.policy_id = f.policy_id
+ AND pc.coverage_id = cov.coverage_id
+ AND pc.is_active = TRUE
+ AND pc.expiration_date IS NULL
 WHERE f.fnol_id = ${var:fnol_id}
 LIMIT 1;
 ```
@@ -717,7 +720,7 @@ WHERE fnol_id = ${var:fnol_id}
 
 ## convert_fnol_to_claim
 
-Idempotent: if `fnol.claim_id` is already set, skip INSERT and return that id. New claims use `claim_id = 80000 + fnol_id` (88 → 80088). Optional current `claim_reserve` when a matching coverage and estimated amount exist.
+Idempotent: if `fnol.claim_id` is already set, skip INSERT and return that id. New claims use `claim_id = 80000 + fnol_id` (88 → 80088). Also inserts current `INSURED` (policy `POLICYHOLDER`) and `ADJUSTER` (party **4**, Alice Ng) so PD R2.0 can run. Optional current `claim_reserve` when a matching coverage and estimated amount exist.
 
 ---
 
@@ -735,7 +738,7 @@ WHERE fnol_id = ${var:fnol_id}
 
 ## list_adjuster_open_claims
 
-Currently assigned `ADJUSTER` role (`is_current_assignment` true) and `claim_status_code` not `CLOSED`. Demo party **4** (Alice Ng) returns **401**, **402**, **404**. **403** is assigned but CLOSED, so it is omitted.
+Currently assigned `ADJUSTER` role (`is_current_assignment` true) and `claim_status_code` not `CLOSED`. Demo party **4** (Alice Ng) returns **401**, **402**, **404**. **403** is assigned but CLOSED, so it is omitted. After FNOL convert, **80088** is also assigned to Alice and OPEN.
 
 ```sql
 SET VAR:database=car_insurance_claims;

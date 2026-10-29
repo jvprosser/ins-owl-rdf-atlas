@@ -228,7 +228,7 @@ WRITE_OPS: dict[str, dict[str, Any]] = {
     "convert_fnol_to_claim": {
         "required": ("run_id", "event_json"),
         "optional": ("database",),
-        "summary": "INSERT claim + optional reserve and set fnol.claim_id (idempotent)",
+        "summary": "INSERT claim 80000+fnol_id, INSURED+ADJUSTER roles, optional reserve (idempotent)",
         "handler": lambda p: fnol_writes.convert_fnol_to_claim(
             str(p["run_id"]),
             _as_json_string(p["event_json"]),

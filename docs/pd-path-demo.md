@@ -2,6 +2,8 @@
 
 Repeatable Agent Studio demo of the property-damage probes on seed **401**. Orchestrator chats, with Impala between them. The crew does **not** walk FNOL → payout in one run. Each **user message** classifies the current lake snapshot (Intake Agent always re-calls `get_claim_routing_signals`). A new message in the same chat is enough; a new chat also works.
 
+FNOL convert then PD uses claim **80088**, not 401. Runbook: [fnol-path-demo.md](fnol-path-demo.md#3-convert-then-pd-claim-80088). Leave **401** rows alone for this 401 path.
+
 Chat the **Orchestrator** as a claims handler would: one sentence and a claim id. Do not mention tools, catalog labels, `run_id`, or `next_step`. Orchestrator supplies `run_id` and the specialist Role; the PD agent Goal owns the catalog write. Leave **402** / **403** / **404** rows alone.
 
 Probe order (first match wins): R2.0 `CollectIncidentReportNumber` → R2.0b `WaitForIncidentNumber` → R2.1 `RequestPoliceReport` → R2.2 `DetermineFault` → … → R1.4 `PdClaimsReview`. Snapshot-to-`next_step` table: [architecture.md — typical PD path](architecture.md#typical-pd-path-separate-calls). Per-probe chats: [probe-action-tests.md](probe-action-tests.md).

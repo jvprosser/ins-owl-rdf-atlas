@@ -203,4 +203,4 @@ What are my current open claims?
 
 Expect **401**, **402**, **404**.
 
-Operator identity check (not a handler chat): `Call get_server_info once and stop.` Expect `INS_CLAIMS_MCP_V13`.
+Operator identity check (not a handler chat): `Call get_server_info once and stop.` Expect `INS_CLAIMS_MCP_V14`.

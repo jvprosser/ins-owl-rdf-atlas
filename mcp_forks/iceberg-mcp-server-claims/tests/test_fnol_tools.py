@@ -25,6 +25,8 @@ def test_fnol_signals_sql_uses_cte_not_scalar_count_gt():
     assert "fnol_id = 88" in spine
     assert "vehicle_listed_on_policy" in spine
     assert "peril_covered" in spine
+    assert "pc.coverage_id = cov.coverage_id" in spine
+    assert spine.index("coverage cov") < spine.index("policy_coverage pc")
 
 
 def test_get_fnol_spine_shapes_payload():

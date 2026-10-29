@@ -68,13 +68,13 @@ Probes bind CEL expressions to the case document (`litigation_indicator`, `trian
 
 The playbook can name specialists that have not been configured in Agent Studio yet (`SiuAgent`, `SettlementAgent`, `DataQualityAgent`). Orchestrator must Final Answer the route JSON rather than invent a Role. `DenyAgent` and `HumanCitationReview` are now configured in Agent Studio.
 
-A **notice is not a claim**. First notice lives on `fnol` (`fnol_id` 88 / `FNOL-2026-00088`) until `convert_fnol_to_claim` inserts a `claim` row. `deny_fnol` never calls `deny_claim`. Claim chats stay `Please process claim 401.` FNOL chats are `Please process FNOL 88.` After convert, a later `Please process claim 80088` uses the existing claim playbook.
+A **notice is not a claim**. First notice lives on `fnol` (`fnol_id` 88 / `FNOL-2026-00088`) until `convert_fnol_to_claim` inserts a `claim` row (`80000+fnol_id` → **80088**). `deny_fnol` never calls `deny_claim`. Claim chats stay `Please process claim 401.` for the seed PD file. FNOL chats are `Please process FNOL 88.` After convert, `Please process claim 80088` uses the claim playbook (PD on 80088; leave 401 alone). Convert-then-PD runbook: [fnol-path-demo.md](fnol-path-demo.md#3-convert-then-pd-claim-80088).
 
 FNOL → payout is **not** one crew run. The claims platform (or BPA) writes Iceberg rows; this stack classifies the current snapshot. Re-chat the Orchestrator with the same claim id after the data changes (`Please process claim 401.`). Do not pass `run_id` or `next_step` in the chat. Live FNOL runbook: [fnol-path-demo.md](fnol-path-demo.md).
 
 ### Typical PD path (separate calls)
 
-Live Studio runbook (Impala reset + three Orchestrator chats on **401**): [pd-path-demo.md](pd-path-demo.md). DENIED runbook (impairment flip on **404** + two chats, restore after): [deny-path-demo.md](deny-path-demo.md).
+Live Studio runbook (Impala reset + Orchestrator chats on **401**): [pd-path-demo.md](pd-path-demo.md). Convert-then-PD on **80088**: [fnol-path-demo.md](fnol-path-demo.md#3-convert-then-pd-claim-80088). DENIED runbook (impairment flip on **404** + two chats, restore after): [deny-path-demo.md](deny-path-demo.md).
 
 Each row is a later snapshot. Earlier gaps are already filled so a higher probe does not preempt. Case JSON is what `route_claim` sees after `build_claim_graph` (spine + signals). CLOSED, DENIED, insured citation, and coded exclusions (R1.1 / R1.1d / R5.2 / R6.*) win before litigation, SIU, PD gaps, and money. If `subrogation_indicator` is true and `has_subrogation_case` is false, **R4.1** `OpenSubrogationCase` wins before offer, payment, or PD review.
 

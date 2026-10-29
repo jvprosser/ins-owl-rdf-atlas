@@ -379,17 +379,18 @@ LEFT JOIN {db}.policy_insurable_object pio
   ON pio.policy_id = f.policy_id
  AND pio.insurable_object_id = f.insurable_object_id
  AND pio.expiration_date IS NULL
+LEFT JOIN {db}.coverage cov
+  ON (
+    (UPPER(COALESCE(le.loss_cause_code, '')) = 'COLLISION'
+     AND cov.coverage_type_code = 'COLLISION')
+    OR (UPPER(COALESCE(le.loss_cause_code, '')) <> 'COLLISION'
+     AND cov.coverage_type_code = 'COMPREHENSIVE')
+  )
 LEFT JOIN {db}.policy_coverage pc
   ON pc.policy_id = f.policy_id
+ AND pc.coverage_id = cov.coverage_id
  AND pc.is_active = TRUE
  AND pc.expiration_date IS NULL
-LEFT JOIN {db}.coverage cov ON cov.coverage_id = pc.coverage_id
- AND (
-   (UPPER(COALESCE(le.loss_cause_code, '')) = 'COLLISION'
-    AND cov.coverage_type_code = 'COLLISION')
-   OR (UPPER(COALESCE(le.loss_cause_code, '')) <> 'COLLISION'
-    AND cov.coverage_type_code = 'COMPREHENSIVE')
- )
 WHERE f.fnol_id = {fid}
 LIMIT 1
 """.strip()

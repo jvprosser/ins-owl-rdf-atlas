@@ -5,6 +5,7 @@ from __future__ import annotations
 from ins_claims_agent.graph.build_claim_graph import build_claim_graph
 from ins_claims_agent.graph.route_claim import route_claim
 from ins_claims_agent.graph.validate_graph import validate_claim_graph
+from ins_claims_agent.mcp_facade.iceberg_sql import fnol_spine_sql
 
 
 def _spine_401() -> dict:
@@ -669,3 +670,9 @@ def test_route_claim_401_skips_fnol_probes():
     decision = route_claim(case, 401)
     assert decision["next_step"] == "OpenSubrogationCase"
     assert all(not str(c.get("probe_id", "")).startswith("F") or c["status"] != "assigned" for c in decision["checks"])
+
+
+def test_fnol_spine_sql_joins_matching_coverage_only():
+    sql = fnol_spine_sql(88, "car_insurance_claims")
+    assert "pc.coverage_id = cov.coverage_id" in sql
+    assert sql.index("coverage cov") < sql.index("policy_coverage pc")

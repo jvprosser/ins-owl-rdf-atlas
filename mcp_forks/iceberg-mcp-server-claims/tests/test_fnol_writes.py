@@ -74,6 +74,8 @@ def test_convert_fnol_to_claim_inserts_then_is_idempotent():
     def qr(sql: str):
         if "policy_coverage" in sql:
             return [{"policy_coverage_id": 3088, "deductible_amount": 1000}]
+        if "policy_party_role" in sql:
+            return [{"party_id": 15}]
         return [_fnol_row(claim_id=state["claim_id"])]
 
     def dml(sql: str):
@@ -98,6 +100,10 @@ def test_convert_fnol_to_claim_inserts_then_is_idempotent():
     assert first["already_applied"] is False
     assert first["reserve_written"] is True
     assert any("INSERT INTO" in s and ".claim (" in s for s in dml_sql)
+    role_sql = [s for s in dml_sql if "claim_party_role" in s]
+    assert len(role_sql) == 2
+    assert any("'INSURED'" in s and "15" in s for s in role_sql)
+    assert any("'ADJUSTER'" in s and "4" in s for s in role_sql)
 
     dml_sql.clear()
     second = json.loads(
