@@ -1,0 +1,12 @@
+{
+  "claim_id": "SUB-9104",
+  "case_id": "SUB-9104",
+  "signals": {
+    "is_in_flood_plain": true,
+    "has_open_loss_past_36m": false,
+    "prior_claims_count": 0,
+    "financial_stability_tier": "C",
+    "inspection_completed": true,
+    "has_underwriter": true
+  }
+}

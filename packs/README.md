@@ -8,19 +8,21 @@ Do **not** move `ontology/` / `playbook/` at the repo root. Claim **402** still 
 |---|---|---|
 | [`retirement_distributions/`](retirement_distributions/) | Request classification + exception handling | **7001** clean termination → Distribution Ops; **7002** hardship missing substantiation → Client Communications (`send_client_notice`); **7003** RMD underpaid → RMD Ops; **7011–7017** hardship / ERISA / SECURE 2.0 / QDRO |
 | [`retirement_rollovers/`](retirement_rollovers/) | Document processing / ERISA | **8001** missing spousal consent → ERISA Review; **8002** complete direct rollover → Rollover Ops |
+| [`underwriting/`](underwriting/) | Submission appetite, inspection, referral, quote | **SUB-9100** prohibited class → decline; **SUB-9101** TIV `2000001` → inspection; **SUB-9103** TIV `1999999` → straight-through quote; **SUB-9102** survey, then flood referral after inspection |
 
 ## Studio setup (one pack at a time)
 
 Upload steps for Workflow Data are in each pack README (**Upload workflow data**).
 
 - **Distributions (live):** register [`iceberg-mcp-server-finserv`](../mcp_forks/iceberg-mcp-server-finserv/README.md). Impala database `retirement_distributions`. No `PACK_ROOT`.
+- **Underwriting (live):** register [`iceberg-mcp-server-underwriting`](../mcp_forks/iceberg-mcp-server-underwriting/README.md). Impala database `underwriting`. No `PACK_ROOT`. Studio `claim_id` is the submission id (`SUB-9102`).
 - **Rollovers (fixtures):** still the claims MCP + `PACK_ROOT` path in [`iceberg-mcp-server-claims/README.md`](../mcp_forks/iceberg-mcp-server-claims/README.md).
 
 Primary customer prompt: intake **7002**. Probe/action chat prompts (claims + both packs): [`docs/probe-action-tests.md`](../docs/probe-action-tests.md).
 
 ## What each directory and file is for
 
-Both packs use the same layout. Paths below are relative to `packs/<id>/` (for example `packs/retirement_distributions/`).
+Each pack uses the same layout. Paths below are relative to `packs/<id>/` (for example `packs/retirement_distributions/`).
 
 ```text
 packs/<id>/
@@ -47,7 +49,7 @@ packs/<id>/
 
 **Workflow Data (Studio tools)** needs: `pack.yaml`, `exemplars.yaml`, `ontology/`, `playbook/`.  
 **Do not** upload `agents/` (paste those).  
-**MCP:** distributions labels are compiled in `iceberg-mcp-server-finserv` (live Impala). `catalog_fixtures.json` + `fixtures/` remain golden JSON for offline tests. Rollovers still use claims MCP `PACK_ROOT` fixtures. See [`docs/finserv-pattern-pack-status.md`](../docs/finserv-pattern-pack-status.md).
+**MCP:** distributions labels are compiled in `iceberg-mcp-server-finserv` (live Impala). Underwriting labels are compiled in `iceberg-mcp-server-underwriting`. `catalog_fixtures.json` + `fixtures/` remain golden JSON for offline tests. Rollovers still use claims MCP `PACK_ROOT` fixtures. See [`docs/finserv-pattern-pack-status.md`](../docs/finserv-pattern-pack-status.md).
 
 ### `pack.yaml` fields (short)
 
@@ -58,7 +60,7 @@ packs/<id>/
 | `graph.builder` | `generic` → `build_case_graph`; claims 402 uses the triangle builder instead |
 | `graph.case_class` | Label on the case JSON (`DistributionRequest`, `RolloverRequest`) |
 | `graph.literals` / `booleans` | Spine/signal JSON keys copied onto the case document |
-| `catalog` | Label notes. Distributions: live MCP `iceberg-mcp-server-finserv`. Fixture dirs remain golden for tests. |
+| `catalog` | Label notes. Distributions: live MCP `iceberg-mcp-server-finserv`. Underwriting: live MCP `iceberg-mcp-server-underwriting`. Fixture dirs remain golden for tests. |
 
 ### Fixture folders
 

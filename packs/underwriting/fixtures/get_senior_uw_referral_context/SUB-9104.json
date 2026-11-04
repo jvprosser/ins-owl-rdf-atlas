@@ -1,0 +1,14 @@
+{
+  "claim_id": "SUB-9104",
+  "case_id": "SUB-9104",
+  "referral": {
+    "line_of_business": "COMMERCIAL_PROPERTY",
+    "class_code": "5411",
+    "total_insured_value": 1500000,
+    "is_in_flood_plain": true,
+    "flood_zone": "AE",
+    "prior_claims_count": 0,
+    "inspection_completed": true,
+    "financial_stability_tier": "C"
+  }
+}

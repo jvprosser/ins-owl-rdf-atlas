@@ -1,0 +1,12 @@
+{
+  "claim_id": "SUB-9105",
+  "case_id": "SUB-9105",
+  "spine": {
+    "line_of_business": "COMMERCIAL_PROPERTY",
+    "class_code": "5411",
+    "total_insured_value": 500000,
+    "producer_id": "PRD-100",
+    "applicant_tax_id": "91-0910005",
+    "submission_status_code": "OPEN"
+  }
+}

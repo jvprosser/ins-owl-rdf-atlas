@@ -1,0 +1,42 @@
+id: underwriting
+case_id_param: claim_id
+ontology: ontology/submissions.json
+playbook: playbook/playbook.yaml
+exemplars: exemplars.yaml
+cosine_labels:
+  - DECLINE
+  - INSPECTION
+  - REFER
+  - BIND
+  - REVIEW
+graph:
+  builder: generic
+  case_class: Submission
+  literals:
+    - line_of_business
+    - class_code
+    - financial_stability_tier
+    - total_insured_value
+    - prior_claims_count
+  booleans:
+    - is_in_flood_plain
+    - has_open_loss_past_36m
+    - inspection_completed
+    - has_underwriter
+catalog:
+  mcp: iceberg-mcp-server-underwriting
+  database: underwriting
+  fixture_writes: false
+  notes: Labels compiled in iceberg-mcp-server-underwriting. fixtures/ remain golden for agent_studio/tests/test_underwriting_pack.py. Studio claim_id is the submission id (SUB-9102).
+  reads:
+    get_submission_spine:
+      required: [claim_id]
+      fixture_dir: fixtures/get_submission_spine
+    get_submission_routing_signals:
+      required: [claim_id]
+      fixture_dir: fixtures/get_submission_routing_signals
+    get_senior_uw_referral_context:
+      required: [claim_id]
+      fixture_dir: fixtures/get_senior_uw_referral_context
+    list_underwriter_open_submissions:
+      required: [party_id]

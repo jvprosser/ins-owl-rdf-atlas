@@ -1,0 +1,61 @@
+catalog_version: 1
+labels:
+  - DECLINE
+  - INSPECTION
+  - REFER
+  - BIND
+  - REVIEW
+dispatch:
+  DECLINE:
+    coworker: Underwriting Intake Specialist
+    agent_role: UnderwritingIntakeSpecialist
+    next_step: DECLINE_UNINSURABLE
+    lane: DECLINE
+  INSPECTION:
+    coworker: Risk Engineering Specialist
+    agent_role: RiskEngineeringSpecialist
+    next_step: TRIGGER_SURVEY
+    lane: ENRICHMENT
+  REFER:
+    coworker: Senior Underwriter
+    agent_role: SeniorUnderwriter
+    next_step: REFER_TO_SENIOR_UW
+    lane: REFERRAL
+  BIND:
+    coworker: Rating Specialist
+    agent_role: RatingSpecialist
+    next_step: AUTO_RATE_AND_BIND
+    lane: BIND
+  REVIEW:
+    coworker: Underwriting Review Agent
+    agent_role: UnderwritingReviewAgent
+    next_step: HUMAN_UW_REVIEW
+    lane: REVIEW
+exemplars:
+  - id: U01
+    label: DECLINE
+    text: Decline this submission. The class code is outside of appetite.
+  - id: U02
+    label: DECLINE
+    text: Prohibited class. Do not quote this application.
+  - id: U03
+    label: INSPECTION
+    text: Order a property inspection before we can rate this submission.
+  - id: U04
+    label: INSPECTION
+    text: Building survey is still outstanding on this file.
+  - id: U05
+    label: REFER
+    text: Refer this risk to a senior underwriter. It sits in a flood zone.
+  - id: U06
+    label: REFER
+    text: Loss history is too heavy for straight-through processing.
+  - id: U07
+    label: BIND
+    text: Clean submission. Rate it and issue an indicative quote.
+  - id: U08
+    label: BIND
+    text: No flood exposure and no prior claims. Straight-through bind.
+  - id: U09
+    label: REVIEW
+    text: Hold this submission for a human underwriter. It is not a knockout and not a clean bind.

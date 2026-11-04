@@ -1,0 +1,29 @@
+{
+  "id": "underwriting",
+  "fixture_writes": true,
+  "reads": {
+    "get_submission_spine": {
+      "required": ["claim_id"],
+      "optional": ["database", "case_id", "submission_id"],
+      "fixture_dir": "fixtures/get_submission_spine",
+      "summary": "Submission spine"
+    },
+    "get_submission_routing_signals": {
+      "required": ["claim_id"],
+      "optional": ["database", "case_id", "submission_id"],
+      "fixture_dir": "fixtures/get_submission_routing_signals",
+      "summary": "Underwriting routing signals"
+    },
+    "get_senior_uw_referral_context": {
+      "required": ["claim_id"],
+      "optional": ["database", "case_id", "submission_id"],
+      "fixture_dir": "fixtures/get_senior_uw_referral_context",
+      "summary": "Senior underwriter referral context"
+    },
+    "list_underwriter_open_submissions": {
+      "required": ["party_id"],
+      "optional": ["database"],
+      "summary": "Open submissions currently assigned to an underwriter"
+    }
+  }
+}

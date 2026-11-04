@@ -1,6 +1,6 @@
 # Architecture and patterns
 
-High-level view for data engineers. This stack routes operational cases (auto claims today; retirement distributions/rollovers as the same control plane) on Cloudera: Iceberg via Impala, a Git-reviewed JSON case schema + YAML playbook, and Cloudera AI Agent Studio. The LLM is the NL front door. It is not the rules engine.
+High-level view for data engineers. This stack routes operational cases (auto claims today; retirement distributions/rollovers and underwriting submissions on the same control plane) on Cloudera: Iceberg via Impala, a Git-reviewed JSON case schema + YAML playbook, and Cloudera AI Agent Studio. The LLM is the NL front door. It is not the rules engine.
 
 Related: [ADR 0001](adr/0001-agent-studio-mcp-and-tool-layout.md), [MCP fork charter](mcp-fork-charter.md), [Atlas/Ranger plan](atlas-ranger-integration-plan.md), [finserv packs](finserv-pattern-pack.md), [probe/action test prompts](probe-action-tests.md), [RDF/SPARQL restore](rdf-sparql-branch.md).
 
@@ -121,6 +121,8 @@ Claims today is the **default product**: walk-up to repo-root `ontology/` + `pla
 
 **Distributions (live):** Impala database `retirement_distributions` + MCP `iceberg-mcp-server-finserv` (`INS_FINSERV_MCP_V4`). Compiled labels only — no `PACK_ROOT`. Pack fixture JSON remains golden for `agent_studio/tests/test_packs.py`.
 
+**Underwriting (live):** Impala database `underwriting` + MCP `iceberg-mcp-server-underwriting` (`INS_UW_MCP_V1`). Compiled labels only — no `PACK_ROOT`. Studio `claim_id` is the submission id. Pack fixture JSON remains golden for `agent_studio/tests/test_underwriting_pack.py`. Runbook: [packs/underwriting/README.md](../packs/underwriting/README.md).
+
 **Rollovers:** still fixture / `PACK_ROOT` on the claims MCP until distributions e2e is proven. Details: [finserv-pattern-pack-status.md](finserv-pattern-pack-status.md).
 
 ## Pattern: agents as a thin control plane
@@ -134,7 +136,7 @@ Claims today is the **default product**: walk-up to repo-root `ontology/` + `pla
 
 CrewAI `Delegate` matches **Role**, not Name. Intake Role must be exactly `Intake Agent` (not `Manager agent`, which collides with Studio’s hierarchical Manager UI). Studio cutover: [`agent_studio/studio_tools/agents/manager_agent.md`](../agent_studio/studio_tools/agents/manager_agent.md).
 
-The LLM is justified for NL ops and unstructured text. Hardship, RMD, ERISA, litigation, closeout, and coded denial are probe results.
+The LLM is justified for NL ops and unstructured text. Hardship, RMD, ERISA, litigation, closeout, coded denial, and underwriting appetite, referral, and price are probe or catalog results.
 
 ## Governance (not on the runtime path)
 
@@ -223,7 +225,7 @@ Atlas is complementary catalog glue. It is not a triple store and not a SPARQL e
 | Term | Meaning |
 |---|---|
 | Pack | Directory that swaps schema JSON, playbook, exemplars, and (for offline tests) fixtures. Studio tool names stay the same. |
-| `PACK_ROOT` | Host path on the **claims** MCP for rollover (and legacy) fixtures. Do not set on `iceberg-mcp-server-finserv`. |
+| `PACK_ROOT` | Host path on the **claims** MCP for rollover (and legacy) fixtures. Do not set on `iceberg-mcp-server-finserv` or `iceberg-mcp-server-underwriting`. |
 | `PACK_ID` | Rejected for the live distributions demo. Finserv MCP is a compiled catalog, not a fixture bake-in. |
 | Fixture | Canned JSON for a named query. Lake-shaped payload, not a routing rule. |
 | Pointer pack | `pack.yaml` that points at existing claims trees without moving them. |

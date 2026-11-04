@@ -1,0 +1,17 @@
+{
+  "id": "underwriting",
+  "label": "Underwriting submission case JSON",
+  "case_class": "Submission",
+  "fields": {
+    "case_exists": { "type": "boolean" },
+    "line_of_business": { "type": "string" },
+    "class_code": { "type": "string" },
+    "financial_stability_tier": { "type": "string" },
+    "total_insured_value": { "type": "number" },
+    "prior_claims_count": { "type": "number" },
+    "is_in_flood_plain": { "type": "boolean" },
+    "has_open_loss_past_36m": { "type": "boolean" },
+    "inspection_completed": { "type": "boolean" },
+    "has_underwriter": { "type": "boolean" }
+  }
+}

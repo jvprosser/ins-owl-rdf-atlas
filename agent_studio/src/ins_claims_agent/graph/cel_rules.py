@@ -36,6 +36,9 @@ _STR_KEYS = (
     "participant_marital_status",
     "distribution_type_code",
     "request_status_code",
+    "line_of_business",
+    "class_code",
+    "financial_stability_tier",
     "intake_purpose_code",
     "triage_status_code",
     "fnol_number",
@@ -49,6 +52,8 @@ _NUM_KEYS = (
     "prior_emergency_distributions_this_year",
     "estimated_loss_amount",
     "deductible_amount",
+    "total_insured_value",
+    "prior_claims_count",
 )
 _BOOL_KEYS = (
     "fnol_exists",
@@ -59,6 +64,10 @@ _BOOL_KEYS = (
     "plan_mandates_loan_exhaustion",
     "spousal_consent_verified",
     "has_active_qdro_hold",
+    "is_in_flood_plain",
+    "has_open_loss_past_36m",
+    "inspection_completed",
+    "has_underwriter",
 )
 
 

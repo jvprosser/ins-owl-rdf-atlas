@@ -44,6 +44,7 @@ def route_claim(
                 matched,
                 remaining=priorities[idx + 1 :],
                 terminal=bool(action.get("terminal")),
+                playbook_version=_playbook_version(playbook),
             )
 
     default = playbook.get("default_action", {})
@@ -53,7 +54,16 @@ def route_claim(
         matched,
         remaining=[],
         terminal=bool(default.get("terminal", True)),
+        playbook_version=_playbook_version(playbook),
     )
+
+
+def _playbook_version(playbook: dict[str, Any]) -> str | None:
+    version = playbook.get("version")
+    if version is None:
+        return None
+    text = str(version).strip()
+    return text or None
 
 
 def _load_playbook(playbook_path: str | Path | None) -> dict[str, Any]:
@@ -130,7 +140,7 @@ def _trace_entry(
     assigned: bool,
 ) -> dict[str, Any]:
     title = str(probe_cfg.get("title") or probe_id)
-    return {
+    entry = {
         "probe_id": probe_id,
         "form": form,
         "result": result,
@@ -138,6 +148,10 @@ def _trace_entry(
         "status": "assigned" if assigned else "did_not_apply",
         "detail": _detail(probe_id, probe_cfg, form, result, assigned=assigned),
     }
+    cel = str(probe_cfg.get("cel") or "").strip()
+    if cel:
+        entry["cel"] = cel
+    return entry
 
 
 def _optional_str(action: dict[str, Any], *keys: str) -> str | None:
@@ -155,6 +169,7 @@ def _decision(
     *,
     remaining: list[str],
     terminal: bool,
+    playbook_version: str | None = None,
 ) -> dict[str, Any]:
     step = action.get("step")
     assigned = next((p for p in probe_trace if p.get("status") == "assigned"), None)
@@ -199,6 +214,13 @@ def _decision(
         "later_checks_not_run": later,
         "later_checks_note": _LATER_NOTE if later else None,
     }
+    if playbook_version:
+        decision["playbook_version"] = playbook_version
+    reason_code = _optional_str(action, "reason_code")
+    if reason_code:
+        decision["reason_code"] = reason_code
+    if assigned and assigned.get("cel"):
+        decision["matched_cel"] = assigned["cel"]
     decision["routing_summary"] = format_routing_summary(decision)
     return decision
 
