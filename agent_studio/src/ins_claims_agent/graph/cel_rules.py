@@ -38,7 +38,11 @@ _STR_KEYS = (
     "request_status_code",
     "line_of_business",
     "class_code",
+    "naics_code",
     "financial_stability_tier",
+    "construction_type",
+    "protection_class",
+    "flood_zone",
     "intake_purpose_code",
     "triage_status_code",
     "fnol_number",
@@ -54,6 +58,14 @@ _NUM_KEYS = (
     "deductible_amount",
     "total_insured_value",
     "prior_claims_count",
+    "claims_count_36m",
+    "total_incurred_36m",
+    "siu_score",
+    "survey_age_months",
+    "wind_tier",
+    "year_built",
+    "square_footage",
+    "financial_score",
 )
 _BOOL_KEYS = (
     "fnol_exists",
@@ -68,6 +80,12 @@ _BOOL_KEYS = (
     "has_open_loss_past_36m",
     "inspection_completed",
     "has_underwriter",
+    "has_ofac_match",
+    "tax_lien_unresolved",
+    "has_survey_on_file",
+    "has_recent_cat_run",
+    "wiring_updated",
+    "has_sprinklers",
 )
 
 

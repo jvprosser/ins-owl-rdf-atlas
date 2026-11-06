@@ -3,24 +3,29 @@
 #
 # NOTE: do not use YAML key `on:` — in YAML 1.1 it is a boolean synonym for true.
 
-version: "1.0.0"
+version: "2.2.0"
 schema_relpath: ontology/submissions.json
 
 # First match:
 #   R0.1 submission exists
-#   P0 prohibited class or TIV over $25M
-#   U0 no current underwriter (after coded decline, before operational work)
-#   P1 TIV over $2M and inspection not complete
-#   P2 flood plain or 3+ prior claims
-#   P3 clean straight-through bind
-# Unmatched open files fall through to human underwriter review.
+#   P00 prohibited NAICS, P01 OFAC, P02 adverse loss history
+#   U0 no current underwriter
+#   P10 SIU, P20 inspection, P21 CAT model
+#   P30 high value or construction, P31 protection class
+#   P40 straight-through bind
+# Unmatched files fall through to manual triage.
 priorities:
   - R0.1
-  - P0_OUT_OF_APPETITE
+  - P00_PROHIBITED_CLASS_CODE
+  - P01_SANCTIONS_AND_OFAC_FLAG
+  - P02_EXCESSIVE_LOSS_FREQUENCY
   - U0_ASSIGN_UNDERWRITER
-  - P1_AWAITING_INSPECTION
-  - P2_SENIOR_UW_ESCALATION
-  - P3_STRAIGHT_THROUGH_BIND
+  - P10_SIU_HIGH_RISK_TRIGGER
+  - P20_HIGH_TIV_REQUIRES_RISK_ENGINEERING
+  - P21_COASTAL_CONVECTIVE_CAT_MODEL_MISSING
+  - P30_HIGH_VALUE_OR_NON_STANDARD_CONSTRUCTION
+  - P31_SUBSTANDARD_PROTECTION_CLASS
+  - P40_ELIGIBLE_FOR_CLEAN_AUTO_BIND
 
 probes:
   R0.1:
@@ -29,36 +34,66 @@ probes:
     when_true: Submission is present in the case file
     when_false: Submission is missing from the case file
     cel: 'case_exists == true'
-  P0_OUT_OF_APPETITE:
+  P00_PROHIBITED_CLASS_CODE:
     form: ASK
-    title: Out of appetite
-    when_true: Class code is prohibited or total insured value is over $25,000,000
-    when_false: Class code is in appetite and total insured value is at or under $25,000,000
-    cel: '["4812", "5921"].exists(c, c == class_code) || total_insured_value > 25000000'
+    title: Industry class outside carrier underwriting appetite guidelines
+    when_true: NAICS code is outside appetite
+    when_false: NAICS code is inside appetite
+    cel: '["325120", "325920", "713210", "424710"].exists(c, c == naics_code)'
+  P01_SANCTIONS_AND_OFAC_FLAG:
+    form: ASK
+    title: OFAC/Sanctions watchlist hit on applicant or beneficial owners
+    when_true: An OFAC match is present
+    when_false: No OFAC match is present
+    cel: 'has_ofac_match == true'
+  P02_EXCESSIVE_LOSS_FREQUENCY:
+    form: ASK
+    title: Loss history exceeds standard appetite (3+ paid property losses in 36mo)
+    when_true: Three or more property losses in 36 months, or incurred losses over 750000
+    when_false: Loss frequency and incurred losses are inside appetite
+    cel: 'claims_count_36m >= 3 || total_incurred_36m > 750000'
   U0_ASSIGN_UNDERWRITER:
     form: ASK
     title: Current underwriter assignment
     when_true: No underwriter is currently assigned
     when_false: A current underwriter is assigned
     cel: 'has_underwriter == false'
-  P1_AWAITING_INSPECTION:
+  P10_SIU_HIGH_RISK_TRIGGER:
     form: ASK
-    title: Awaiting inspection
-    when_true: Total insured value is over $2,000,000 and inspection is not complete
-    when_false: Inspection is complete or total insured value is at or under $2,000,000
-    cel: 'total_insured_value > 2000000 && inspection_completed == false'
-  P2_SENIOR_UW_ESCALATION:
+    title: National underwriting database moral hazard or SIU referral score
+    when_true: SIU score is over 85 or a tax lien is unresolved
+    when_false: SIU score is at or under 85 and no unresolved tax lien is present
+    cel: 'siu_score > 85 || tax_lien_unresolved == true'
+  P20_HIGH_TIV_REQUIRES_RISK_ENGINEERING:
     form: ASK
-    title: Senior underwriter escalation
-    when_true: Property is in a flood plain or prior claims are 3 or more
-    when_false: Property is not in a flood plain and prior claims are under 3
-    cel: 'is_in_flood_plain == true || prior_claims_count >= 3'
-  P3_STRAIGHT_THROUGH_BIND:
+    title: Total Insured Value exceeds $5M without verified engineering inspection within 24m
+    when_true: TIV is over 5000000 and no survey is on file or the survey is older than 24 months
+    when_false: TIV is at or under 5000000, or a survey from the last 24 months is on file
+    cel: 'total_insured_value > 5000000 && (has_survey_on_file == false || survey_age_months > 24)'
+  P21_COASTAL_CONVECTIVE_CAT_MODEL_MISSING:
     form: ASK
-    title: Straight-through bind
-    when_true: Not in a flood plain and there are no prior claims
-    when_false: Flood plain or prior claims block straight-through bind
-    cel: 'is_in_flood_plain == false && prior_claims_count == 0.0'
+    title: High-exposure CAT zones requiring stochastic RMS/AIR catastrophe loss run
+    when_true: Wind tier is 1 or 2 and no recent CAT run is on file
+    when_false: Wind tier is outside 1 and 2, or a recent CAT run is on file
+    cel: '(wind_tier == 1.0 || wind_tier == 2.0) && has_recent_cat_run == false'
+  P30_HIGH_VALUE_OR_NON_STANDARD_CONSTRUCTION:
+    form: ASK
+    title: TIV > $10M, frame construction > $2.5M, or older unprotected wiring
+    when_true: TIV, frame construction, or wiring requires a senior underwriter
+    when_false: Value, construction, and wiring are inside frontline authority
+    cel: 'total_insured_value > 10000000 || (construction_type == "FRAME" && total_insured_value > 2500000) || (year_built > 0 && year_built < 1975 && wiring_updated == false)'
+  P31_SUBSTANDARD_PROTECTION_CLASS:
+    form: ASK
+    title: Public Protection Class (PPC) 8-10 or lack of functional sprinkler system
+    when_true: Protection class is 8, 9, or 10, or a building over 20000 square feet has no sprinklers
+    when_false: Protection class and sprinklers are inside frontline authority
+    cel: '["8", "9", "10"].exists(c, c == protection_class) || (has_sprinklers == false && square_footage > 20000)'
+  P40_ELIGIBLE_FOR_CLEAN_AUTO_BIND:
+    form: ASK
+    title: Preferred risk meeting all frontline parameters for automated rating
+    when_true: TIV, loss history, financial score, and flood zone meet straight-through terms
+    when_false: Straight-through terms are not met
+    cel: 'total_insured_value <= 5000000 && claims_count_36m == 0.0 && financial_score >= 680 && !(["A", "V"].exists(z, z == flood_zone))'
 
 actions:
   R0.1:
@@ -68,9 +103,30 @@ actions:
       lane: DATA_QUALITY
       write: write_audit_event
       tools: [build_claim_graph, validate_claim_graph, write_audit_event]
-  P0_OUT_OF_APPETITE:
+  P00_PROHIBITED_CLASS_CODE:
     - when: ASK_TRUE
-      step: DECLINE_UNINSURABLE
+      step: DECLINE_UNINSURABLE_CLASS
+      agent: UnderwritingIntakeSpecialist
+      coworker: Underwriting Intake Specialist
+      lane: DECLINE
+      write: write_submission_decline
+      reason_code: OUT_OF_APPETITE
+      letter_on_request: true
+      tools: [write_submission_decline, save_claim_letter]
+      terminal: true
+  P01_SANCTIONS_AND_OFAC_FLAG:
+    - when: ASK_TRUE
+      step: HOLD_COMPLIANCE_FREEZE
+      agent: UnderwritingReviewAgent
+      coworker: Underwriting Review Agent
+      lane: REVIEW
+      write: write_audit_event
+      tools: [write_audit_event]
+      terminal: true
+      letter_on_request: false
+  P02_EXCESSIVE_LOSS_FREQUENCY:
+    - when: ASK_TRUE
+      step: DECLINE_ADVERSE_LOSS_HISTORY
       agent: UnderwritingIntakeSpecialist
       coworker: Underwriting Intake Specialist
       lane: DECLINE
@@ -86,9 +142,19 @@ actions:
       lane: DATA_QUALITY
       write: write_audit_event
       tools: [build_claim_graph, write_audit_event]
-  P1_AWAITING_INSPECTION:
+  P10_SIU_HIGH_RISK_TRIGGER:
     - when: ASK_TRUE
-      step: TRIGGER_SURVEY
+      step: REFER_TO_SPECIAL_INVESTIGATIONS
+      agent: UnderwritingReviewAgent
+      coworker: Underwriting Review Agent
+      lane: REVIEW
+      write: write_audit_event
+      tools: [write_audit_event]
+      terminal: false
+      letter_on_request: false
+  P20_HIGH_TIV_REQUIRES_RISK_ENGINEERING:
+    - when: ASK_TRUE
+      step: ORDER_RISK_ENGINEERING_SURVEY
       agent: RiskEngineeringSpecialist
       coworker: Risk Engineering Specialist
       lane: ENRICHMENT
@@ -96,31 +162,55 @@ actions:
       task_type_code: INSPECTION
       tools: [write_data_enrichment_request]
       terminal: false
-  P2_SENIOR_UW_ESCALATION:
+      letter_on_request: false
+  P21_COASTAL_CONVECTIVE_CAT_MODEL_MISSING:
     - when: ASK_TRUE
-      step: REFER_TO_SENIOR_UW
+      step: TRIGGER_CAT_MODEL_RUN
+      agent: RiskEngineeringSpecialist
+      coworker: Risk Engineering Specialist
+      lane: ENRICHMENT
+      write: write_audit_event
+      tools: [write_audit_event]
+      terminal: false
+      letter_on_request: false
+  P30_HIGH_VALUE_OR_NON_STANDARD_CONSTRUCTION:
+    - when: ASK_TRUE
+      step: REFER_SENIOR_PROPERTY_UW
       agent: SeniorUnderwriter
       coworker: Senior Underwriter
       lane: REFERRAL
       write: write_referral_queue
       tools: [get_senior_uw_referral_context, write_referral_queue]
       terminal: false
-  P3_STRAIGHT_THROUGH_BIND:
+      letter_on_request: false
+  P31_SUBSTANDARD_PROTECTION_CLASS:
     - when: ASK_TRUE
-      step: AUTO_RATE_AND_BIND
+      step: REFER_PROPERTY_FACULTATIVE_DESK
+      agent: SeniorUnderwriter
+      coworker: Senior Underwriter
+      lane: REFERRAL
+      write: write_referral_queue
+      tools: [get_senior_uw_referral_context, write_referral_queue]
+      terminal: false
+      letter_on_request: false
+  P40_ELIGIBLE_FOR_CLEAN_AUTO_BIND:
+    - when: ASK_TRUE
+      step: EXECUTE_AUTOMATED_BIND_AND_QUOTE
       agent: RatingSpecialist
       coworker: Rating Specialist
       lane: BIND
       write: write_quote_issuance
       tools: [write_quote_issuance]
       terminal: true
+      letter_on_request: true
 
 default_action:
   title: No earlier check assigned work
-  step: HUMAN_UW_REVIEW
+  step: HOLD_FOR_MANUAL_TRIAGE
   agent: UnderwritingReviewAgent
   coworker: Underwriting Review Agent
   lane: REVIEW
   write: write_audit_event
   tools: [write_audit_event]
   terminal: false
+  letter_on_request: false

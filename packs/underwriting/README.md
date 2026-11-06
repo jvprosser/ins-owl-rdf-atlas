@@ -8,14 +8,14 @@ Live lake + MCP: `ddl/hive_iceberg/underwriting_iceberg.sql`, `ddl/hive_iceberg/
 
 | Case | Story | Route |
 |---|---|---|
-| **SUB-9100** | Class `4812` | `DECLINE_UNINSURABLE` / `UnderwritingIntakeSpecialist` (P0) |
-| **SUB-9101** | TIV `2000001`, inspection open | `TRIGGER_SURVEY` / `RiskEngineeringSpecialist` (P1) |
-| **SUB-9102** | TIV `4500000`, flood, inspection open | `TRIGGER_SURVEY` first. After inspection is on file, the same prompt hits P2 |
-| **SUB-9103** | TIV `1999999`, no flood, no prior claims | `AUTO_RATE_AND_BIND` / `RatingSpecialist` (P3) |
-| **SUB-9104** | Inspection done, flood plain, TIV under $2M | `REFER_TO_SENIOR_UW` / `SeniorUnderwriter` (P2) |
-| **SUB-9105** | One prior claim, no flood, TIV `$500,000` | `HUMAN_UW_REVIEW` / `UnderwritingReviewAgent` |
-| **SUB-9106** | TIV `25000001`, inspection open | `DECLINE_UNINSURABLE` (P0 beats P1) |
-| **SUB-9107** | TIV `1800000`, inspection done, no owner | `AssignUnderwriter`. After party 14 is assigned, the same prompt binds |
+| **SUB-9100** | NAICS `325120` | `DECLINE_UNINSURABLE_CLASS` / `Underwriting Intake Specialist` (P00) |
+| **SUB-9101** | OFAC match | `HOLD_COMPLIANCE_FREEZE` / `Underwriting Review Agent` (P01) |
+| **SUB-9102** | 3 property losses in 36 months | `DECLINE_ADVERSE_LOSS_HISTORY` / `Underwriting Intake Specialist` (P02) |
+| **SUB-9103** | SIU score `90` | `REFER_TO_SPECIAL_INVESTIGATIONS` / `Underwriting Review Agent` (P10) |
+| **SUB-9104** | TIV `6000000`, no survey | `ORDER_RISK_ENGINEERING_SURVEY` / `Risk Engineering Specialist` (P20) |
+| **SUB-9105** | Protection class `9` | `REFER_PROPERTY_FACULTATIVE_DESK` / `Senior Underwriter` (P31) |
+| **SUB-9106** | TIV `25000001`, survey on file | `REFER_SENIOR_PROPERTY_UW` / `Senior Underwriter` (P30) |
+| **SUB-9107** | Clean file, no owner | `AssignUnderwriter`. After party 14 is assigned, the same prompt quotes (P40) |
 
 Quote premium is computed in the catalog (cents per $100 of TIV): tier A `15`, B `25`, C `40`, anything else `STANDARD` at `30`. `premium_cents = total_insured_value * rate // 100`. **SUB-9103** (tier B) is `499999` cents. The agent does not pass a premium.
 
@@ -66,20 +66,21 @@ Check: Delegate Intake Agent `get_server_info` → `content_id=INS_UW_MCP_V1`. T
 Paste agents from `agents/`. Roles must be exactly `Intake Agent`, `Underwriting Intake Specialist`, `Risk Engineering Specialist`, `Senior Underwriter`, `Rating Specialist`, and `Underwriting Review Agent`. Decline letters need Studio `save_claim_letter` on the intake specialist only.
 
 ```text
-Please evaluate submission SUB-9102.
+Please evaluate submission SUB-9104.
 ```
 
-Expect `TRIGGER_SURVEY`, `Risk Engineering Specialist`, `write_data_enrichment_request`.
+Expect `ORDER_RISK_ENGINEERING_SURVEY`, `Risk Engineering Specialist`, `write_data_enrichment_request`.
 
-After the inspection lands, flip the lake row and send the same sentence again:
+After the survey is on file, flip the lake row and send the same sentence again:
 
 ```sql
 UPDATE underwriting.property_risk_scores
-SET inspection_completed = TRUE
-WHERE submission_id = 'SUB-9102';
+SET has_survey_on_file = TRUE,
+    survey_age_months = 12
+WHERE submission_id = 'SUB-9104';
 ```
 
-Expect `REFER_TO_SENIOR_UW` / `Senior Underwriter` / `write_referral_queue`. Flood is already true on the seed, so P2 wins once P1 no longer matches.
+TIV stays at `6000000`, so the next chat is `REFER_SENIOR_PROPERTY_UW` / `Senior Underwriter` / `write_referral_queue`.
 
 ## Assignment
 
@@ -97,7 +98,7 @@ SELECT 'SPR-9107' AS submission_party_role_id,
        CAST('2026-11-04 11:00:00' AS TIMESTAMP) AS created_at;
 ```
 
-Expect `AUTO_RATE_AND_BIND`. A prohibited class still declines with no owner (P0 before U0).
+Expect `EXECUTE_AUTOMATED_BIND_AND_QUOTE`. A prohibited NAICS still declines with no owner (P00 before U0).
 
 Open queue (DECLINED and QUOTED omitted):
 

@@ -1,7 +1,7 @@
 # Risk Engineering Specialist (configured in Agent Studio)
 
 Use when `route_claim` assigns `RiskEngineeringSpecialist` / `TRIGGER_SURVEY`
-(cases **SUB-9101**, **SUB-9102** while inspection is open).
+(case **SUB-9104** while the survey is missing).
 
 `provider_type` is `INSPECTION` from the route `task_type_code`. Do not order
 a different data vendor.
@@ -31,8 +31,8 @@ Never Delegate. Never invent Observation results. Do not run structured intake.
 ### Goal
 ```text
 Given claim_id (submission id), run_id, playbook_version, and matched_cel
-from Orchestrator (default claim_id=SUB-9102, run_id=demo-SUB-9102-e2e,
-playbook_version=1.0.0). provider_type is INSPECTION.
+from Orchestrator (default claim_id=SUB-9104, run_id=demo-SUB-9104-e2e,
+playbook_version=2.2.0). provider_type is INSPECTION.
 
 1) Call run_named_write ONCE. Copy playbook_version and matched_cel exactly.
    {"label":"write_data_enrichment_request","run_id":"<run_id>",

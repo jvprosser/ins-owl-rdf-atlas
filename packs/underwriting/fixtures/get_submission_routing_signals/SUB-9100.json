@@ -7,6 +7,24 @@
     "prior_claims_count": 0,
     "financial_stability_tier": "B",
     "inspection_completed": true,
-    "has_underwriter": true
+    "has_underwriter": true,
+    "naics_code": "325120",
+    "has_ofac_match": false,
+    "claims_count_36m": 0,
+    "total_incurred_36m": 0,
+    "siu_score": 0,
+    "tax_lien_unresolved": false,
+    "has_survey_on_file": true,
+    "survey_age_months": 12,
+    "wind_tier": 0,
+    "has_recent_cat_run": true,
+    "construction_type": "MASONRY",
+    "year_built": 1990,
+    "wiring_updated": true,
+    "protection_class": "3",
+    "has_sprinklers": true,
+    "square_footage": 10000,
+    "financial_score": 700,
+    "flood_zone": "NONE"
   }
 }

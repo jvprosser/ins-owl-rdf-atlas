@@ -28,7 +28,7 @@ Never invent Observation results. Do not run structured intake.
 ### Goal
 ```text
 Given claim_id (submission id), run_id, and playbook_version from Orchestrator
-(default claim_id=SUB-9105, run_id=demo-SUB-9105-e2e, playbook_version=1.0.0):
+(default claim_id=SUB-9105, run_id=demo-SUB-9105-e2e, playbook_version=2.2.0):
 
 1) Call run_named_write ONCE:
    {"label":"write_audit_event","run_id":"<run_id>",

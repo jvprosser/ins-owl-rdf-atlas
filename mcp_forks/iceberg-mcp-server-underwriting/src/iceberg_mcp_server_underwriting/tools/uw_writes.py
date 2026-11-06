@@ -22,22 +22,38 @@ from iceberg_mcp_server_underwriting.tools.uw_tools import load_snapshot
 QueryFn = Callable[[str], list[dict[str, Any]]]
 DmlFn = Callable[[str], str]
 
-PLAYBOOK_VERSION = "1.0.0"
+PLAYBOOK_VERSION = "2.2.0"
 
 PROBE_CEL = {
-    "P0_OUT_OF_APPETITE": (
-        '["4812", "5921"].exists(c, c == class_code) || total_insured_value > 25000000'
+    "P00_PROHIBITED_CLASS_CODE": (
+        '["325120", "325920", "713210", "424710"].exists(c, c == naics_code)'
     ),
-    "P1_AWAITING_INSPECTION": (
-        "total_insured_value > 2000000 && inspection_completed == false"
+    "P02_EXCESSIVE_LOSS_FREQUENCY": (
+        "claims_count_36m >= 3 || total_incurred_36m > 750000"
     ),
-    "P2_SENIOR_UW_ESCALATION": (
-        "is_in_flood_plain == true || prior_claims_count >= 3"
+    "P20_HIGH_TIV_REQUIRES_RISK_ENGINEERING": (
+        "total_insured_value > 5000000 && (has_survey_on_file == false || survey_age_months > 24)"
     ),
-    "P3_STRAIGHT_THROUGH_BIND": (
-        "is_in_flood_plain == false && prior_claims_count == 0.0"
+    "P30_HIGH_VALUE_OR_NON_STANDARD_CONSTRUCTION": (
+        'total_insured_value > 10000000 || (construction_type == "FRAME" && total_insured_value > 2500000) || (year_built > 0 && year_built < 1975 && wiring_updated == false)'
+    ),
+    "P31_SUBSTANDARD_PROTECTION_CLASS": (
+        '["8", "9", "10"].exists(c, c == protection_class) || (has_sprinklers == false && square_footage > 20000)'
+    ),
+    "P40_ELIGIBLE_FOR_CLEAN_AUTO_BIND": (
+        'total_insured_value <= 5000000 && claims_count_36m == 0.0 && financial_score >= 680 && !(["A", "V"].exists(z, z == flood_zone))'
     ),
 }
+
+_DECLINE_PROBES = frozenset({"P00_PROHIBITED_CLASS_CODE", "P02_EXCESSIVE_LOSS_FREQUENCY"})
+_ENRICHMENT_PROBES = frozenset({"P20_HIGH_TIV_REQUIRES_RISK_ENGINEERING"})
+_REFERRAL_PROBES = frozenset(
+    {
+        "P30_HIGH_VALUE_OR_NON_STANDARD_CONSTRUCTION",
+        "P31_SUBSTANDARD_PROTECTION_CLASS",
+    }
+)
+_QUOTE_PROBES = frozenset({"P40_ELIGIBLE_FOR_CLEAN_AUTO_BIND"})
 
 _DECLINE_REASONS = frozenset({"OUT_OF_APPETITE"})
 _PROVIDERS = frozenset({"INSPECTION"})
@@ -48,26 +64,38 @@ _RATE_CENTS_PER_100 = {"A": 15, "B": 25, "C": 40}
 _DEFAULT_RATE_CENTS = 30
 
 _META = {
-    "P0_OUT_OF_APPETITE": {
-        "next_step": "DECLINE_UNINSURABLE",
+    "P00_PROHIBITED_CLASS_CODE": {
+        "next_step": "DECLINE_UNINSURABLE_CLASS",
         "agent_role": "UnderwritingIntakeSpecialist",
         "lane": "DECLINE",
         "terminal": True,
     },
-    "P1_AWAITING_INSPECTION": {
-        "next_step": "TRIGGER_SURVEY",
+    "P02_EXCESSIVE_LOSS_FREQUENCY": {
+        "next_step": "DECLINE_ADVERSE_LOSS_HISTORY",
+        "agent_role": "UnderwritingIntakeSpecialist",
+        "lane": "DECLINE",
+        "terminal": True,
+    },
+    "P20_HIGH_TIV_REQUIRES_RISK_ENGINEERING": {
+        "next_step": "ORDER_RISK_ENGINEERING_SURVEY",
         "agent_role": "RiskEngineeringSpecialist",
         "lane": "ENRICHMENT",
         "terminal": False,
     },
-    "P2_SENIOR_UW_ESCALATION": {
-        "next_step": "REFER_TO_SENIOR_UW",
+    "P30_HIGH_VALUE_OR_NON_STANDARD_CONSTRUCTION": {
+        "next_step": "REFER_SENIOR_PROPERTY_UW",
         "agent_role": "SeniorUnderwriter",
         "lane": "REFERRAL",
         "terminal": False,
     },
-    "P3_STRAIGHT_THROUGH_BIND": {
-        "next_step": "AUTO_RATE_AND_BIND",
+    "P31_SUBSTANDARD_PROTECTION_CLASS": {
+        "next_step": "REFER_PROPERTY_FACULTATIVE_DESK",
+        "agent_role": "SeniorUnderwriter",
+        "lane": "REFERRAL",
+        "terminal": False,
+    },
+    "P40_ELIGIBLE_FOR_CLEAN_AUTO_BIND": {
+        "next_step": "EXECUTE_AUTOMATED_BIND_AND_QUOTE",
         "agent_role": "RatingSpecialist",
         "lane": "BIND",
         "terminal": True,
@@ -111,10 +139,10 @@ def _governed(
     run_id: str,
     event_json: str,
     *,
-    probe_id: str,
+    allowed_probes: frozenset[str],
     database: str | None,
     query_rows: QueryFn | None,
-) -> tuple[str, str, dict[str, Any], dict[str, Any]] | str:
+) -> tuple[str, str, dict[str, Any], dict[str, Any], str] | str:
     try:
         rid = validate_run_id(run_id)
         body = _parse_json_arg(event_json, "event_json")
@@ -126,8 +154,11 @@ def _governed(
         return _error("event_json.claim_id is required")
     if str(body.get("playbook_version") or "").strip() != PLAYBOOK_VERSION:
         return _error(f"playbook_version must be {PLAYBOOK_VERSION}")
-    if str(body.get("probe_id") or "").strip() != probe_id:
-        return _error(f"probe_id must be {probe_id}")
+    probe_id = str(body.get("probe_id") or "").strip()
+    if probe_id not in allowed_probes:
+        return _error(
+            "probe_id must be one of " + ", ".join(sorted(allowed_probes))
+        )
     cel = str(body.get("cel") or "").strip()
     if cel != PROBE_CEL[probe_id]:
         return _error("cel does not match the playbook probe")
@@ -135,7 +166,7 @@ def _governed(
     db, snap, err = load_snapshot(str(claim_id), database, query_rows=query_rows)
     if err or snap is None:
         return _error(err or "submission not found", claim_id=str(claim_id), database=db)
-    return rid, db, body, snap
+    return rid, db, body, snap, probe_id
 
 
 def _audit_and_write(
@@ -201,13 +232,13 @@ def write_submission_decline(
     governed = _governed(
         run_id,
         event_json,
-        probe_id="P0_OUT_OF_APPETITE",
+        allowed_probes=_DECLINE_PROBES,
         database=database,
         query_rows=query_rows,
     )
     if isinstance(governed, str):
         return governed
-    rid, db, body, snap = governed
+    rid, db, body, snap, probe_id = governed
     reason = str(body.get("reason_code") or "").strip()
     if reason not in _DECLINE_REASONS:
         return _error("reason_code must be OUT_OF_APPETITE")
@@ -222,7 +253,7 @@ def write_submission_decline(
         db=db,
         rid=rid,
         snap=snap,
-        probe_id="P0_OUT_OF_APPETITE",
+        probe_id=probe_id,
         business_sql=insert_decline_sql(db, row),
         table="submission_decline",
         payload_extra={"reason_code": reason, "decline_id": row["decline_id"]},
@@ -240,13 +271,13 @@ def write_data_enrichment_request(
     governed = _governed(
         run_id,
         event_json,
-        probe_id="P1_AWAITING_INSPECTION",
+        allowed_probes=_ENRICHMENT_PROBES,
         database=database,
         query_rows=query_rows,
     )
     if isinstance(governed, str):
         return governed
-    rid, db, body, snap = governed
+    rid, db, body, snap, probe_id = governed
     provider = str(body.get("provider_type") or "").strip()
     if provider not in _PROVIDERS:
         return _error("provider_type must be INSPECTION")
@@ -261,7 +292,7 @@ def write_data_enrichment_request(
         db=db,
         rid=rid,
         snap=snap,
-        probe_id="P1_AWAITING_INSPECTION",
+        probe_id=probe_id,
         business_sql=insert_enrichment_sql(db, row),
         table="data_enrichment_request",
         payload_extra={"provider_type": provider, "enrichment_id": row["enrichment_id"]},
@@ -279,13 +310,13 @@ def write_referral_queue(
     governed = _governed(
         run_id,
         event_json,
-        probe_id="P2_SENIOR_UW_ESCALATION",
+        allowed_probes=_REFERRAL_PROBES,
         database=database,
         query_rows=query_rows,
     )
     if isinstance(governed, str):
         return governed
-    rid, db, _body, snap = governed
+    rid, db, _body, snap, probe_id = governed
     row = {
         "referral_id": _row_id(rid, snap["submission_id"], "referral"),
         "submission_id": snap["submission_id"],
@@ -297,7 +328,7 @@ def write_referral_queue(
         db=db,
         rid=rid,
         snap=snap,
-        probe_id="P2_SENIOR_UW_ESCALATION",
+        probe_id=probe_id,
         business_sql=insert_referral_sql(db, row),
         table="referral_queue",
         payload_extra={"queue_code": "SENIOR_UW", "referral_id": row["referral_id"]},
@@ -325,13 +356,13 @@ def write_quote_issuance(
     governed = _governed(
         run_id,
         event_json,
-        probe_id="P3_STRAIGHT_THROUGH_BIND",
+        allowed_probes=_QUOTE_PROBES,
         database=database,
         query_rows=query_rows,
     )
     if isinstance(governed, str):
         return governed
-    rid, db, _body, snap = governed
+    rid, db, _body, snap, probe_id = governed
     rating_tier, premium_cents = rate_quote(
         snap["total_insured_value"], snap["financial_stability_tier"]
     )
@@ -347,7 +378,7 @@ def write_quote_issuance(
         db=db,
         rid=rid,
         snap=snap,
-        probe_id="P3_STRAIGHT_THROUGH_BIND",
+        probe_id=probe_id,
         business_sql=insert_quote_sql(db, row),
         table="quote_issuance",
         payload_extra={

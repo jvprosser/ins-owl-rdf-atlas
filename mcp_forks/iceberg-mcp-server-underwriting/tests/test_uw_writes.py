@@ -7,7 +7,7 @@ import json
 from iceberg_mcp_server_underwriting.tools import uw_writes
 from iceberg_mcp_server_underwriting.tools.uw_writes import PROBE_CEL
 
-_P3 = "P3_STRAIGHT_THROUGH_BIND"
+_P40 = "P40_ELIGIBLE_FOR_CLEAN_AUTO_BIND"
 
 
 def _snapshot_row():
@@ -29,9 +29,9 @@ def _snapshot_row():
 def _event(**extra):
     body = {
         "claim_id": "SUB-9103",
-        "playbook_version": "1.0.0",
-        "probe_id": _P3,
-        "cel": PROBE_CEL[_P3],
+        "playbook_version": "2.2.0",
+        "probe_id": _P40,
+        "cel": PROBE_CEL[_P40],
     }
     body.update(extra)
     return json.dumps(body)
@@ -66,8 +66,9 @@ def test_quote_computes_premium_from_snapshot():
     assert payload["audit_table"] == "agent_run_audit"
     assert len(calls) == 2
     assert "499999" in calls[0]
-    assert "1.0.0" in calls[1]
-    assert PROBE_CEL[_P3] in calls[1]
+    assert "2.2.0" in calls[1]
+    assert "P40_ELIGIBLE_FOR_CLEAN_AUTO_BIND" in calls[1]
+    assert "financial_score >= 680" in calls[1]
     assert "1999999" in calls[1]
 
 
@@ -78,9 +79,9 @@ def test_decline_rejects_invented_reason():
             {
                 "claim_id": "SUB-9100",
                 "reason_code": "TOO_RISKY",
-                "playbook_version": "1.0.0",
-                "probe_id": "P0_OUT_OF_APPETITE",
-                "cel": PROBE_CEL["P0_OUT_OF_APPETITE"],
+                "playbook_version": "2.2.0",
+                "probe_id": "P00_PROHIBITED_CLASS_CODE",
+                "cel": PROBE_CEL["P00_PROHIBITED_CLASS_CODE"],
             }
         ),
         execute_dml=lambda sql: "Query executed successfully.",
@@ -97,9 +98,9 @@ def test_enrichment_rejects_other_provider():
             {
                 "claim_id": "SUB-9101",
                 "provider_type": "CREDIT",
-                "playbook_version": "1.0.0",
-                "probe_id": "P1_AWAITING_INSPECTION",
-                "cel": PROBE_CEL["P1_AWAITING_INSPECTION"],
+                "playbook_version": "2.2.0",
+                "probe_id": "P20_HIGH_TIV_REQUIRES_RISK_ENGINEERING",
+                "cel": PROBE_CEL["P20_HIGH_TIV_REQUIRES_RISK_ENGINEERING"],
             }
         ),
         execute_dml=lambda sql: "Query executed successfully.",

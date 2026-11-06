@@ -15,14 +15,32 @@ graph:
   literals:
     - line_of_business
     - class_code
+    - naics_code
     - financial_stability_tier
+    - construction_type
+    - protection_class
+    - flood_zone
     - total_insured_value
     - prior_claims_count
+    - claims_count_36m
+    - total_incurred_36m
+    - siu_score
+    - survey_age_months
+    - wind_tier
+    - year_built
+    - square_footage
+    - financial_score
   booleans:
     - is_in_flood_plain
     - has_open_loss_past_36m
     - inspection_completed
     - has_underwriter
+    - has_ofac_match
+    - tax_lien_unresolved
+    - has_survey_on_file
+    - has_recent_cat_run
+    - wiring_updated
+    - has_sprinklers
 catalog:
   mcp: iceberg-mcp-server-underwriting
   database: underwriting

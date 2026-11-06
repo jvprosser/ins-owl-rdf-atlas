@@ -110,61 +110,29 @@ If the coworker is not in the Crew: Final Answer with the route JSON (and Studio
 
 Paste these as the handler would type them. Do not put catalog labels, `run_id`, probe ids, or premiums in the chat.
 
-Lead file (inspection still open; first match is survey, not the flood referral):
-
-```text
-Please evaluate submission SUB-9102.
-```
-
-Expect Risk Engineering Specialist (`TRIGGER_SURVEY`, `write_data_enrichment_request`).
-
-Prohibited class:
+Prohibited NAICS:
 
 ```text
 Please evaluate submission SUB-9100.
 ```
 
-Expect Underwriting Intake Specialist (`DECLINE_UNINSURABLE`, `write_submission_decline`). A letter is recommended. Draft it only if the user asks.
+Expect Underwriting Intake Specialist (`DECLINE_UNINSURABLE_CLASS`, `write_submission_decline`). A letter is recommended. Draft it only if the user asks.
 
-Boundary, inspection required:
-
-```text
-Please evaluate submission SUB-9101.
-```
-
-Expect Risk Engineering Specialist.
-
-Straight-through:
-
-```text
-Please evaluate submission SUB-9103.
-```
-
-Expect Rating Specialist (`AUTO_RATE_AND_BIND`, `write_quote_issuance`). The catalog computes the premium.
-
-Flood after inspection:
+Survey missing on a file over $5M:
 
 ```text
 Please evaluate submission SUB-9104.
 ```
 
-Expect Senior Underwriter (`REFER_TO_SENIOR_UW`, `write_referral_queue`).
+Expect Risk Engineering Specialist (`ORDER_RISK_ENGINEERING_SURVEY`, `write_data_enrichment_request`).
 
-Human review (one prior claim, not a flood plain, TIV at or under $2M):
-
-```text
-Please evaluate submission SUB-9105.
-```
-
-Expect Underwriting Review Agent (`HUMAN_UW_REVIEW`, `write_audit_event`).
-
-TIV over $25M (beats the inspection probe):
+High value with a survey already on file:
 
 ```text
 Please evaluate submission SUB-9106.
 ```
 
-Expect Underwriting Intake Specialist.
+Expect Senior Underwriter (`REFER_SENIOR_PROPERTY_UW`, `write_referral_queue`).
 
 Unassigned file (no current underwriter; coworker is omitted):
 
@@ -172,7 +140,7 @@ Unassigned file (no current underwriter; coworker is omitted):
 Please evaluate submission SUB-9107.
 ```
 
-Expect `AssignUnderwriter`. Final Answer the route JSON. Do not invent a Role. The lake insert is outside the agent. After it, the same sentence binds.
+Expect `AssignUnderwriter`. Final Answer the route JSON. Do not invent a Role. The lake insert is outside the agent. After it, the same sentence quotes.
 
 Underwriter queue (Riley Cho, party_id 14; DECLINED and QUOTED are omitted):
 

@@ -9,7 +9,7 @@
 --                 SUB-9106 TIV knockout, SUB-9107 unassigned (then bind)
 --
 -- JSON contract (Studio / MCP): packs/underwriting/fixtures/
--- CREATE TABLE shape: not EXTERNAL; COMMENT before PARTITIONED BY SPEC.
+-- CREATE TABLE shape: not EXTERNAL; COMMENT after PARTITIONED BY SPEC.
 -- =============================================================================
 
 CREATE DATABASE IF NOT EXISTS underwriting;
@@ -26,12 +26,11 @@ CREATE TABLE IF NOT EXISTS underwriting.submissions (
   submission_timestamp      TIMESTAMP COMMENT 'When the submission was ingested.',
   submission_status_code    STRING    COMMENT 'OPEN | DECLINED | QUOTED | REFERRED.'
 )
-COMMENT 'Underwriting submission spine (one row per Studio claim_id).'
 PARTITIONED BY SPEC (
   submission_status_code
 )
+COMMENT 'Underwriting submission spine (one row per Studio claim_id).'
 STORED BY ICEBERG
-STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
   'llm.domain' = 'underwriting',
@@ -48,12 +47,11 @@ CREATE TABLE IF NOT EXISTS underwriting.mvr_reports (
   major_violation           BOOLEAN   COMMENT 'True when a major violation is present.',
   report_status_code        STRING    COMMENT 'ON_FILE | REQUESTED.'
 )
-COMMENT 'Motor vehicle report rows for a submission.'
 PARTITIONED BY SPEC (
   report_status_code
 )
+COMMENT 'Motor vehicle report rows for a submission.'
 STORED BY ICEBERG
-STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
   'llm.domain' = 'underwriting',
@@ -71,12 +69,11 @@ CREATE TABLE IF NOT EXISTS underwriting.property_risk_scores (
   inspection_completed      BOOLEAN   COMMENT 'True when the property inspection is on file.',
   flood_zone                STRING    COMMENT 'Flood zone code, or NONE.'
 )
-COMMENT 'Property flood and inspection flags for CEL routing.'
 PARTITIONED BY SPEC (
   flood_zone
 )
+COMMENT 'Property flood and inspection flags for CEL routing.'
 STORED BY ICEBERG
-STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
   'llm.domain' = 'underwriting',
@@ -94,12 +91,11 @@ CREATE TABLE IF NOT EXISTS underwriting.loss_history_summary (
   has_open_loss_past_36m    BOOLEAN   COMMENT 'True when an open loss exists in the past 36 months.',
   financial_stability_tier  STRING    COMMENT 'A | B | C. Rating table key.'
 )
-COMMENT 'Loss history and financial stability tier for a submission.'
 PARTITIONED BY SPEC (
   financial_stability_tier
 )
+COMMENT 'Loss history and financial stability tier for a submission.'
 STORED BY ICEBERG
-STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
   'llm.domain' = 'underwriting',
@@ -114,12 +110,11 @@ CREATE TABLE IF NOT EXISTS underwriting.appetite_class_codes (
   class_code                STRING    COMMENT 'PK. Class code (4812 and 5921 are prohibited).',
   appetite_status_code      STRING    COMMENT 'PROHIBITED | ACCEPT.'
 )
-COMMENT 'Governed appetite list. Playbook CEL is the runtime knockout.'
 PARTITIONED BY SPEC (
   appetite_status_code
 )
+COMMENT 'Governed appetite list. Playbook CEL is the runtime knockout.'
 STORED BY ICEBERG
-STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
   'llm.domain' = 'underwriting',
@@ -136,12 +131,11 @@ CREATE TABLE IF NOT EXISTS underwriting.submission_decline (
   run_id                    STRING    COMMENT 'Agent run id.',
   created_at                TIMESTAMP COMMENT 'Row creation timestamp.'
 )
-COMMENT 'Playbook decline write (write_submission_decline).'
 PARTITIONED BY SPEC (
   reason_code
 )
+COMMENT 'Playbook decline write (write_submission_decline).'
 STORED BY ICEBERG
-STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
   'llm.domain' = 'underwriting',
@@ -160,12 +154,11 @@ CREATE TABLE IF NOT EXISTS underwriting.quote_issuance (
   run_id                    STRING    COMMENT 'Agent run id.',
   created_at                TIMESTAMP COMMENT 'Row creation timestamp.'
 )
-COMMENT 'Indicative quote write (write_quote_issuance). Premium is not an agent argument.'
 PARTITIONED BY SPEC (
   rating_tier
 )
+COMMENT 'Indicative quote write (write_quote_issuance). Premium is not an agent argument.'
 STORED BY ICEBERG
-STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
   'llm.domain' = 'underwriting',
@@ -183,12 +176,11 @@ CREATE TABLE IF NOT EXISTS underwriting.data_enrichment_request (
   run_id                    STRING    COMMENT 'Agent run id.',
   created_at                TIMESTAMP COMMENT 'Row creation timestamp.'
 )
-COMMENT 'Inspection / data order (write_data_enrichment_request).'
 PARTITIONED BY SPEC (
   provider_type
 )
+COMMENT 'Inspection / data order (write_data_enrichment_request).'
 STORED BY ICEBERG
-STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
   'llm.domain' = 'underwriting',
@@ -206,12 +198,11 @@ CREATE TABLE IF NOT EXISTS underwriting.referral_queue (
   run_id                    STRING    COMMENT 'Agent run id.',
   created_at                TIMESTAMP COMMENT 'Row creation timestamp.'
 )
-COMMENT 'Senior underwriter queue (write_referral_queue).'
 PARTITIONED BY SPEC (
   queue_code
 )
+COMMENT 'Senior underwriter queue (write_referral_queue).'
 STORED BY ICEBERG
-STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
   'llm.domain' = 'underwriting',
@@ -227,12 +218,11 @@ CREATE TABLE IF NOT EXISTS underwriting.person (
   first_name                STRING    COMMENT 'Given name.',
   last_name                 STRING    COMMENT 'Family name.'
 )
-COMMENT 'Person rows for underwriter assignment. Demo owner is party 14.'
 PARTITIONED BY SPEC (
   party_id
 )
+COMMENT 'Person rows for underwriter assignment. Demo owner is party 14.'
 STORED BY ICEBERG
-STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
   'llm.domain' = 'underwriting',
@@ -252,13 +242,12 @@ CREATE TABLE IF NOT EXISTS underwriting.submission_party_role (
   is_current_assignment     BOOLEAN   COMMENT 'True for the active assignment of this role type.',
   created_at                TIMESTAMP COMMENT 'Row creation timestamp.'
 )
-COMMENT 'Current and historical underwriter assignment. Authoritative owner of a submission.'
 PARTITIONED BY SPEC (
   role_type_code,
   is_current_assignment
 )
+COMMENT 'Current and historical underwriter assignment. Authoritative owner of a submission.'
 STORED BY ICEBERG
-STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
   'llm.domain' = 'underwriting',
@@ -282,12 +271,11 @@ CREATE TABLE IF NOT EXISTS underwriting.agent_run_audit (
   reason_probe_ids          STRING    COMMENT 'JSON array of probe ids.',
   payload_json              STRING    COMMENT 'playbook_version, cel, and lake snapshot.'
 )
-COMMENT 'Append-only underwriting decision audit (Impala table-append).'
 PARTITIONED BY SPEC (
   run_id
 )
+COMMENT 'Append-only underwriting decision audit (Impala table-append).'
 STORED BY ICEBERG
-STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
   'llm.domain' = 'underwriting_agent',
@@ -305,12 +293,11 @@ CREATE TABLE IF NOT EXISTS underwriting.agent_run_evidence (
   content_text              STRING    COMMENT 'Evidence payload.',
   content_uri               STRING    COMMENT 'Optional external URI.'
 )
-COMMENT 'Evidence artifacts for an underwriting agent run.'
 PARTITIONED BY SPEC (
   run_id
 )
+COMMENT 'Evidence artifacts for an underwriting agent run.'
 STORED BY ICEBERG
-STORED AS PARQUET
 TBLPROPERTIES (
   'format-version' = '2',
   'llm.domain' = 'underwriting_agent',
