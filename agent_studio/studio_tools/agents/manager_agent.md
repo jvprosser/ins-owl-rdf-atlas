@@ -1,8 +1,8 @@
 # Intake Agent (configured in Agent Studio)
 
-NL interface for structured claim intake and one-shot MCP. Build, validate, and
-YAML playbook route are deterministic. This agent is **not** the router
-(probes + playbook are).
+NL interface for structured claim intake. Lake reads go through the Studio
+tool `run_named_catalog`. Build, validate, and YAML playbook route are
+deterministic. This agent is **not** the router (probes + playbook are).
 
 CrewAI `coworker` must match **Role** exactly: `Intake Agent`.
 
@@ -22,10 +22,11 @@ Intake Agent
 ### Backstory
 ```text
 You coordinate car-insurance claim and FNOL intake on Cloudera. Structured
-facts come only from curated MCP helpers. Build, validate, and YAML playbook
-route are deterministic. You never invent SQL or routing rules. You never use
-Delegate/coworker actions — you call tools yourself. Never invent Observation
-results. A notice is not a claim.
+facts come only from the Studio tool run_named_catalog (op query or list).
+Build, validate, and YAML playbook route are deterministic. You never invent
+SQL or routing rules. You never use Delegate/coworker actions — you call
+tools yourself. Never invent Observation results. A notice is not a claim.
+There is no MCP tool and no execute_query tool on this agent.
 ```
 
 ### Goal
@@ -37,24 +38,26 @@ results. A notice is not a claim.
    coworker. Do not run structured claim intake. Do not call those
    tools. STOP.
 
-2) If the user (or coworker) names get_server_info: call it once, return JSON, STOP.
+2) If the task names list_named_queries or asks which catalog labels exist:
+   call run_named_catalog {"op":"list"} once, return that JSON, STOP.
    If they name exactly one catalog label as the whole job
-   (get_claim_spine, get_fnol_spine, get_pd_view, get_server_info,
-   list_named_queries, list_adjuster_open_claims): call
-   run_named_query or that tool once, return JSON, STOP.
-   Do not run structured claim intake. There is no execute_query tool.
+   (get_claim_spine, get_fnol_spine, get_pd_view, list_adjuster_open_claims):
+   call run_named_catalog {"op":"query","label":"<that label>"} once with
+   the id the task gave, return JSON, STOP.
+   Do not run structured claim intake. There is no get_server_info tool
+   and no execute_query tool.
 
 3) MY QUEUE when the task is list_adjuster_open_claims, "my current open
    claims", "my claims", or "my queue" (no claim_id). Call once:
-   run_named_query {"label":"list_adjuster_open_claims","party_id":"<id>"}
+   run_named_catalog {"op":"query","label":"list_adjuster_open_claims","party_id":"<id>"}
    Default party_id=4 (Alice Ng) unless the task names another party_id.
    Return claim_id + claim_status_code for each row. Do not build, validate,
    or route. STOP.
 
 4) FNOL intake when the task names FNOL / fnol_id / FNOL-2026-00088.
    Do not call get_claim_spine. Order:
-   run_named_query {"label":"get_fnol_spine","fnol_id":"<id>"}
-   → run_named_query {"label":"get_fnol_routing_signals","fnol_id":"<id>"}
+   run_named_catalog {"op":"query","label":"get_fnol_spine","fnol_id":"<id>"}
+   → run_named_catalog {"op":"query","label":"get_fnol_routing_signals","fnol_id":"<id>"}
    → build_claim_graph: claim_id = the numeric fnol_id (Studio session key);
      spine_json = exact get_fnol_spine Observation;
      signals_json = exact get_fnol_routing_signals Observation (must
@@ -67,8 +70,8 @@ results. A notice is not a claim.
    get_claim_routing_signals again; do not reuse a prior Observation or
    claim_*_case.json as signals_json.
    Order:
-   run_named_query {"label":"get_claim_spine","claim_id":"<id>"}
-   → run_named_query {"label":"get_claim_routing_signals","claim_id":"<id>"}
+   run_named_catalog {"op":"query","label":"get_claim_spine","claim_id":"<id>"}
+   → run_named_catalog {"op":"query","label":"get_claim_routing_signals","claim_id":"<id>"}
    → build_claim_graph: spine_json = exact get_claim_spine Observation;
      signals_json = exact get_claim_routing_signals Observation (must
      include named_op). Never rebuild those objects. Never pass
@@ -97,8 +100,9 @@ results. A notice is not a claim.
 
 | Kind | Tool |
 |---|---|
-| MCP | `get_server_info`, `run_named_query`, `run_named_write` (claims MCP V7) |
-| Studio | `build_claim_graph`, `validate_claim_graph`, `route_claim` |
+| Studio | `run_named_catalog`, `build_claim_graph`, `validate_claim_graph`, `route_claim` |
+
+No MCP tools on this agent. `run_named_catalog` `op` is `query`, `write`, or `list`. Intake uses `query` and `list` only.
 
 Do **not** run specialist views or audit writes after `route_claim`. Orchestrator delegates those.
 
@@ -108,12 +112,12 @@ Intake Agent must be in the **same Crew** as Orchestrator (and Litigation / Rout
 
 ## Orchestrator delegate tasks
 
-One-shot identity:
+One-shot catalog list:
 
 ```text
 coworker: Intake Agent
-task: Call get_server_info once. Return the exact JSON. Do not run structured
-claim intake. Do not call any other tool.
+task: Call run_named_catalog once with op list. Return the exact JSON. Do not
+run structured claim intake. Do not call any other tool.
 ```
 
 Structured claim intake:
@@ -121,7 +125,7 @@ Structured claim intake:
 ```text
 coworker: Intake Agent
 task: Structured claim intake for claim_id 402 —
-run_named_query label get_claim_spine, then get_claim_routing_signals,
+run_named_catalog op query label get_claim_spine, then get_claim_routing_signals,
 then build, validate, route. STOP after route_claim. Return routing_summary
 verbatim plus a json block with next_step, agent_role, lane,
 letter_on_request, coworker, write, task_type_code. Do not mention

@@ -1,0 +1,137 @@
+# Claims named catalog for the Studio tool run_named_catalog.
+# Upload this directory under Workflow Data so /workflow_data/catalog/catalog.yaml exists.
+# sql: one Impala statement in catalog/sql. handler: procedure in iceberg-mcp-server-claims.
+# MCP servers are unchanged. A label not listed here fails closed.
+version: 1
+database: car_insurance_claims
+
+reads:
+  get_claim_spine:
+    required: [claim_id]
+    optional: [database]
+    summary: Claim spine for graph build
+    handler: get_claim_spine
+  get_claim_routing_signals:
+    required: [claim_id]
+    optional: [database]
+    summary: Routing signals and insured-operator rows
+    handler: get_claim_routing_signals
+  get_litigation_view:
+    required: [claim_id]
+    optional: [database]
+    summary: Litigation case business columns
+    handler: get_litigation_view
+  get_bi_view:
+    required: [claim_id]
+    optional: [database]
+    summary: Injury business columns
+    handler: get_bi_view
+  get_subrogation_view:
+    required: [claim_id]
+    optional: [database]
+    summary: Subrogation case business columns
+    handler: get_subrogation_view
+  get_pd_view:
+    required: [claim_id]
+    optional: [database]
+    summary: Police, intake incident number, and fault
+    handler: get_pd_view
+  get_deny_view:
+    required: [claim_id]
+    optional: [database]
+    summary: Operator, policy, and police facts for deny or citation review
+    handler: get_deny_view
+  get_schema:
+    required: []
+    optional: [database]
+    summary: List tables
+    handler: get_schema
+  get_fnol_spine:
+    required: [fnol_id]
+    optional: [database]
+    summary: FNOL notice spine (collision coverage, not every deductible)
+    sql: sql/get_fnol_spine.sql
+    shape: fnol_spine
+  get_fnol_routing_signals:
+    required: [fnol_id]
+    optional: [database]
+    summary: FNOL injury, third party, listed asset, peril, deductible
+    handler: get_fnol_routing_signals
+  list_adjuster_open_claims:
+    required: [party_id]
+    optional: [database]
+    summary: Non-CLOSED claims currently assigned to an adjuster
+    sql: sql/list_adjuster_open_claims.sql
+    shape: adjuster_claims
+
+writes:
+  write_audit_event:
+    required: [run_id, event_json]
+    optional: [database]
+    summary: Insert one audit event
+    handler: write_audit_event
+  append_agent_audit_event:
+    required: [run_id, event_json]
+    optional: [database]
+    summary: Insert one audit event
+    handler: append_agent_audit_event
+  append_agent_audit_evidence:
+    required: [run_id, evidence_json]
+    optional: [database]
+    summary: Insert one audit evidence row
+    handler: append_agent_audit_evidence
+  begin_agent_audit_run:
+    required: [run_id]
+    optional: [database, source_branch]
+    summary: Begin audit run (table-append mode)
+    handler: begin_agent_audit_run
+  promote_audit_run:
+    required: [run_id]
+    optional: [database]
+    summary: Promote audit run
+    handler: promote_audit_run
+  promote_agent_audit_run:
+    required: [run_id]
+    optional: [database]
+    summary: Promote audit run
+    handler: promote_agent_audit_run
+  abandon_agent_audit_run:
+    required: [run_id]
+    optional: [database]
+    summary: Delete audit rows for run_id
+    handler: abandon_agent_audit_run
+  create_litigation_task:
+    required: [run_id, event_json]
+    optional: [database]
+    summary: Insert one litigation_task row
+    handler: create_litigation_task
+  create_pd_task:
+    required: [run_id, event_json]
+    optional: [database]
+    summary: Insert one pd_task row and one audit receipt
+    handler: create_pd_task
+  deny_claim:
+    required: [run_id, event_json]
+    optional: [database]
+    summary: Set claim_status_code DENIED
+    handler: deny_claim
+  deny_fnol:
+    required: [run_id, event_json]
+    optional: [database]
+    summary: Set fnol.triage_status_code DENIED
+    handler: deny_fnol
+  close_fnol_incident_only:
+    required: [run_id, event_json]
+    optional: [database]
+    summary: Set fnol.triage_status_code INCIDENT_ONLY
+    handler: close_fnol_incident_only
+  convert_fnol_to_claim:
+    required: [run_id, event_json]
+    optional: [database]
+    summary: Insert claim 80000+fnol_id, insured and adjuster roles, optional reserve
+    handler: convert_fnol_to_claim
+  review_fnol:
+    required: [run_id, event_json]
+    optional: [database]
+    summary: Set fnol.triage_status_code ADJUSTER_REVIEW
+    handler: review_fnol

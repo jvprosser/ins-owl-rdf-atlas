@@ -1,0 +1,10 @@
+# CONTENT_ID: INS_CLAIMS_NAMED_CATALOG_REQ_V1
+# PACKAGE_PIN: main
+# REPO_REF: main
+# UPDATED: 2026-11-12
+# FILE: agent_studio/studio_tools/run_named_catalog/requirements.txt
+pydantic>=2.0
+pyyaml>=6.0
+impyla>=0.19.0
+ins-claims-agent @ git+https://github.com/jvprosser/ins-owl-rdf-atlas.git@main#subdirectory=agent_studio
+iceberg-mcp-server-claims @ git+https://github.com/jvprosser/ins-owl-rdf-atlas.git@main#subdirectory=mcp_forks/iceberg-mcp-server-claims
