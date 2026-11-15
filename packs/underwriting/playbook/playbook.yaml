@@ -3,11 +3,18 @@
 #
 # NOTE: do not use YAML key `on:` — in YAML 1.1 it is a boolean synonym for true.
 
-version: "2.2.0"
+version: "2.9.0"
 schema_relpath: ontology/submissions.json
 
 # First match:
 #   R0.1 submission exists
+#   P0C low OCR word confidence, before appetite
+#   P0V statement of values coinsurance or a blank schedule line
+#   P0W rental value worksheet does not foot or disagrees with the schedule
+#   P0I 4-point inspection is incomplete, disagrees on year built, or reports aluminum or polybutylene
+#   P0L loss run is unsigned or its totals do not foot
+#   P0N large loss narrative does not match its invoice, or falls in a clean loss run
+#   P0T tenant roster does not foot, disagrees with the rent roll, or describes commercial cooking
 #   P00 prohibited NAICS, P01 OFAC, P02 adverse loss history
 #   U0 no current underwriter
 #   P10 SIU, P20 inspection, P21 CAT model
@@ -16,6 +23,13 @@ schema_relpath: ontology/submissions.json
 # Unmatched files fall through to manual triage.
 priorities:
   - R0.1
+  - P0C_LOW_OCR_CONFIDENCE
+  - P0V_SOV_SCHEDULE
+  - P0W_RENTAL_VALUE_WORKSHEET
+  - P0I_FOUR_POINT_INSPECTION
+  - P0L_LOSS_RUN
+  - P0N_LARGE_LOSS_NARRATIVE
+  - P0T_TENANT_ROSTER
   - P00_PROHIBITED_CLASS_CODE
   - P01_SANCTIONS_AND_OFAC_FLAG
   - P02_EXCESSIVE_LOSS_FREQUENCY
@@ -34,6 +48,48 @@ probes:
     when_true: Submission is present in the case file
     when_false: Submission is missing from the case file
     cel: 'case_exists == true'
+  P0C_LOW_OCR_CONFIDENCE:
+    form: ASK
+    title: Scanned ACORD word confidence below the review line
+    when_true: A scanned word is below 0.8
+    when_false: No scan is on file, or every scored word is at or above 0.8
+    cel: 'ocr_document_present == true && min_ocr_confidence < 0.8'
+  P0V_SOV_SCHEDULE:
+    form: ASK
+    title: Statement of values coinsurance or a blank coverage line
+    when_true: A percent coinsurance is under 80, or the schedule has no building line, a blank limit, or a blank coinsurance
+    when_false: No schedule is on file, or percent coinsurance is at least 80 and every line is filled in
+    cel: 'sov_present == true && (sov_schedule_incomplete == true || (sov_min_coinsurance_pct > 0.0 && sov_min_coinsurance_pct < 80.0))'
+  P0W_RENTAL_VALUE_WORKSHEET:
+    form: ASK
+    title: Rental value worksheet does not foot or disagrees with the schedule
+    when_true: The worksheet math, rent roll, selected limit, monthly limitation, or area disagrees
+    when_false: No worksheet is on file, or it foots and agrees with the business income schedule
+    cel: 'rental_worksheet_present == true && rental_needs_review == true'
+  P0I_FOUR_POINT_INSPECTION:
+    form: ASK
+    title: 4-point inspection is incomplete or reports a prohibited system
+    when_true: A system row is missing, year built disagrees with the schedule, or the notes report aluminum wiring or polybutylene
+    when_false: No 4-point inspection is on file, or roof, plumbing, electrical, and HVAC are present and the year matches
+    cel: 'four_point_present == true && four_point_needs_review == true'
+  P0L_LOSS_RUN:
+    form: ASK
+    title: Loss run is unsigned or its totals do not foot
+    when_true: The loss run has no authorized signature, or the policy totals do not match the account aggregate
+    when_false: No loss run is on file, or it is signed and the policy totals match the aggregate
+    cel: 'loss_run_present == true && loss_run_needs_review == true'
+  P0N_LARGE_LOSS_NARRATIVE:
+    form: ASK
+    title: Large loss narrative does not match its invoice or the loss run
+    when_true: The narrative is unsigned, the invoice does not foot or is unpaid, or the loss date falls in a loss run that shows no losses
+    when_false: No narrative is on file, or it is signed, paid, and outside any clean loss-run term
+    cel: 'large_loss_present == true && large_loss_needs_review == true'
+  P0T_TENANT_ROSTER:
+    form: ASK
+    title: Tenant roster does not foot or disagrees with the rent roll
+    when_true: The roster is unsigned, the areas do not foot, a unit disagrees with the rent roll, or a tenant describes commercial cooking
+    when_false: No roster is on file, or it is signed, fully occupied, and matches the rent roll
+    cel: 'tenant_roster_present == true && tenant_roster_needs_review == true'
   P00_PROHIBITED_CLASS_CODE:
     form: ASK
     title: Industry class outside carrier underwriting appetite guidelines
@@ -103,6 +159,76 @@ actions:
       lane: DATA_QUALITY
       write: write_audit_event
       tools: [build_claim_graph, validate_claim_graph, write_audit_event]
+  P0C_LOW_OCR_CONFIDENCE:
+    - when: ASK_TRUE
+      step: RESOLVE_LOW_CONFIDENCE_OCR
+      agent: UnderwritingReviewAgent
+      coworker: Underwriting Review Agent
+      lane: REVIEW
+      write: write_audit_event
+      tools: [write_audit_event]
+      terminal: true
+      letter_on_request: false
+  P0V_SOV_SCHEDULE:
+    - when: ASK_TRUE
+      step: RESOLVE_SOV_SCHEDULE
+      agent: UnderwritingReviewAgent
+      coworker: Underwriting Review Agent
+      lane: REVIEW
+      write: write_audit_event
+      tools: [write_audit_event]
+      terminal: true
+      letter_on_request: false
+  P0W_RENTAL_VALUE_WORKSHEET:
+    - when: ASK_TRUE
+      step: RESOLVE_RENTAL_VALUE_WORKSHEET
+      agent: UnderwritingReviewAgent
+      coworker: Underwriting Review Agent
+      lane: REVIEW
+      write: write_audit_event
+      tools: [write_audit_event]
+      terminal: true
+      letter_on_request: false
+  P0I_FOUR_POINT_INSPECTION:
+    - when: ASK_TRUE
+      step: RESOLVE_FOUR_POINT_INSPECTION
+      agent: UnderwritingReviewAgent
+      coworker: Underwriting Review Agent
+      lane: REVIEW
+      write: write_audit_event
+      tools: [write_audit_event]
+      terminal: true
+      letter_on_request: false
+  P0L_LOSS_RUN:
+    - when: ASK_TRUE
+      step: RESOLVE_LOSS_RUN
+      agent: UnderwritingReviewAgent
+      coworker: Underwriting Review Agent
+      lane: REVIEW
+      write: write_audit_event
+      tools: [write_audit_event]
+      terminal: true
+      letter_on_request: false
+  P0N_LARGE_LOSS_NARRATIVE:
+    - when: ASK_TRUE
+      step: RESOLVE_LARGE_LOSS_NARRATIVE
+      agent: UnderwritingReviewAgent
+      coworker: Underwriting Review Agent
+      lane: REVIEW
+      write: write_audit_event
+      tools: [write_audit_event]
+      terminal: true
+      letter_on_request: false
+  P0T_TENANT_ROSTER:
+    - when: ASK_TRUE
+      step: RESOLVE_TENANT_ROSTER
+      agent: UnderwritingReviewAgent
+      coworker: Underwriting Review Agent
+      lane: REVIEW
+      write: write_audit_event
+      tools: [write_audit_event]
+      terminal: true
+      letter_on_request: false
   P00_PROHIBITED_CLASS_CODE:
     - when: ASK_TRUE
       step: DECLINE_UNINSURABLE_CLASS

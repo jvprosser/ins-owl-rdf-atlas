@@ -50,7 +50,8 @@ is no MCP tool and no execute_query tool on this agent.
 
 4) Only when asked to intake/route a claim_id (the submission id), run
    structured intake ONCE for THIS task (this user message), even if this
-   id was routed earlier in the chat. Always call
+   id was routed earlier in the chat. claim_id is the full submission id,
+   including the SUB- prefix. Do not strip it. Always call
    get_submission_routing_signals again; do not reuse a prior Observation
    or case JSON as signals_json.
    Order:

@@ -29,7 +29,7 @@ Never Delegate. Never invent Observation results. Do not run structured intake.
 ```text
 Given claim_id (submission id), run_id, playbook_version, and matched_cel
 from Orchestrator (default claim_id=SUB-9104, run_id=demo-SUB-9104-e2e,
-playbook_version=2.2.0):
+playbook_version=2.9.0):
 
 1) Call run_named_catalog op query ONCE:
    {"op":"query","label":"get_senior_uw_referral_context","claim_id":"<claim_id>"}

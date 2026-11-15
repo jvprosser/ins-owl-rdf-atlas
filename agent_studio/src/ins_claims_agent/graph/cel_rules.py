@@ -43,6 +43,12 @@ _STR_KEYS = (
     "construction_type",
     "protection_class",
     "flood_zone",
+    "low_ocr_spans",
+    "rental_review_detail",
+    "four_point_review_detail",
+    "loss_run_review_detail",
+    "large_loss_review_detail",
+    "tenant_roster_review_detail",
     "intake_purpose_code",
     "triage_status_code",
     "fnol_number",
@@ -66,6 +72,8 @@ _NUM_KEYS = (
     "year_built",
     "square_footage",
     "financial_score",
+    "min_ocr_confidence",
+    "sov_min_coinsurance_pct",
 )
 _BOOL_KEYS = (
     "fnol_exists",
@@ -86,6 +94,19 @@ _BOOL_KEYS = (
     "has_recent_cat_run",
     "wiring_updated",
     "has_sprinklers",
+    "ocr_document_present",
+    "sov_present",
+    "sov_schedule_incomplete",
+    "rental_worksheet_present",
+    "rental_needs_review",
+    "four_point_present",
+    "four_point_needs_review",
+    "loss_run_present",
+    "loss_run_needs_review",
+    "large_loss_present",
+    "large_loss_needs_review",
+    "tenant_roster_present",
+    "tenant_roster_needs_review",
 )
 
 

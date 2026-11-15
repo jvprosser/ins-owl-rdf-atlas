@@ -40,7 +40,225 @@ def test_submission_9100_class_knockout(monkeypatch):
     assert decision["write"] == "write_submission_decline"
     assert decision["reason_code"] == "OUT_OF_APPETITE"
     assert decision["letter_on_request"] is True
-    assert decision["playbook_version"] == "2.2.0"
+    assert decision["playbook_version"] == "2.9.0"
+    assert decision["checks"][-1]["probe_id"] == "P00_PROHIBITED_CLASS_CODE"
+
+
+def test_low_ocr_confidence_routes_before_class_knockout(monkeypatch):
+    monkeypatch.setenv("PACK_ROOT", str(UW))
+    pack = load_pack(UW)
+    signals = _payload("get_submission_routing_signals", "SUB-9100")
+    signals["signals"]["ocr_document_present"] = True
+    signals["signals"]["min_ocr_confidence"] = 0.691
+    signals["signals"]["low_ocr_spans"] = (
+        "page 8 Rostova 0.691; page 8 Elena 0.738; page 6 55.28 0.768; page 8 Vance 0.795"
+    )
+    graph = build_case_graph(
+        "SUB-9100",
+        pack=pack,
+        spine=_payload("get_submission_spine", "SUB-9100"),
+        signals=signals,
+    )
+    assert "Rostova" in graph["low_ocr_spans"]
+    assert "Elena" in graph["low_ocr_spans"]
+    assert "55.28" in graph["low_ocr_spans"]
+    assert "Vance" in graph["low_ocr_spans"]
+    decision = route_claim(graph, "SUB-9100")
+    assert decision["next_step"] == "RESOLVE_LOW_CONFIDENCE_OCR"
+    assert decision["coworker"] == "Underwriting Review Agent"
+    assert decision["write"] == "write_audit_event"
+    assert decision["lane"] == "REVIEW"
+    assert decision["checks"][-1]["probe_id"] == "P0C_LOW_OCR_CONFIDENCE"
+
+
+def test_sov_coinsurance_under_80_routes_before_class_knockout(monkeypatch):
+    signals = _payload("get_submission_routing_signals", "SUB-9100")
+    signals["signals"]["sov_present"] = True
+    signals["signals"]["sov_schedule_incomplete"] = False
+    signals["signals"]["sov_min_coinsurance_pct"] = 70
+    _, decision = _route_case(monkeypatch, "SUB-9100", signals=signals)
+    assert decision["next_step"] == "RESOLVE_SOV_SCHEDULE"
+    assert decision["coworker"] == "Underwriting Review Agent"
+    assert decision["write"] == "write_audit_event"
+    assert decision["lane"] == "REVIEW"
+    assert decision["checks"][-1]["probe_id"] == "P0V_SOV_SCHEDULE"
+
+
+def test_rental_worksheet_mismatch_routes_before_class_knockout(monkeypatch):
+    monkeypatch.setenv("PACK_ROOT", str(UW))
+    pack = load_pack(UW)
+    signals = _payload("get_submission_routing_signals", "SUB-9100")
+    signals["signals"]["rental_worksheet_present"] = True
+    signals["signals"]["rental_needs_review"] = True
+    signals["signals"]["rental_review_detail"] = (
+        "selected limit does not match the business income schedule"
+    )
+    graph = build_case_graph(
+        "SUB-9100",
+        pack=pack,
+        spine=_payload("get_submission_spine", "SUB-9100"),
+        signals=signals,
+    )
+    assert "business income schedule" in graph["rental_review_detail"]
+    decision = route_claim(graph, "SUB-9100")
+    assert decision["next_step"] == "RESOLVE_RENTAL_VALUE_WORKSHEET"
+    assert decision["coworker"] == "Underwriting Review Agent"
+    assert decision["write"] == "write_audit_event"
+    assert decision["lane"] == "REVIEW"
+    assert decision["checks"][-1]["probe_id"] == "P0W_RENTAL_VALUE_WORKSHEET"
+
+
+def test_oakridge_rental_worksheet_keeps_class_knockout(monkeypatch):
+    signals = _payload("get_submission_routing_signals", "SUB-9100")
+    signals["signals"]["rental_worksheet_present"] = True
+    signals["signals"]["rental_needs_review"] = False
+    signals["signals"]["rental_review_detail"] = ""
+    _, decision = _route_case(monkeypatch, "SUB-9100", signals=signals)
+    assert decision["next_step"] == "DECLINE_UNINSURABLE_CLASS"
+    assert decision["checks"][-1]["probe_id"] == "P00_PROHIBITED_CLASS_CODE"
+
+
+def test_four_point_aluminum_routes_before_class_knockout(monkeypatch):
+    monkeypatch.setenv("PACK_ROOT", str(UW))
+    pack = load_pack(UW)
+    signals = _payload("get_submission_routing_signals", "SUB-9100")
+    signals["signals"]["four_point_present"] = True
+    signals["signals"]["four_point_needs_review"] = True
+    signals["signals"]["four_point_review_detail"] = "electrical notes report aluminum wiring"
+    graph = build_case_graph(
+        "SUB-9100",
+        pack=pack,
+        spine=_payload("get_submission_spine", "SUB-9100"),
+        signals=signals,
+    )
+    assert "aluminum" in graph["four_point_review_detail"]
+    decision = route_claim(graph, "SUB-9100")
+    assert decision["next_step"] == "RESOLVE_FOUR_POINT_INSPECTION"
+    assert decision["coworker"] == "Underwriting Review Agent"
+    assert decision["write"] == "write_audit_event"
+    assert decision["lane"] == "REVIEW"
+    assert decision["checks"][-1]["probe_id"] == "P0I_FOUR_POINT_INSPECTION"
+
+
+def test_oakridge_four_point_keeps_class_knockout(monkeypatch):
+    signals = _payload("get_submission_routing_signals", "SUB-9100")
+    signals["signals"]["four_point_present"] = True
+    signals["signals"]["four_point_needs_review"] = False
+    signals["signals"]["four_point_review_detail"] = ""
+    _, decision = _route_case(monkeypatch, "SUB-9100", signals=signals)
+    assert decision["next_step"] == "DECLINE_UNINSURABLE_CLASS"
+    assert decision["checks"][-1]["probe_id"] == "P00_PROHIBITED_CLASS_CODE"
+
+
+def test_unsigned_loss_run_routes_before_class_knockout(monkeypatch):
+    monkeypatch.setenv("PACK_ROOT", str(UW))
+    pack = load_pack(UW)
+    signals = _payload("get_submission_routing_signals", "SUB-9100")
+    signals["signals"]["loss_run_present"] = True
+    signals["signals"]["loss_run_needs_review"] = True
+    signals["signals"]["loss_run_review_detail"] = "loss run has no authorized signature"
+    graph = build_case_graph(
+        "SUB-9100",
+        pack=pack,
+        spine=_payload("get_submission_spine", "SUB-9100"),
+        signals=signals,
+    )
+    assert "authorized signature" in graph["loss_run_review_detail"]
+    decision = route_claim(graph, "SUB-9100")
+    assert decision["next_step"] == "RESOLVE_LOSS_RUN"
+    assert decision["coworker"] == "Underwriting Review Agent"
+    assert decision["write"] == "write_audit_event"
+    assert decision["lane"] == "REVIEW"
+    assert decision["checks"][-1]["probe_id"] == "P0L_LOSS_RUN"
+
+
+def test_signed_loss_run_keeps_class_knockout(monkeypatch):
+    signals = _payload("get_submission_routing_signals", "SUB-9100")
+    signals["signals"]["loss_run_present"] = True
+    signals["signals"]["loss_run_needs_review"] = False
+    signals["signals"]["loss_run_review_detail"] = ""
+    _, decision = _route_case(monkeypatch, "SUB-9100", signals=signals)
+    assert decision["next_step"] == "DECLINE_UNINSURABLE_CLASS"
+    assert decision["checks"][-1]["probe_id"] == "P00_PROHIBITED_CLASS_CODE"
+
+
+def test_large_loss_invoice_routes_before_class_knockout(monkeypatch):
+    monkeypatch.setenv("PACK_ROOT", str(UW))
+    pack = load_pack(UW)
+    signals = _payload("get_submission_routing_signals", "SUB-9100")
+    signals["signals"]["large_loss_present"] = True
+    signals["signals"]["large_loss_needs_review"] = True
+    signals["signals"]["large_loss_review_detail"] = "invoice lines do not match the invoice total"
+    graph = build_case_graph(
+        "SUB-9100",
+        pack=pack,
+        spine=_payload("get_submission_spine", "SUB-9100"),
+        signals=signals,
+    )
+    assert "invoice total" in graph["large_loss_review_detail"]
+    decision = route_claim(graph, "SUB-9100")
+    assert decision["next_step"] == "RESOLVE_LARGE_LOSS_NARRATIVE"
+    assert decision["coworker"] == "Underwriting Review Agent"
+    assert decision["write"] == "write_audit_event"
+    assert decision["lane"] == "REVIEW"
+    assert decision["checks"][-1]["probe_id"] == "P0N_LARGE_LOSS_NARRATIVE"
+
+
+def test_oakridge_large_loss_keeps_class_knockout(monkeypatch):
+    signals = _payload("get_submission_routing_signals", "SUB-9100")
+    signals["signals"]["large_loss_present"] = True
+    signals["signals"]["large_loss_needs_review"] = False
+    signals["signals"]["large_loss_review_detail"] = ""
+    _, decision = _route_case(monkeypatch, "SUB-9100", signals=signals)
+    assert decision["next_step"] == "DECLINE_UNINSURABLE_CLASS"
+    assert decision["checks"][-1]["probe_id"] == "P00_PROHIBITED_CLASS_CODE"
+
+
+def test_tenant_roster_mismatch_routes_before_class_knockout(monkeypatch):
+    monkeypatch.setenv("PACK_ROOT", str(UW))
+    pack = load_pack(UW)
+    signals = _payload("get_submission_routing_signals", "SUB-9100")
+    signals["signals"]["tenant_roster_present"] = True
+    signals["signals"]["tenant_roster_needs_review"] = True
+    signals["signals"]["tenant_roster_review_detail"] = "roster does not match the rental value rent roll"
+    graph = build_case_graph(
+        "SUB-9100",
+        pack=pack,
+        spine=_payload("get_submission_spine", "SUB-9100"),
+        signals=signals,
+    )
+    assert "rent roll" in graph["tenant_roster_review_detail"]
+    decision = route_claim(graph, "SUB-9100")
+    assert decision["next_step"] == "RESOLVE_TENANT_ROSTER"
+    assert decision["coworker"] == "Underwriting Review Agent"
+    assert decision["write"] == "write_audit_event"
+    assert decision["lane"] == "REVIEW"
+    assert decision["checks"][-1]["probe_id"] == "P0T_TENANT_ROSTER"
+
+
+def test_oakridge_tenant_roster_keeps_class_knockout(monkeypatch):
+    signals = _payload("get_submission_routing_signals", "SUB-9100")
+    signals["signals"]["tenant_roster_present"] = True
+    signals["signals"]["tenant_roster_needs_review"] = False
+    signals["signals"]["tenant_roster_review_detail"] = ""
+    _, decision = _route_case(monkeypatch, "SUB-9100", signals=signals)
+    assert decision["next_step"] == "DECLINE_UNINSURABLE_CLASS"
+    assert decision["checks"][-1]["probe_id"] == "P00_PROHIBITED_CLASS_CODE"
+
+
+def test_oakridge_sov_keeps_class_knockout(monkeypatch):
+    signals = _payload("get_submission_routing_signals", "SUB-9100")
+    signals["signals"]["sov_present"] = True
+    signals["signals"]["sov_schedule_incomplete"] = False
+    signals["signals"]["sov_min_coinsurance_pct"] = 80
+    signals["signals"]["total_insured_value"] = 4765000
+    signals["signals"]["construction_type"] = "MASONRY"
+    signals["signals"]["year_built"] = 2004
+    signals["signals"]["square_footage"] = 18500
+    signals["signals"]["protection_class"] = "2"
+    signals["signals"]["has_sprinklers"] = True
+    _, decision = _route_case(monkeypatch, "SUB-9100", signals=signals)
+    assert decision["next_step"] == "DECLINE_UNINSURABLE_CLASS"
     assert decision["checks"][-1]["probe_id"] == "P00_PROHIBITED_CLASS_CODE"
 
 
