@@ -34,10 +34,10 @@ CREATE TABLE IF NOT EXISTS underwriting.large_loss_narrative (
   invoice_total             BIGINT    COMMENT 'Invoice total in whole currency units.',
   invoice_status            STRING    COMMENT 'Paid in Full or another status printed on the invoice.'
 )
+COMMENT 'Large loss narrative and the remediation invoice header.'
 PARTITIONED BY SPEC (
   submission_id
 )
-COMMENT 'Large loss narrative and the remediation invoice header.'
 STORED BY ICEBERG
 TBLPROPERTIES (
   'format-version' = '2',
@@ -56,10 +56,10 @@ CREATE TABLE IF NOT EXISTS underwriting.large_loss_invoice_line (
   description               STRING    COMMENT 'Line description.',
   amount                    BIGINT    COMMENT 'Line amount in whole currency units.'
 )
+COMMENT 'Remediation invoice lines for a large loss narrative.'
 PARTITIONED BY SPEC (
   submission_id
 )
-COMMENT 'Remediation invoice lines for a large loss narrative.'
 STORED BY ICEBERG
 TBLPROPERTIES (
   'format-version' = '2',
@@ -77,10 +77,10 @@ CREATE TABLE IF NOT EXISTS underwriting.large_loss_remediation (
   submission_id             STRING    COMMENT 'FK -> submissions.submission_id.',
   action_text               STRING    COMMENT 'Remediation action.'
 )
+COMMENT 'Remediation steps listed on a large loss narrative.'
 PARTITIONED BY SPEC (
   submission_id
 )
-COMMENT 'Remediation steps listed on a large loss narrative.'
 STORED BY ICEBERG
 TBLPROPERTIES (
   'format-version' = '2',

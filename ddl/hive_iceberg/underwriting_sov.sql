@@ -40,10 +40,10 @@ CREATE TABLE IF NOT EXISTS underwriting.statement_of_values (
   coinsurance               STRING    COMMENT '90%, 80%, N/A, or 1/3 Monthly.',
   deductible                INT       COMMENT 'Deductible amount, or waiting period hours for business income.'
 )
+COMMENT 'Statement of values. One row per subject of insurance.'
 PARTITIONED BY SPEC (
   submission_id
 )
-COMMENT 'Statement of values. One row per subject of insurance.'
 STORED BY ICEBERG
 TBLPROPERTIES (
   'format-version' = '2',

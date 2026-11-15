@@ -44,10 +44,10 @@ CREATE TABLE IF NOT EXISTS underwriting.rental_value_worksheet (
   monthly_limitation            STRING    COMMENT 'Monthly limitation fraction, e.g. 1/3.',
   coinsurance_percentage        STRING    COMMENT 'Coinsurance percent, or empty when the worksheet says N/A.'
 )
+COMMENT 'ACORD 810 business income / extra expense / rental value worksheet.'
 PARTITIONED BY SPEC (
   submission_id
 )
-COMMENT 'ACORD 810 business income / extra expense / rental value worksheet.'
 STORED BY ICEBERG
 TBLPROPERTIES (
   'format-version' = '2',
@@ -68,10 +68,10 @@ CREATE TABLE IF NOT EXISTS underwriting.rental_value_tenant (
   square_footage                INT       COMMENT 'Unit area in square feet.',
   annual_base_rent              BIGINT    COMMENT 'Annual base rent.'
 )
+COMMENT 'Rent roll lines on an ACORD 810 worksheet.'
 PARTITIONED BY SPEC (
   submission_id
 )
-COMMENT 'Rent roll lines on an ACORD 810 worksheet.'
 STORED BY ICEBERG
 TBLPROPERTIES (
   'format-version' = '2',

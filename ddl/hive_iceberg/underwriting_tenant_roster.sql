@@ -29,10 +29,10 @@ CREATE TABLE IF NOT EXISTS underwriting.tenant_roster (
   certified_by                  STRING    COMMENT 'Certifying party.',
   signature_detected            BOOLEAN   COMMENT 'True when a certification signature is detected.'
 )
+COMMENT 'Tenant roster header and building occupancy summary.'
 PARTITIONED BY SPEC (
   submission_id
 )
-COMMENT 'Tenant roster header and building occupancy summary.'
 STORED BY ICEBERG
 TBLPROPERTIES (
   'format-version' = '2',
@@ -56,10 +56,10 @@ CREATE TABLE IF NOT EXISTS underwriting.tenant_roster_unit (
   operations_description        STRING    COMMENT 'Operations description.',
   lease_expiration              STRING    COMMENT 'Lease expiration, ISO-8601.'
 )
+COMMENT 'Units on a tenant roster.'
 PARTITIONED BY SPEC (
   submission_id
 )
-COMMENT 'Units on a tenant roster.'
 STORED BY ICEBERG
 TBLPROPERTIES (
   'format-version' = '2',

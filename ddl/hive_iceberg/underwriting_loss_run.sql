@@ -34,10 +34,10 @@ CREATE TABLE IF NOT EXISTS underwriting.loss_run_report (
   signature_detected            BOOLEAN   COMMENT 'True when an authorized signature is detected.',
   certification_statement       STRING    COMMENT 'Certification text printed on the report.'
 )
+COMMENT 'Carrier loss run header and account totals.'
 PARTITIONED BY SPEC (
   submission_id
 )
-COMMENT 'Carrier loss run header and account totals.'
 STORED BY ICEBERG
 TBLPROPERTIES (
   'format-version' = '2',
@@ -62,10 +62,10 @@ CREATE TABLE IF NOT EXISTS underwriting.loss_run_policy (
   total_reserved                BIGINT    COMMENT 'Reserved in the term.',
   total_recovered               BIGINT    COMMENT 'Recovered in the term.'
 )
+COMMENT 'Policy-term totals on a carrier loss run.'
 PARTITIONED BY SPEC (
   submission_id
 )
-COMMENT 'Policy-term totals on a carrier loss run.'
 STORED BY ICEBERG
 TBLPROPERTIES (
   'format-version' = '2',

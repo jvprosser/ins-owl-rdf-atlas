@@ -31,10 +31,10 @@ CREATE TABLE IF NOT EXISTS underwriting.four_point_inspection (
   signature_detected        BOOLEAN   COMMENT 'True when a signature is detected.',
   date_signed               STRING    COMMENT 'Signature date, ISO-8601.'
 )
+COMMENT '4-point roof, plumbing, electrical, and HVAC inspection.'
 PARTITIONED BY SPEC (
   submission_id
 )
-COMMENT '4-point roof, plumbing, electrical, and HVAC inspection.'
 STORED BY ICEBERG
 TBLPROPERTIES (
   'format-version' = '2',
@@ -56,10 +56,10 @@ CREATE TABLE IF NOT EXISTS underwriting.four_point_system (
   update_type               STRING    COMMENT 'Full Replacement, Partial Replacement, or Original.',
   notes                     STRING    COMMENT 'Inspector notes for the system.'
 )
+COMMENT 'Roof, plumbing, electrical, and HVAC rows on a 4-point inspection.'
 PARTITIONED BY SPEC (
   submission_id
 )
-COMMENT 'Roof, plumbing, electrical, and HVAC rows on a 4-point inspection.'
 STORED BY ICEBERG
 TBLPROPERTIES (
   'format-version' = '2',

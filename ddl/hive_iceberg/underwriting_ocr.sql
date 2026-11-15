@@ -31,10 +31,10 @@ CREATE TABLE IF NOT EXISTS underwriting.ocr_document (
   application_date          STRING    COMMENT 'submission_metadata.application_date, ISO-8601.',
   status_of_transaction     STRING    COMMENT 'submission_metadata.status_of_transaction.'
 )
+COMMENT 'One scanned application. May contain ACORD 125, ACORD 126, and ACORD 140.'
 PARTITIONED BY SPEC (
   submission_id
 )
-COMMENT 'One scanned application. May contain ACORD 125, ACORD 126, and ACORD 140.'
 STORED BY ICEBERG
 TBLPROPERTIES (
   'format-version' = '2',
@@ -52,10 +52,10 @@ CREATE TABLE IF NOT EXISTS underwriting.ocr_form (
   submission_id             STRING    COMMENT 'FK -> submissions.submission_id.',
   form_label                STRING    COMMENT 'forms_detected entry, e.g. ACORD 126 (2016/03).'
 )
+COMMENT 'Forms detected on one scan. ACORD 125, 126, and 140 are separate rows.'
 PARTITIONED BY SPEC (
   submission_id
 )
-COMMENT 'Forms detected on one scan. ACORD 125, 126, and 140 are separate rows.'
 STORED BY ICEBERG
 TBLPROPERTIES (
   'format-version' = '2',
@@ -74,10 +74,10 @@ CREATE TABLE IF NOT EXISTS underwriting.ocr_field (
   field_path                STRING    COMMENT 'Dotted path. Repeating groups use a numeric index, e.g. acord_126_commercial_general_liability.schedule_of_hazards.1.class_code.',
   field_value               STRING    COMMENT 'Annotation value. No confidence; scores are on ocr_word.'
 )
+COMMENT 'Flattened document_annotation for ACORD 125, ACORD 126, and ACORD 140.'
 PARTITIONED BY SPEC (
   submission_id
 )
-COMMENT 'Flattened document_annotation for ACORD 125, ACORD 126, and ACORD 140.'
 STORED BY ICEBERG
 TBLPROPERTIES (
   'format-version' = '2',
@@ -97,10 +97,10 @@ CREATE TABLE IF NOT EXISTS underwriting.ocr_page (
   average_page_confidence   DOUBLE    COMMENT 'average_page_confidence_score.',
   minimum_page_confidence   DOUBLE    COMMENT 'minimum_page_confidence_score.'
 )
+COMMENT 'Page-level OCR confidence. Markdown and dimensions are not stored.'
 PARTITIONED BY SPEC (
   submission_id
 )
-COMMENT 'Page-level OCR confidence. Markdown and dimensions are not stored.'
 STORED BY ICEBERG
 TBLPROPERTIES (
   'format-version' = '2',
@@ -120,10 +120,10 @@ CREATE TABLE IF NOT EXISTS underwriting.ocr_word (
   word_text                 STRING    COMMENT 'word_confidence_scores[].text.',
   confidence                DOUBLE    COMMENT 'word_confidence_scores[].confidence.'
 )
+COMMENT 'Word confidence from the OCR response. The review probe reads this table.'
 PARTITIONED BY SPEC (
   submission_id
 )
-COMMENT 'Word confidence from the OCR response. The review probe reads this table.'
 STORED BY ICEBERG
 TBLPROPERTIES (
   'format-version' = '2',
