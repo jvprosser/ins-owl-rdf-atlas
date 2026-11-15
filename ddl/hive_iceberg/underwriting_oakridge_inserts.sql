@@ -285,7 +285,7 @@ SELECT * FROM (
   UNION ALL
   SELECT 'OCR-ACORD-V0103' AS field_id, 'OCR-ACORD' AS document_id, 'SUB-9200' AS submission_id, 'acord_126_commercial_general_liability.schedule_of_hazards.1.hazard_number' AS field_path, '001' AS field_value
   UNION ALL
-  SELECT 'OCR-ACORD-V0104' AS field_id, 'OCR-ACORD' AS document_id, 'SUB-9200' AS submission_id, 'acord_126_commercial_general_liability.schedule_of_hazards.1.classification_description' AS field_path, 'Shopping Centers - Buildings or Premises - Not Occupied by the Insured (Lessor''s Risk Only)' AS field_value
+  SELECT 'OCR-ACORD-V0104' AS field_id, 'OCR-ACORD' AS document_id, 'SUB-9200' AS submission_id, 'acord_126_commercial_general_liability.schedule_of_hazards.1.classification_description' AS field_path, 'Shopping Centers - Buildings or Premises - Not Occupied by the Insured (Lessor\'s Risk Only)' AS field_value
   UNION ALL
   SELECT 'OCR-ACORD-V0105' AS field_id, 'OCR-ACORD' AS document_id, 'SUB-9200' AS submission_id, 'acord_126_commercial_general_liability.schedule_of_hazards.1.class_code' AS field_path, '67635' AS field_value
   UNION ALL
@@ -347,7 +347,7 @@ SELECT * FROM (
   UNION ALL
   SELECT 'OCR-ACORD-V0134' AS field_id, 'OCR-ACORD' AS document_id, 'SUB-9200' AS submission_id, 'acord_126_commercial_general_liability.products_completed_operations.applicable' AS field_path, 'false' AS field_value
   UNION ALL
-  SELECT 'OCR-ACORD-V0135' AS field_id, 'OCR-ACORD' AS document_id, 'SUB-9200' AS submission_id, 'acord_126_commercial_general_liability.products_completed_operations.notes' AS field_path, 'Real estate lessor''s risk only; no manufacturing, distribution, or installation.' AS field_value
+  SELECT 'OCR-ACORD-V0135' AS field_id, 'OCR-ACORD' AS document_id, 'SUB-9200' AS submission_id, 'acord_126_commercial_general_liability.products_completed_operations.notes' AS field_path, 'Real estate lessor\'s risk only; no manufacturing, distribution, or installation.' AS field_value
   UNION ALL
   SELECT 'OCR-ACORD-V0136' AS field_id, 'OCR-ACORD' AS document_id, 'SUB-9200' AS submission_id, 'acord_126_commercial_general_liability.additional_interests_gl.1.interest_type' AS field_path, 'Additional Insured - Managing Agent' AS field_value
   UNION ALL
@@ -541,7 +541,7 @@ SELECT * FROM (
   UNION ALL
   SELECT 'OCR-ACORD-V0231' AS field_id, 'OCR-ACORD' AS document_id, 'SUB-9200' AS submission_id, 'acord_126_commercial_general_liability.general_liability_underwriting_questions.22.question_code' AS field_path, '22' AS field_value
   UNION ALL
-  SELECT 'OCR-ACORD-V0232' AS field_id, 'OCR-ACORD' AS document_id, 'SUB-9200' AS submission_id, 'acord_126_commercial_general_liability.general_liability_underwriting_questions.22.question_text' AS field_path, 'Does the businesses'' promotional literature make any representations about the safety or security of the premises?' AS field_value
+  SELECT 'OCR-ACORD-V0232' AS field_id, 'OCR-ACORD' AS document_id, 'SUB-9200' AS submission_id, 'acord_126_commercial_general_liability.general_liability_underwriting_questions.22.question_text' AS field_path, 'Does the businesses\' promotional literature make any representations about the safety or security of the premises?' AS field_value
   UNION ALL
   SELECT 'OCR-ACORD-V0233' AS field_id, 'OCR-ACORD' AS document_id, 'SUB-9200' AS submission_id, 'acord_126_commercial_general_liability.general_liability_underwriting_questions.22.answer' AS field_path, 'N' AS field_value
   UNION ALL
@@ -687,11 +687,11 @@ SELECT * FROM (
   UNION ALL
   SELECT 'OCR-4PT-V0021' AS field_id, 'OCR-4PT' AS document_id, 'SUB-9200' AS submission_id, 'system_updates.hvac.notes' AS field_path, '2 RTUs replaced in 2021; remaining 2 RTUs replaced in 2023. Quarterly preventative maintenance contract in place.' AS field_value
   UNION ALL
-  SELECT 'OCR-4PT-V0022' AS field_id, 'OCR-4PT' AS document_id, 'SUB-9200' AS submission_id, 'inspector_certification.inspector_name' AS field_path, 'James O''Connor' AS field_value
+  SELECT 'OCR-4PT-V0022' AS field_id, 'OCR-4PT' AS document_id, 'SUB-9200' AS submission_id, 'inspector_certification.inspector_name' AS field_path, 'James OConnor' AS field_value
   UNION ALL
   SELECT 'OCR-4PT-V0023' AS field_id, 'OCR-4PT' AS document_id, 'SUB-9200' AS submission_id, 'inspector_certification.license_number' AS field_path, 'HOI.0004921' AS field_value
   UNION ALL
-  SELECT 'OCR-4PT-V0024' AS field_id, 'OCR-4PT' AS document_id, 'SUB-9200' AS submission_id, 'inspector_certification.company_name' AS field_path, 'O''Connor Commercial Inspections, LLC' AS field_value
+  SELECT 'OCR-4PT-V0024' AS field_id, 'OCR-4PT' AS document_id, 'SUB-9200' AS submission_id, 'inspector_certification.company_name' AS field_path, 'OConnor Commercial Inspections, LLC' AS field_value
   UNION ALL
   SELECT 'OCR-4PT-V0025' AS field_id, 'OCR-4PT' AS document_id, 'SUB-9200' AS submission_id, 'inspector_certification.signature_detected' AS field_path, 'true' AS field_value
   UNION ALL
@@ -1021,7 +1021,7 @@ SELECT * FROM (
   UNION ALL
   SELECT 'OCR-4PT-W0-10' AS word_id, 'OCR-4PT' AS document_id, 'SUB-9200' AS submission_id, 0 AS page_index, 'James' AS word_text, CAST(0.742 AS DOUBLE) AS confidence
   UNION ALL
-  SELECT 'OCR-4PT-W0-11' AS word_id, 'OCR-4PT' AS document_id, 'SUB-9200' AS submission_id, 0 AS page_index, 'O''Connor' AS word_text, CAST(0.718 AS DOUBLE) AS confidence
+  SELECT 'OCR-4PT-W0-11' AS word_id, 'OCR-4PT' AS document_id, 'SUB-9200' AS submission_id, 0 AS page_index, 'OConnor' AS word_text, CAST(0.718 AS DOUBLE) AS confidence
   UNION ALL
   SELECT 'OCR-LOSS-W0-01' AS word_id, 'OCR-LOSS' AS document_id, 'SUB-9200' AS submission_id, 0 AS page_index, 'HARTFORD' AS word_text, CAST(0.998 AS DOUBLE) AS confidence
   UNION ALL
@@ -1141,7 +1141,7 @@ SELECT * FROM (
 INSERT INTO TABLE underwriting.four_point_inspection
 (inspection_id, submission_id, form_title, inspection_date, property_address, named_insured, year_built, inspector_name, license_number, company_name, signature_detected, date_signed)
 SELECT * FROM (
-  SELECT 'FP-9200' AS inspection_id, 'SUB-9200' AS submission_id, '4-POINT SYSTEM UPDATE VERIFICATION' AS form_title, '2026-11-10' AS inspection_date, '840 Boston Post Road, Milford, CT 06460' AS property_address, 'Oakridge Plaza Holdings, LLC' AS named_insured, 2004 AS year_built, 'James O''Connor' AS inspector_name, 'HOI.0004921' AS license_number, 'O''Connor Commercial Inspections, LLC' AS company_name, TRUE AS signature_detected, '2026-11-10' AS date_signed
+  SELECT 'FP-9200' AS inspection_id, 'SUB-9200' AS submission_id, '4-POINT SYSTEM UPDATE VERIFICATION' AS form_title, '2026-11-10' AS inspection_date, '840 Boston Post Road, Milford, CT 06460' AS property_address, 'Oakridge Plaza Holdings, LLC' AS named_insured, 2004 AS year_built, 'James OConnor' AS inspector_name, 'HOI.0004921' AS license_number, 'OConnor Commercial Inspections, LLC' AS company_name, TRUE AS signature_detected, '2026-11-10' AS date_signed
 ) s;
 INSERT INTO TABLE underwriting.four_point_system
 (system_id, inspection_id, submission_id, system_name, system_type, year_last_updated, update_type, notes)

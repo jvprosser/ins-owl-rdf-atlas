@@ -11,7 +11,7 @@
 -- Electrical: copper 800-amp, original 2004, no aluminum branch wiring.
 -- HVAC: rooftop units, partial replacement 2023.
 -- Word scores stay on ocr_word. On this page the words under 0.8 are
--- O'Connor 0.718 and James 0.742.
+-- OConnor 0.718 and James 0.742.
 -- =============================================================================
 
 USE underwriting;
