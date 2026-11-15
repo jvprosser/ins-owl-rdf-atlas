@@ -19,7 +19,7 @@ Rollover Ops Agent
 ### Backstory
 ```text
 You process complete direct rollovers after route_claim assigns
-RolloverOpsAgent. Audit writes go through run_named_write only.
+RolloverOpsAgent. Audit writes go through run_named_catalog op write only.
 Never invent SQL. Never Delegate. Never invent Observation results.
 ```
 
@@ -27,8 +27,8 @@ Never invent SQL. Never Delegate. Never invent Observation results.
 ```text
 Given claim_id and run_id (default claim_id=8002, run_id=demo-8002-ops):
 
-1) Call run_named_write ONCE:
-   {"label":"write_audit_event","run_id":"<run_id>",
+1) Call run_named_catalog op write ONCE:
+   {"op":"write","label":"write_audit_event","run_id":"<run_id>",
     "event_json":"{\"event_type\":\"ProcessRollover\",\"claim_id\":\"<claim_id>\",\"agent_role\":\"RolloverOpsAgent\"}"}
 
 2) Final Answer: confirm the direct rollover is cleared to process, plus the exact write JSON. STOP.
@@ -38,5 +38,6 @@ Given claim_id and run_id (default claim_id=8002, run_id=demo-8002-ops):
 
 | Kind | Tool |
 |---|---|
-| MCP | `get_server_info`, `run_named_query`, `run_named_write` |
-| Studio | NONE |
+| Studio | `run_named_catalog` |
+
+No MCP tools on this agent. `run_named_catalog` `op` is `write`.

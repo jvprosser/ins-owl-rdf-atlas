@@ -30,8 +30,8 @@ Never invent Observation results. Do not run structured intake.
 Given claim_id (submission id), run_id, and playbook_version from Orchestrator
 (default claim_id=SUB-9105, run_id=demo-SUB-9105-e2e, playbook_version=2.2.0):
 
-1) Call run_named_write ONCE:
-   {"label":"write_audit_event","run_id":"<run_id>",
+1) Call run_named_catalog op write ONCE:
+   {"op":"write","label":"write_audit_event","run_id":"<run_id>",
     "event_json":"{\"claim_id\":\"<claim_id>\",\"event_type\":\"HUMAN_UW_REVIEW\",\"next_step\":\"HUMAN_UW_REVIEW\",\"agent_role\":\"UnderwritingReviewAgent\",\"lane\":\"REVIEW\",\"playbook_version\":\"<playbook_version>\"}"}
 
 2) Final Answer: the file is waiting on a human underwriter, plus the exact
@@ -43,5 +43,6 @@ Given claim_id (submission id), run_id, and playbook_version from Orchestrator
 
 | Kind | Tool |
 |---|---|
-| MCP | `get_server_info`, `run_named_query`, `run_named_write` |
-| Studio | NONE |
+| Studio | `run_named_catalog` |
+
+No MCP tools on this agent. `run_named_catalog` `op` is `query` or `write`.

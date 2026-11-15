@@ -57,8 +57,9 @@ HARD LIMITS (override Studio Plan, Evaluator, and format overlays):
   "must be one of": Final Answer that list plus the route JSON. STOP.
   Do not invent a Role and do not send that work to Intake Agent.
 
-IDENTITY (user names get_server_info or one catalog label):
-Delegate ONCE to Intake Agent: call that one tool once, return exact JSON.
+IDENTITY (user asks which catalog labels exist, or names one catalog label):
+Delegate ONCE to Intake Agent: call run_named_catalog once (op list, or op query
+for that one label), return exact JSON.
 Do not run structured intake.
 
 QUEUE (no submission id; "my current open submissions", "my submissions",
@@ -150,4 +151,4 @@ What are my current open submissions?
 
 Expect **SUB-9100** through **SUB-9106**. **SUB-9107** is not on the list.
 
-Operator identity check (not a handler chat): `Call get_server_info once and stop.` Expect `INS_UW_MCP_V1`.
+Operator catalog check (not a handler chat): `Call run_named_catalog once with op list and stop.` The list must include `get_submission_spine` and must not include `get_claim_spine`.

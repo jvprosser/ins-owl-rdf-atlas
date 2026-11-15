@@ -34,9 +34,9 @@ Given claim_id (submission id), run_id, playbook_version, and matched_cel
 from Orchestrator (default claim_id=SUB-9103, run_id=demo-SUB-9103-e2e,
 playbook_version=2.2.0):
 
-1) Call run_named_write ONCE. Copy playbook_version and matched_cel exactly.
+1) Call run_named_catalog op write ONCE. Copy playbook_version and matched_cel exactly.
    Do not include rating_tier or premium_cents.
-   {"label":"write_quote_issuance","run_id":"<run_id>",
+   {"op":"write","label":"write_quote_issuance","run_id":"<run_id>",
     "event_json":"{\"claim_id\":\"<claim_id>\",\"playbook_version\":\"<playbook_version>\",\"probe_id\":\"P40_ELIGIBLE_FOR_CLEAN_AUTO_BIND\",\"cel\":\"<matched_cel>\"}"}
 
 2) Final Answer: rating_tier and premium_cents from the write JSON only,
@@ -48,5 +48,6 @@ playbook_version=2.2.0):
 
 | Kind | Tool |
 |---|---|
-| MCP | `get_server_info`, `run_named_query`, `run_named_write` |
-| Studio | NONE |
+| Studio | `run_named_catalog` |
+
+No MCP tools on this agent. `run_named_catalog` `op` is `query` or `write`.

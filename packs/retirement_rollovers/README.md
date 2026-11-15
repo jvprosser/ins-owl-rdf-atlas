@@ -19,9 +19,11 @@ Do this in the **rollovers** Agent Studio project (not the claims 402 project, a
 
 1. Open the project → open **Workflow Data** (the project file tree for this workflow).
 2. If this project previously held claims or distributions files (`*.ttl`, `probes/*.rq`, leftover `pack.yaml`), delete those first so the pack is the only tree. Do not upload Turtle or SPARQL.
-3. At the **root** of Workflow Data, upload these two files from `packs/retirement_rollovers/`:
+3. At the **root** of Workflow Data, upload these from `packs/retirement_rollovers/`:
    - `pack.yaml`
    - `exemplars.yaml`
+   - `catalog/` (`catalog.yaml` must land at `/workflow_data/catalog/catalog.yaml`)
+   - `fixtures/` (the tool reads `/workflow_data/fixtures/<label>/<id>.json`)
 4. Create folder `ontology` (or upload that directory). Inside it, upload:
    - `ontology/rollovers.json`
 5. Create folder `playbook` (or upload that directory). Inside it, upload:
@@ -32,24 +34,30 @@ Do this in the **rollovers** Agent Studio project (not the claims 402 project, a
 /workflow_data/
   pack.yaml
   exemplars.yaml
+  catalog/catalog.yaml
+  fixtures/get_rollover_spine/
+  fixtures/get_rollover_routing_signals/
+  fixtures/get_erisa_review_view/
   ontology/rollovers.json
   playbook/playbook.yaml
 ```
 
 That is the JSON+YAML runtime. Do **not** upload `ontology/*.ttl` or `probes/*.rq`.
 
-**Do not** upload to Workflow Data: `agents/` (paste those into agent Name/Role/Backstory/Goal), `fixtures/`, `catalog_fixtures.json`, or `README.md`. Those last two are for MCP `PACK_ROOT` only.
+**Do not** upload to Workflow Data: `agents/` (paste those into agent Name/Role/Backstory/Goal), `catalog_fixtures.json`, or `README.md`. Upload `fixtures/` and `catalog/`. `run_named_catalog` reads the fixture JSON. `PACK_ROOT` is only for the claims MCP path below.
 
 If Studio offers “upload folder”, select `ontology` and `playbook` individually. Do not upload the parent `retirement_rollovers` folder as a single nest.
 
 ## Where to set `PACK_ROOT`
 
-**Only on the MCP server.** In Cloudera Agent Studio that is the **Environment variables** list on the `iceberg-mcp-server-claims` registration — the same place claims uses `IMPALA_HOST`. It is not Workflow Data, not an agent Goal, and not a custom-tool parameter.
+This block is the claims MCP path. `run_named_catalog` does not read `PACK_ROOT`. It reads the `fixtures/` tree uploaded above.
+
+**Only on the MCP server.** In Cloudera Agent Studio that is the **Environment variables** list on the `iceberg-mcp-server-claims` registration — the same place claims uses `IMPALA_HOST`. It is not an agent Goal and not a custom-tool parameter.
 
 | Place | Set `PACK_ROOT`? |
 |---|---|
 | Studio **MCP** → this server → **Environment variables** | **Yes** |
-| Workflow Data (`/workflow_data`) | No — that is `WORKFLOW_DATA_DIRECTORY` for graph/playbook only |
+| Workflow Data (`/workflow_data`) | No. Upload `fixtures/` for the Studio tool. Do not set `PACK_ROOT` here |
 | Agent Name / Role / Backstory / Goal | No |
 | Custom tool `UserParameters` | No |
 

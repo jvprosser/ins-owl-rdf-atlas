@@ -31,9 +31,10 @@ Do this in the **distributions** Agent Studio project (not the claims 402 projec
 
 1. Open the project → open **Workflow Data** (the project file tree for this workflow).
 2. If this project previously held claims files (`ontology/claims.json`, `claims_mvt.ttl`, `probes/*.rq`, claims `playbook/`), delete those first so the pack is the only tree. Do not upload Turtle or SPARQL.
-3. At the **root** of Workflow Data, upload these two files from `packs/retirement_distributions/`:
+3. At the **root** of Workflow Data, upload these from `packs/retirement_distributions/`:
    - `pack.yaml`
    - `exemplars.yaml`
+   - `catalog/` (`catalog.yaml` must land at `/workflow_data/catalog/catalog.yaml`)
 4. Create folder `ontology` (or upload that directory). Inside it, upload:
    - `ontology/distributions.json`
 5. Create folder `playbook` (or upload that directory). Inside it, upload:
@@ -44,13 +45,14 @@ Do this in the **distributions** Agent Studio project (not the claims 402 projec
 /workflow_data/
   pack.yaml
   exemplars.yaml
+  catalog/catalog.yaml
   ontology/distributions.json
   playbook/playbook.yaml
 ```
 
 That is the JSON+YAML runtime (same as claims 402). Do **not** upload `ontology/*.ttl` or `probes/*.rq` — those exist only on `rdf-sparql-runtime`.
 
-**Do not** upload to Workflow Data: `agents/` (paste those into agent Name/Role/Backstory/Goal), `fixtures/`, `catalog_fixtures.json`, or `README.md`. Fixtures remain repo golden tests; the live catalog is compiled in the finserv MCP.
+**Do not** upload to Workflow Data: `agents/` (paste those into agent Name/Role/Backstory/Goal), `fixtures/`, `catalog_fixtures.json`, or `README.md`. Fixtures remain repo golden tests. Live reads and writes go through `run_named_catalog` and `catalog/catalog.yaml`.
 
 If Studio offers “upload folder”, select `ontology` and `playbook` individually. Do not upload the parent `retirement_distributions` folder as a single nest.
 
@@ -97,7 +99,7 @@ Write: `write_audit_event`, `promote_audit_run`, `begin_agent_audit_run`, `appen
 
 Studio `claim_id` is `distribution_request.distribution_request_id` (seed **7001**, **7002**, **7003**, **7011–7017**).
 
-Check: Delegate Intake Agent `get_server_info` → `content_id=INS_FINSERV_MCP_V4`. Then `list_named_queries` must include `get_distribution_spine` and must **not** include `get_claim_spine`.
+Check: Delegate Intake Agent `run_named_catalog` with `op` `list`. The list must include `get_distribution_spine` and must **not** include `get_claim_spine`.
 
 ## Studio prompt (lead with 7002)
 

@@ -1,0 +1,91 @@
+# Distributions named catalog for the Studio tool run_named_catalog.
+# Upload this directory under Workflow Data so /workflow_data/catalog/catalog.yaml exists.
+# Handlers call iceberg-mcp-server-finserv. Do not upload fixtures/.
+# MCP servers are unchanged. A label not listed here fails closed.
+version: 1
+package: finserv
+database: retirement_distributions
+
+reads:
+  get_distribution_spine:
+    required: [claim_id]
+    optional: [database, case_id]
+    summary: Distribution request spine for graph build
+    handler: get_distribution_spine
+  get_distribution_routing_signals:
+    required: [claim_id]
+    optional: [database, case_id]
+    summary: Hardship / hold / RMD / ERISA routing ingredients
+    handler: get_distribution_routing_signals
+  get_distribution_exception_view:
+    required: [claim_id]
+    optional: [database, case_id]
+    summary: Exception-queue rows
+    handler: get_distribution_exception_view
+  get_rmd_view:
+    required: [claim_id]
+    optional: [database, case_id]
+    summary: RMD required vs paid amounts
+    handler: get_rmd_view
+  get_compliance_view:
+    required: [claim_id]
+    optional: [database, case_id]
+    summary: QJSA / spousal consent / loan-mandate plan facts
+    handler: get_compliance_view
+  get_loan_summary_view:
+    required: [claim_id]
+    optional: [database, case_id]
+    summary: Plan loan capacity for hardship precheck
+    handler: get_loan_summary_view
+  get_qdro_details_view:
+    required: [claim_id]
+    optional: [database, case_id]
+    summary: QDRO holds and pending court orders
+    handler: get_qdro_details_view
+  get_schema:
+    required: []
+    optional: [database]
+    summary: List tables
+    handler: get_schema
+
+writes:
+  write_audit_event:
+    required: [run_id, event_json]
+    optional: [database]
+    summary: Insert one audit event (playbook name)
+    handler: write_audit_event
+  append_agent_audit_event:
+    required: [run_id, event_json]
+    optional: [database]
+    summary: Insert one audit event
+    handler: append_agent_audit_event
+  append_agent_audit_evidence:
+    required: [run_id, evidence_json]
+    optional: [database]
+    summary: Insert one audit evidence row
+    handler: append_agent_audit_evidence
+  begin_agent_audit_run:
+    required: [run_id]
+    optional: [database, source_branch]
+    summary: Begin audit run (table-append mode)
+    handler: begin_agent_audit_run
+  promote_audit_run:
+    required: [run_id]
+    optional: [database]
+    summary: Promote audit run (playbook name)
+    handler: promote_audit_run
+  promote_agent_audit_run:
+    required: [run_id]
+    optional: [database]
+    summary: Promote audit run
+    handler: promote_agent_audit_run
+  abandon_agent_audit_run:
+    required: [run_id]
+    optional: [database]
+    summary: Delete audit rows for run_id
+    handler: abandon_agent_audit_run
+  send_client_notice:
+    required: [run_id, event_json]
+    optional: [database]
+    summary: Insert self-cert or hardship substantiation notice plus audit receipt
+    handler: send_client_notice

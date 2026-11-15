@@ -1,0 +1,35 @@
+# Rollover fixture catalog for the Studio tool run_named_catalog.
+# Upload catalog/ and fixtures/ so /workflow_data/catalog/catalog.yaml
+# and /workflow_data/fixtures/ exist. Reads are JSON files. Writes do not touch Impala.
+version: 1
+package: fixtures
+database: retirement_rollovers
+
+reads:
+  get_rollover_spine:
+    required: [claim_id]
+    optional: [database, case_id]
+    summary: Rollover request spine
+    fixture: fixtures/get_rollover_spine
+  get_rollover_routing_signals:
+    required: [claim_id]
+    optional: [database, case_id]
+    summary: Rollover routing signals
+    fixture: fixtures/get_rollover_routing_signals
+  get_erisa_review_view:
+    required: [claim_id]
+    optional: [database, case_id]
+    summary: ERISA / spousal-consent review view
+    fixture: fixtures/get_erisa_review_view
+
+writes:
+  write_audit_event:
+    required: [run_id, event_json]
+    optional: [database]
+    summary: Fixture audit write (no Impala)
+    fixture_write: true
+  promote_audit_run:
+    required: [run_id]
+    optional: [database]
+    summary: Fixture promote (no Impala)
+    fixture_write: true

@@ -24,9 +24,9 @@ FILE: agent_studio/studio_tools/...
 | `route_claim/` | `claim_id` | `claim_{id}_route.json` |
 | `save_claim_letter/` | `claim_id` + drafted `body` | `claim_{id}_letter.txt` (when the user asks) or `claim_{id}_sms.txt` (CollectIncidentReportNumber when `sms_written`) |
 | `pre_route_text/` | unstructured `text` (+ optional `claim_id`) | `pre_route_{id}.json` — cosine label/score; `needs_llm` if below threshold |
-| `run_named_catalog/` | `op` query/write/list + catalog `label` | Claims lake JSON. Allow-list is Workflow Data `catalog/catalog.yaml`. Does not replace build/validate/route. |
+| `run_named_catalog/` | `op` query/write/list + catalog `label` | Lake JSON for the Workflow Data catalog (`claims`, `finserv`, `underwriting`, or `fixtures`). Does not replace build/validate/route. |
 
-`run_named_catalog` is the Studio stand-in for claims MCP `run_named_query` / `run_named_write`. Upload repo-root `catalog/` with `ontology/` and `playbook/` so `/workflow_data/catalog/catalog.yaml` exists. `sql:` labels run `catalog/sql`. `handler:` labels call `iceberg-mcp-server-claims` in-process (procedures such as `convert_fnol_to_claim`). The MCP server registration can stay; detach one or the other on the agent.
+`run_named_catalog` is the Studio stand-in for MCP `run_named_query` / `run_named_write`. One tool serves claims and each pack: upload that project's `catalog/catalog.yaml` so `/workflow_data/catalog/catalog.yaml` exists. Claims `sql:` labels run `catalog/sql`. `handler:` labels call the MCP package named by `package` (`claims`, `finserv`, or `underwriting`). Rollover `package: fixtures` reads Workflow Data JSON. The MCP server registration can stay; detach one or the other on the agent.
 
 **After route:** playbook `allowed_tools` map to MCP (views + audit aliases) — see [`POST_ROUTE_AGENTS.md`](POST_ROUTE_AGENTS.md).
 

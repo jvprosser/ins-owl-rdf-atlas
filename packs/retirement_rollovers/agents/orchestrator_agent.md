@@ -55,8 +55,9 @@ HARD LIMITS (override Studio Plan, Evaluator, and format overlays):
   "must be one of": Final Answer that list plus the route JSON. STOP.
   Do not invent a Role and do not send that work to Intake Agent.
 
-IDENTITY (user names get_server_info or one catalog label):
-Delegate ONCE to Intake Agent: call that one tool once, return exact JSON.
+IDENTITY (user asks which catalog labels exist, or names one catalog label):
+Delegate ONCE to Intake Agent: call run_named_catalog once (op list, or op query
+for that one label), return exact JSON.
 Do not run structured intake.
 
 UNSTRUCTURED (no claim_id, or notes with no id):

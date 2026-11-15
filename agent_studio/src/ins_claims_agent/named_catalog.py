@@ -1,8 +1,9 @@
 """Studio stand-in for run_named_query / run_named_write.
 
-The allow-list is ``catalog/catalog.yaml`` under Workflow Data. A label is
-either one SQL file (``sql:``) or a claims procedure (``handler:``). Handlers
-are the same functions the claims MCP calls. This module does not start MCP.
+The allow-list is ``catalog/catalog.yaml`` under Workflow Data. ``package``
+selects claims, finserv, underwriting, or fixture JSON. A label is one SQL
+file (``sql:``), a procedure (``handler:``), or a fixture file. This module
+does not start MCP.
 """
 
 from __future__ import annotations
@@ -21,7 +22,20 @@ _IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _PLACEHOLDER = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 _READ_PREFIXES = ("select", "with", "show", "describe")
 _WRITE_PREFIXES = ("insert", "update", "delete")
-_ALIAS_KEYS = frozenset({"case_id", "claim_id", "fnol_id", "party_id"})
+_ALIAS_KEYS = frozenset({"case_id", "claim_id", "fnol_id", "party_id", "submission_id"})
+PACKAGES = frozenset({"claims", "finserv", "underwriting", "fixtures"})
+
+_AUDIT_HANDLERS = frozenset(
+    {
+        "write_audit_event",
+        "append_agent_audit_event",
+        "append_agent_audit_evidence",
+        "begin_agent_audit_run",
+        "promote_audit_run",
+        "promote_agent_audit_run",
+        "abandon_agent_audit_run",
+    }
+)
 
 HANDLER_NAMES = frozenset(
     {
@@ -50,6 +64,40 @@ HANDLER_NAMES = frozenset(
         "review_fnol",
     }
 )
+
+FINSERV_HANDLERS = _AUDIT_HANDLERS | frozenset(
+    {
+        "get_distribution_spine",
+        "get_distribution_routing_signals",
+        "get_distribution_exception_view",
+        "get_rmd_view",
+        "get_compliance_view",
+        "get_loan_summary_view",
+        "get_qdro_details_view",
+        "get_schema",
+        "send_client_notice",
+    }
+)
+
+UNDERWRITING_HANDLERS = _AUDIT_HANDLERS | frozenset(
+    {
+        "get_submission_spine",
+        "get_submission_routing_signals",
+        "get_senior_uw_referral_context",
+        "list_underwriter_open_submissions",
+        "get_schema",
+        "write_submission_decline",
+        "write_quote_issuance",
+        "write_data_enrichment_request",
+        "write_referral_queue",
+    }
+)
+
+PACKAGE_HANDLERS = {
+    "claims": HANDLER_NAMES,
+    "finserv": FINSERV_HANDLERS,
+    "underwriting": UNDERWRITING_HANDLERS,
+}
 
 QueryFn = Callable[[str], list[dict[str, Any]]]
 DmlFn = Callable[[str], str]
@@ -87,6 +135,10 @@ def execute(
     except (FileNotFoundError, ValueError, yaml.YAMLError) as exc:
         return _error(str(exc))
 
+    package = str(catalog.get("package") or "claims").strip()
+    if package not in PACKAGES:
+        return _error("unknown package", package=package)
+
     kind = (op or "").strip().lower()
     if kind in {"list", "list_named_queries"}:
         return _list_payload(catalog)
@@ -116,14 +168,25 @@ def execute(
     if missing:
         return _error("missing required params", label=name, missing=missing)
 
-    if "handler" in spec and "sql" in spec:
-        return _error("label sets both handler and sql", label=name)
-    if "handler" in spec:
+    label_kind = "read" if section == "reads" else "write"
+    sources = [key for key in ("handler", "sql", "fixture") if spec.get(key)]
+    if spec.get("fixture_write") is True:
+        sources.append("fixture_write")
+    if len(sources) != 1:
+        return _error("label needs exactly one of handler, sql, or fixture", label=name)
+    if package == "fixtures":
+        if sources[0] not in {"fixture", "fixture_write"}:
+            return _error("fixture package labels must set fixture or fixture_write", label=name)
+        return _run_fixture(catalog, name, spec, bound, kind=label_kind)
+    if sources[0] in {"fixture", "fixture_write"}:
+        return _error("fixture labels require package fixtures", label=name)
+    if sources[0] == "handler":
         return _run_handler(
             name,
             spec,
             bound,
-            kind="read" if section == "reads" else "write",
+            package=package,
+            kind=label_kind,
             handlers=handlers,
         )
     if "sql" in spec:
@@ -162,6 +225,10 @@ def _bind_params(catalog: dict[str, Any], spec: dict[str, Any], params: dict[str
         bound["case_id"] = bound["claim_id"]
     if not bound.get("fnol_id") and bound.get("claim_id"):
         bound["fnol_id"] = bound["claim_id"]
+    if not bound.get("claim_id") and bound.get("submission_id"):
+        bound["claim_id"] = bound["submission_id"]
+    if not bound.get("submission_id") and bound.get("claim_id"):
+        bound["submission_id"] = bound["claim_id"]
     if "database" not in bound:
         bound["database"] = catalog.get("database") or os.getenv(
             "IMPALA_DATABASE", "car_insurance_claims"
@@ -173,14 +240,21 @@ def _bind_params(catalog: dict[str, Any], spec: dict[str, Any], params: dict[str
         raise ValueError("unknown params: " + ", ".join(sorted(extra)))
     if not _IDENT.match(str(bound["database"])):
         raise ValueError("invalid database")
-    for key in ("claim_id", "party_id"):
+    for key in ("claim_id", "party_id", "submission_id"):
         if key in bound and key in allowed:
-            bound[key] = str(int(bound[key]))
+            bound[key] = _coerce_id(bound[key])
     if "fnol_id" in bound and "fnol_id" in allowed:
         bound["fnol_id"] = str(_parse_fnol_id(bound["fnol_id"]))
     if "run_id" in bound:
         bound["run_id_sql"] = "'" + str(bound["run_id"]).replace("'", "''") + "'"
     return bound
+
+
+def _coerce_id(value: Any) -> str:
+    text = str(value).strip()
+    if text.isdigit():
+        return str(int(text))
+    return text
 
 
 def _parse_fnol_id(value: Any) -> int:
@@ -195,13 +269,14 @@ def _run_handler(
     spec: dict[str, Any],
     bound: dict[str, Any],
     *,
+    package: str,
     kind: str,
     handlers: dict[str, Callable[[dict[str, Any]], str]] | None,
 ) -> dict[str, Any]:
     handler_name = str(spec["handler"])
-    if handler_name not in HANDLER_NAMES:
-        return _error("unknown handler", label=name, handler=handler_name)
-    registry = handlers if handlers is not None else _default_handlers()
+    if handler_name not in PACKAGE_HANDLERS[package]:
+        return _error("unknown handler", label=name, handler=handler_name, package=package)
+    registry = handlers if handlers is not None else _handlers_for(package)
     handler = registry.get(handler_name)
     if handler is None:
         return _error("handler is not registered", label=name, handler=handler_name)
@@ -318,7 +393,7 @@ def _list_payload(catalog: dict[str, Any]) -> dict[str, Any]:
                     "required": list(spec.get("required") or []),
                     "optional": list(spec.get("optional") or []),
                     "summary": spec.get("summary"),
-                    "source": "sql" if spec.get("sql") else "handler",
+                    "source": _label_source(spec),
                 }
             )
         return rows
@@ -329,6 +404,79 @@ def _list_payload(catalog: dict[str, Any]) -> dict[str, Any]:
         "reads": entries("reads", "read"),
         "writes": entries("writes", "write"),
     }
+
+
+def _label_source(spec: dict[str, Any]) -> str:
+    if spec.get("sql"):
+        return "sql"
+    if spec.get("fixture") or spec.get("fixture_write") is True:
+        return "fixture"
+    return "handler"
+
+
+def _run_fixture(
+    catalog: dict[str, Any],
+    name: str,
+    spec: dict[str, Any],
+    bound: dict[str, Any],
+    *,
+    kind: str,
+) -> dict[str, Any]:
+    if spec.get("fixture_write") is True:
+        if kind != "write":
+            return _error("fixture_write is a write label", label=name)
+        return {
+            "ok": True,
+            "fixture": True,
+            "run_id": bound.get("run_id"),
+            "named_op": name,
+            "named_op_kind": "write",
+            "mode": "fixture",
+            "note": "fixture write; no Impala INSERT.",
+        }
+    if kind != "read":
+        return _error("fixture file is a read label", label=name)
+    rel = str(spec.get("fixture") or "")
+    try:
+        fixture_dir = _fixture_dir(catalog, rel)
+    except ValueError as exc:
+        return _error(str(exc), label=name)
+    cid = str(bound.get("claim_id") or bound.get("case_id") or "").strip()
+    path = fixture_dir / f"{cid}.json"
+    if not path.is_file():
+        return _error("no fixture for case", label=name, case_id=cid)
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        return _error(f"fixture JSON is invalid: {exc}", label=name)
+    if not isinstance(payload, dict):
+        return _error("fixture JSON must be an object", label=name)
+    payload.setdefault("case_id", cid)
+    payload.setdefault("claim_id", cid)
+    payload.setdefault("fixture", True)
+    payload.setdefault("named_op", name)
+    payload.setdefault("named_op_kind", "read")
+    return payload
+
+
+def _fixture_dir(catalog: dict[str, Any], rel: str) -> Path:
+    root = Path(catalog["_path"]).resolve().parent.parent
+    path = (root / rel).resolve()
+    try:
+        path.relative_to(root)
+    except ValueError:
+        raise ValueError("fixture path escapes workflow data") from None
+    return path
+
+
+def _handlers_for(package: str) -> dict[str, Callable[[dict[str, Any]], str]]:
+    if package == "claims":
+        return _default_handlers()
+    if package == "finserv":
+        return _finserv_handlers()
+    if package == "underwriting":
+        return _underwriting_handlers()
+    raise ValueError(f"unknown package: {package}")
 
 
 def _default_handlers() -> dict[str, Callable[[dict[str, Any]], str]]:
@@ -399,6 +547,118 @@ def _default_handlers() -> dict[str, Callable[[dict[str, Any]], str]]:
         ),
         "review_fnol": lambda p: fnol_writes.review_fnol(str(p["run_id"]), event(p), database(p)),
     }
+
+
+def _audit_handlers(audit_tools: Any) -> dict[str, Callable[[dict[str, Any]], str]]:
+    def event(params: dict[str, Any]) -> str:
+        return _json_arg(params.get("event_json"))
+
+    def database(params: dict[str, Any]) -> Any:
+        return params.get("database")
+
+    return {
+        "write_audit_event": lambda p: audit_tools.append_agent_audit_event(
+            str(p["run_id"]), event(p), database(p)
+        ),
+        "append_agent_audit_event": lambda p: audit_tools.append_agent_audit_event(
+            str(p["run_id"]), event(p), database(p)
+        ),
+        "append_agent_audit_evidence": lambda p: audit_tools.append_agent_audit_evidence(
+            str(p["run_id"]), _json_arg(p.get("evidence_json")), database(p)
+        ),
+        "begin_agent_audit_run": lambda p: audit_tools.begin_agent_audit_run(
+            str(p["run_id"]), database(p), p.get("source_branch")
+        ),
+        "promote_audit_run": lambda p: audit_tools.promote_agent_audit_run(str(p["run_id"]), database(p)),
+        "promote_agent_audit_run": lambda p: audit_tools.promote_agent_audit_run(
+            str(p["run_id"]), database(p)
+        ),
+        "abandon_agent_audit_run": lambda p: audit_tools.abandon_agent_audit_run(
+            str(p["run_id"]), database(p)
+        ),
+    }
+
+
+def _finserv_handlers() -> dict[str, Callable[[dict[str, Any]], str]]:
+    from iceberg_mcp_server_finserv.tools import audit_tools, dist_tools, impala_tools, notice_tools
+
+    def event(params: dict[str, Any]) -> str:
+        return _json_arg(params.get("event_json"))
+
+    def database(params: dict[str, Any]) -> Any:
+        return params.get("database")
+
+    handlers = _audit_handlers(audit_tools)
+    handlers.update(
+        {
+            "get_distribution_spine": lambda p: dist_tools.get_distribution_spine(
+                str(p["claim_id"]), database(p)
+            ),
+            "get_distribution_routing_signals": lambda p: dist_tools.get_distribution_routing_signals(
+                str(p["claim_id"]), database(p)
+            ),
+            "get_distribution_exception_view": lambda p: dist_tools.get_distribution_exception_view(
+                str(p["claim_id"]), database(p)
+            ),
+            "get_rmd_view": lambda p: dist_tools.get_rmd_view(str(p["claim_id"]), database(p)),
+            "get_compliance_view": lambda p: dist_tools.get_compliance_view(
+                str(p["claim_id"]), database(p)
+            ),
+            "get_loan_summary_view": lambda p: dist_tools.get_loan_summary_view(
+                str(p["claim_id"]), database(p)
+            ),
+            "get_qdro_details_view": lambda p: dist_tools.get_qdro_details_view(
+                str(p["claim_id"]), database(p)
+            ),
+            "get_schema": lambda p: impala_tools.get_schema(database(p)),
+            "send_client_notice": lambda p: notice_tools.send_client_notice(
+                str(p["run_id"]), event(p), database(p)
+            ),
+        }
+    )
+    return handlers
+
+
+def _underwriting_handlers() -> dict[str, Callable[[dict[str, Any]], str]]:
+    from iceberg_mcp_server_underwriting.tools import audit_tools, impala_tools, uw_tools, uw_writes
+
+    def event(params: dict[str, Any]) -> str:
+        return _json_arg(params.get("event_json"))
+
+    def database(params: dict[str, Any]) -> Any:
+        return params.get("database")
+
+    handlers = _audit_handlers(audit_tools)
+    handlers.update(
+        {
+            "get_submission_spine": lambda p: uw_tools.get_submission_spine(
+                str(p["claim_id"]), database(p)
+            ),
+            "get_submission_routing_signals": lambda p: uw_tools.get_submission_routing_signals(
+                str(p["claim_id"]), database(p)
+            ),
+            "get_senior_uw_referral_context": lambda p: uw_tools.get_senior_uw_referral_context(
+                str(p["claim_id"]), database(p)
+            ),
+            "list_underwriter_open_submissions": lambda p: uw_tools.list_underwriter_open_submissions(
+                str(p["party_id"]), database(p)
+            ),
+            "get_schema": lambda p: impala_tools.get_schema(database(p)),
+            "write_submission_decline": lambda p: uw_writes.write_submission_decline(
+                str(p["run_id"]), event(p), database(p)
+            ),
+            "write_quote_issuance": lambda p: uw_writes.write_quote_issuance(
+                str(p["run_id"]), event(p), database(p)
+            ),
+            "write_data_enrichment_request": lambda p: uw_writes.write_data_enrichment_request(
+                str(p["run_id"]), event(p), database(p)
+            ),
+            "write_referral_queue": lambda p: uw_writes.write_referral_queue(
+                str(p["run_id"]), event(p), database(p)
+            ),
+        }
+    )
+    return handlers
 
 
 def _default_query_rows() -> QueryFn:

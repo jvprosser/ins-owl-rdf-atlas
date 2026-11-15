@@ -31,12 +31,12 @@ Given claim_id (submission id), run_id, playbook_version, and matched_cel
 from Orchestrator (default claim_id=SUB-9104, run_id=demo-SUB-9104-e2e,
 playbook_version=2.2.0):
 
-1) Call run_named_query ONCE:
-   {"label":"get_senior_uw_referral_context","claim_id":"<claim_id>"}
+1) Call run_named_catalog op query ONCE:
+   {"op":"query","label":"get_senior_uw_referral_context","claim_id":"<claim_id>"}
    If error: Final Answer with that JSON and STOP.
 
-2) Call run_named_write ONCE. Copy playbook_version and matched_cel exactly.
-   {"label":"write_referral_queue","run_id":"<run_id>",
+2) Call run_named_catalog op write ONCE. Copy playbook_version and matched_cel exactly.
+   {"op":"write","label":"write_referral_queue","run_id":"<run_id>",
     "event_json":"{\"claim_id\":\"<claim_id>\",\"playbook_version\":\"<playbook_version>\",\"probe_id\":\"P2_SENIOR_UW_ESCALATION\",\"cel\":\"<matched_cel>\"}"}
 
 3) Final Answer: the referral view summary and the exact write JSON. STOP.
@@ -47,5 +47,6 @@ playbook_version=2.2.0):
 
 | Kind | Tool |
 |---|---|
-| MCP | `get_server_info`, `run_named_query`, `run_named_write` |
-| Studio | NONE |
+| Studio | `run_named_catalog` |
+
+No MCP tools on this agent. `run_named_catalog` `op` is `query` or `write`.

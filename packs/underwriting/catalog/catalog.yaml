@@ -1,0 +1,91 @@
+# Underwriting named catalog for the Studio tool run_named_catalog.
+# Upload this directory under Workflow Data so /workflow_data/catalog/catalog.yaml exists.
+# Handlers call iceberg-mcp-server-underwriting. claim_id is the submission id (SUB-9102).
+# Do not upload fixtures/. MCP servers are unchanged. A label not listed here fails closed.
+version: 1
+package: underwriting
+database: underwriting
+
+reads:
+  get_submission_spine:
+    required: [claim_id]
+    optional: [database, case_id, submission_id]
+    summary: Submission spine for graph build
+    handler: get_submission_spine
+  get_submission_routing_signals:
+    required: [claim_id]
+    optional: [database, case_id, submission_id]
+    summary: Flood, inspection, loss, and stability signals for CEL
+    handler: get_submission_routing_signals
+  get_senior_uw_referral_context:
+    required: [claim_id]
+    optional: [database, case_id, submission_id]
+    summary: Senior underwriter referral context
+    handler: get_senior_uw_referral_context
+  list_underwriter_open_submissions:
+    required: [party_id]
+    optional: [database]
+    summary: Open submissions currently assigned to an underwriter
+    handler: list_underwriter_open_submissions
+  get_schema:
+    required: []
+    optional: [database]
+    summary: List tables
+    handler: get_schema
+
+writes:
+  write_submission_decline:
+    required: [run_id, event_json]
+    optional: [database]
+    summary: Decline a submission (reason_code OUT_OF_APPETITE) and audit it
+    handler: write_submission_decline
+  write_quote_issuance:
+    required: [run_id, event_json]
+    optional: [database]
+    summary: Issue an indicative quote. Catalog computes tier and premium_cents
+    handler: write_quote_issuance
+  write_data_enrichment_request:
+    required: [run_id, event_json]
+    optional: [database]
+    summary: Request an inspection (provider_type INSPECTION) and audit it
+    handler: write_data_enrichment_request
+  write_referral_queue:
+    required: [run_id, event_json]
+    optional: [database]
+    summary: Queue a senior underwriter referral and audit it
+    handler: write_referral_queue
+  write_audit_event:
+    required: [run_id, event_json]
+    optional: [database]
+    summary: Insert one audit event (playbook name)
+    handler: write_audit_event
+  append_agent_audit_event:
+    required: [run_id, event_json]
+    optional: [database]
+    summary: Insert one audit event
+    handler: append_agent_audit_event
+  append_agent_audit_evidence:
+    required: [run_id, evidence_json]
+    optional: [database]
+    summary: Insert one audit evidence row
+    handler: append_agent_audit_evidence
+  begin_agent_audit_run:
+    required: [run_id]
+    optional: [database, source_branch]
+    summary: Begin audit run (table-append mode)
+    handler: begin_agent_audit_run
+  promote_audit_run:
+    required: [run_id]
+    optional: [database]
+    summary: Promote audit run (playbook name)
+    handler: promote_audit_run
+  promote_agent_audit_run:
+    required: [run_id]
+    optional: [database]
+    summary: Promote audit run
+    handler: promote_agent_audit_run
+  abandon_agent_audit_run:
+    required: [run_id]
+    optional: [database]
+    summary: Delete audit rows for run_id
+    handler: abandon_agent_audit_run

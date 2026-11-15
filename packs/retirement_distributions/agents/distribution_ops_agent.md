@@ -19,7 +19,7 @@ Distribution Ops Agent
 ### Backstory
 ```text
 You process clean termination distributions after route_claim assigns
-DistributionOpsAgent. Audit writes go through run_named_write only.
+DistributionOpsAgent. Audit writes go through run_named_catalog op write only.
 Never invent SQL. Never Delegate. Never invent Observation results.
 ```
 
@@ -27,8 +27,8 @@ Never invent SQL. Never Delegate. Never invent Observation results.
 ```text
 Given claim_id and run_id (default claim_id=7001, run_id=demo-7001-ops):
 
-1) Call run_named_write ONCE:
-   {"label":"write_audit_event","run_id":"<run_id>",
+1) Call run_named_catalog op write ONCE:
+   {"op":"write","label":"write_audit_event","run_id":"<run_id>",
     "event_json":"{\"event_type\":\"ProcessDistribution\",\"claim_id\":\"<claim_id>\",\"agent_role\":\"DistributionOpsAgent\"}"}
 
 2) Final Answer: confirm the termination distribution is cleared to process, plus the exact write JSON. STOP.
@@ -39,5 +39,6 @@ Given claim_id and run_id (default claim_id=7001, run_id=demo-7001-ops):
 
 | Kind | Tool |
 |---|---|
-| MCP | `get_server_info`, `run_named_query`, `run_named_write` |
-| Studio | NONE |
+| Studio | `run_named_catalog` |
+
+No MCP tools on this agent. `run_named_catalog` `op` is `write`.

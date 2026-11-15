@@ -21,12 +21,13 @@ Quote premium is computed in the catalog (cents per $100 of TIV): tier A `15`, B
 
 ## Upload workflow data (Studio)
 
-Upload the **contents** of `packs/underwriting/` so `/workflow_data/pack.yaml` exists. Do not nest an `underwriting/` folder. Do not upload `agents/`, `fixtures/`, or `catalog_fixtures.json`.
+Upload the **contents** of `packs/underwriting/` so `/workflow_data/pack.yaml` exists. Do not nest an `underwriting/` folder. Upload `catalog/`. Do not upload `agents/`, `fixtures/`, or `catalog_fixtures.json`.
 
 ```text
 /workflow_data/
   pack.yaml
   exemplars.yaml
+  catalog/catalog.yaml
   ontology/submissions.json
   playbook/playbook.yaml
 ```
@@ -59,7 +60,7 @@ Register **`iceberg-mcp-server-underwriting`** only. Identity `INS_UW_MCP_V1`. D
 }
 ```
 
-Check: Delegate Intake Agent `get_server_info` → `content_id=INS_UW_MCP_V1`. Then `list_named_queries` must include `get_submission_spine` and must **not** include `get_claim_spine`.
+Check: Delegate Intake Agent `run_named_catalog` with `op` `list`. The list must include `get_submission_spine` and must **not** include `get_claim_spine`.
 
 ## Studio prompt
 

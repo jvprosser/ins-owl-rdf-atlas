@@ -1,6 +1,6 @@
 # Finserv demo packs
 
-Same control plane as car-insurance claims: Orchestrator (no tools) → Intake Agent MCP catalog reads → Studio `build_claim_graph` → `validate_claim_graph` → `route_claim` → one specialist Delegate. CEL probes + playbook decide the lane. The LLM does not decide hardship, RMD, or ERISA.
+Same control plane as car-insurance claims: Orchestrator (no tools) → Intake Agent `run_named_catalog` → Studio `build_claim_graph` → `validate_claim_graph` → `route_claim` → one specialist Delegate. CEL probes + playbook decide the lane. The LLM does not decide hardship, RMD, or ERISA.
 
 Do **not** move `ontology/` / `playbook/` at the repo root. Claim **402** still uses those assets.
 
@@ -14,9 +14,9 @@ Do **not** move `ontology/` / `playbook/` at the repo root. Claim **402** still 
 
 Upload steps for Workflow Data are in each pack README (**Upload workflow data**).
 
-- **Distributions (live):** register [`iceberg-mcp-server-finserv`](../mcp_forks/iceberg-mcp-server-finserv/README.md). Impala database `retirement_distributions`. No `PACK_ROOT`.
-- **Underwriting (live):** register [`iceberg-mcp-server-underwriting`](../mcp_forks/iceberg-mcp-server-underwriting/README.md). Impala database `underwriting`. No `PACK_ROOT`. Studio `claim_id` is the submission id (`SUB-9102`).
-- **Rollovers (fixtures):** still the claims MCP + `PACK_ROOT` path in [`iceberg-mcp-server-claims/README.md`](../mcp_forks/iceberg-mcp-server-claims/README.md).
+- **Distributions (live):** upload `catalog/` with the pack. `run_named_catalog` calls `iceberg-mcp-server-finserv` handlers. Impala database `retirement_distributions`. Do not upload `fixtures/`. The finserv MCP registration can stay.
+- **Underwriting (live):** upload `catalog/` with the pack. `run_named_catalog` calls `iceberg-mcp-server-underwriting` handlers. Impala database `underwriting`. Do not upload `fixtures/`. Studio `claim_id` is the submission id (`SUB-9102`). The underwriting MCP registration can stay.
+- **Rollovers (fixtures):** upload `catalog/` and `fixtures/`. `run_named_catalog` reads those JSON files. No Impala and no `PACK_ROOT` on the tool.
 
 Primary customer prompt: intake **7002**. Probe/action chat prompts (claims + both packs): [`docs/probe-action-tests.md`](../docs/probe-action-tests.md).
 
@@ -29,7 +29,7 @@ packs/<id>/
   README.md                 # This pack’s demo script and Studio upload steps
   pack.yaml                 # Pack identity + schema/playbook paths (Studio tools)
   exemplars.yaml            # Cosine NL triage texts + dispatch
-  catalog_fixtures.json     # MCP label list → fixture folders (not for tools)
+  catalog/                  # run_named_catalog allow-list (upload with the pack)
   ontology/                 # Case field schema JSON
   playbook/                 # Probe order, CEL, next_step, coworker / write
   fixtures/                 # Canned MCP JSON (stand-in for Impala)
@@ -41,15 +41,15 @@ packs/<id>/
 | `README.md` | Cases, expected routes, Workflow Data upload, Studio prompts | Humans |
 | `pack.yaml` | Pack `id`, paths to schema/playbook/exemplars, `graph.builder: generic`, JSON field lists, optional catalog notes | Studio tools (`load_pack` / `build_case_graph` / `route_claim`) via Workflow Data |
 | `exemplars.yaml` | Unstructured phrases, `labels`, `dispatch` (coworker / `agent_role` / `next_step`) | Studio `pre_route_text` (Routing Agent). Advisory only; a `claim_id` still goes through structured intake |
-| `catalog_fixtures.json` | MCP allow-list for this pack: each `run_named_query` **label**, required params, and `fixture_dir` | MCP only (when it can load pack fixtures). Not used by graph tools |
+| `catalog/catalog.yaml` | Allow-list for Studio `run_named_catalog` (`package` selects finserv, underwriting, or fixtures) | That project's Workflow Data |
 | `ontology/*.json` | Case field schema (JSON, not Turtle) | `build_claim_graph` / humans |
 | `playbook/playbook.yaml` | Probe CEL `cel` + actions (`step`, `agent`, `coworker`, `write`, `lane`, tools) | `route_claim` |
-| `fixtures/<label>/<id>.json` | Fake lake payload for that named query and case (spine, signals, exception/ERISA/RMD view) | MCP `run_named_query` if fixtures are loaded. Same JSON shape Intake Agent would pass into `build_claim_graph` |
+| `fixtures/<label>/<id>.json` | Fake lake payload for that named query and case | Rollover `run_named_catalog` when `package` is `fixtures`. Distributions and underwriting keep these as golden tests and do not upload them |
 | `agents/*.md` | Paste-ready Studio agents (Orchestrator, Intake Agent, specialists) | Humans → Agent Studio fields. Not uploaded to Workflow Data |
 
-**Workflow Data (Studio tools)** needs: `pack.yaml`, `exemplars.yaml`, `ontology/`, `playbook/`.  
-**Do not** upload `agents/` (paste those).  
-**MCP:** distributions labels are compiled in `iceberg-mcp-server-finserv` (live Impala). Underwriting labels are compiled in `iceberg-mcp-server-underwriting`. `catalog_fixtures.json` + `fixtures/` remain golden JSON for offline tests. Rollovers still use claims MCP `PACK_ROOT` fixtures. See [`docs/finserv-pattern-pack-status.md`](../docs/finserv-pattern-pack-status.md).
+**Workflow Data (Studio tools)** needs: `pack.yaml`, `exemplars.yaml`, `ontology/`, `playbook/`, and `catalog/catalog.yaml`. Distributions and underwriting do not upload `fixtures/`. Rollovers upload `fixtures/` as well.
+**Do not** upload `agents/` (paste those).
+**MCP** registrations can stay so a project can detach `run_named_catalog` and go back to `run_named_query`. See [`docs/finserv-pattern-pack-status.md`](../docs/finserv-pattern-pack-status.md).
 
 ### `pack.yaml` fields (short)
 
