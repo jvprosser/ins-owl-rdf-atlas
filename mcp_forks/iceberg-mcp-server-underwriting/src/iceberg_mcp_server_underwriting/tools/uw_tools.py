@@ -199,6 +199,54 @@ def get_senior_uw_referral_context(
     )
 
 
+def list_low_confidence_fields(
+    claim_id: str,
+    database: str | None = None,
+    *,
+    min_confidence_score: Any = None,
+    query_rows: QueryFn | None = None,
+) -> str:
+    """Return document fields that contain a word below min_confidence_score."""
+    from iceberg_mcp_server_underwriting.tools.impala_tools import query_rows as _qr
+
+    qr = query_rows or _qr
+    try:
+        sid = uw_sql.validate_submission_id(claim_id)
+        score = uw_sql.validate_min_confidence(min_confidence_score)
+        db = uw_sql.validate_ident(_default_database(database), "database")
+        rows = qr(uw_sql.list_low_confidence_fields_sql(sid, db, score))
+    except Exception as exc:
+        return json.dumps(
+            {
+                "error": str(exc),
+                "claim_id": str(claim_id),
+                "min_confidence_score": min_confidence_score,
+            }
+        )
+    fields = [
+        {
+            "document_id": r.get("document_id"),
+            "page_index": r.get("page_index"),
+            "word_text": r.get("word_text"),
+            "confidence": r.get("confidence"),
+            "field_path": r.get("field_path"),
+            "field_value": r.get("field_value"),
+        }
+        for r in rows
+    ]
+    return json.dumps(
+        {
+            "claim_id": sid,
+            "case_id": sid,
+            "submission_id": sid,
+            "database": db,
+            "min_confidence_score": score,
+            "fields": fields,
+        },
+        default=str,
+    )
+
+
 def list_underwriter_open_submissions(
     party_id: str,
     database: str | None = None,

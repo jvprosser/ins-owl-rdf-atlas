@@ -3,10 +3,12 @@
 #
 # NOTE: do not use YAML key `on:` — in YAML 1.1 it is a boolean synonym for true.
 
-version: "2.9.0"
+version: "2.10.0"
 schema_relpath: ontology/submissions.json
 
-# First match:
+# R0.1 is a hard stop. P0C–P0T are all scored. Any hit goes to one review
+# with the list attached. P00–P40 stay first-match, and that disposition
+# is recorded but not handed off while a document exception is open.
 #   R0.1 submission exists
 #   P0C low OCR word confidence, before appetite
 #   P0V statement of values coinsurance or a blank schedule line
@@ -41,6 +43,25 @@ priorities:
   - P31_SUBSTANDARD_PROTECTION_CLASS
   - P40_ELIGIBLE_FOR_CLEAN_AUTO_BIND
 
+exception_probes:
+  - P0C_LOW_OCR_CONFIDENCE
+  - P0V_SOV_SCHEDULE
+  - P0W_RENTAL_VALUE_WORKSHEET
+  - P0I_FOUR_POINT_INSPECTION
+  - P0L_LOSS_RUN
+  - P0N_LARGE_LOSS_NARRATIVE
+  - P0T_TENANT_ROSTER
+
+exception_review:
+  step: RESOLVE_DOCUMENT_EXCEPTIONS
+  agent: UnderwritingReviewAgent
+  coworker: Underwriting Review Agent
+  lane: REVIEW
+  write: write_audit_event
+  tools: [write_audit_event]
+  terminal: true
+  letter_on_request: false
+
 probes:
   R0.1:
     form: ASK
@@ -54,42 +75,49 @@ probes:
     when_true: A scanned word is below 0.8
     when_false: No scan is on file, or every scored word is at or above 0.8
     cel: 'ocr_document_present == true && min_ocr_confidence < 0.8'
+    detail_fields: [low_ocr_spans, min_ocr_confidence]
   P0V_SOV_SCHEDULE:
     form: ASK
     title: Statement of values coinsurance or a blank coverage line
     when_true: A percent coinsurance is under 80, or the schedule has no building line, a blank limit, or a blank coinsurance
     when_false: No schedule is on file, or percent coinsurance is at least 80 and every line is filled in
     cel: 'sov_present == true && (sov_schedule_incomplete == true || (sov_min_coinsurance_pct > 0.0 && sov_min_coinsurance_pct < 80.0))'
+    detail_fields: [sov_min_coinsurance_pct]
   P0W_RENTAL_VALUE_WORKSHEET:
     form: ASK
     title: Rental value worksheet does not foot or disagrees with the schedule
     when_true: The worksheet math, rent roll, selected limit, monthly limitation, or area disagrees
     when_false: No worksheet is on file, or it foots and agrees with the business income schedule
     cel: 'rental_worksheet_present == true && rental_needs_review == true'
+    detail_fields: [rental_review_detail]
   P0I_FOUR_POINT_INSPECTION:
     form: ASK
     title: 4-point inspection is incomplete or reports a prohibited system
     when_true: A system row is missing, year built disagrees with the schedule, or the notes report aluminum wiring or polybutylene
     when_false: No 4-point inspection is on file, or roof, plumbing, electrical, and HVAC are present and the year matches
     cel: 'four_point_present == true && four_point_needs_review == true'
+    detail_fields: [four_point_review_detail]
   P0L_LOSS_RUN:
     form: ASK
     title: Loss run is unsigned or its totals do not foot
     when_true: The loss run has no authorized signature, or the policy totals do not match the account aggregate
     when_false: No loss run is on file, or it is signed and the policy totals match the aggregate
     cel: 'loss_run_present == true && loss_run_needs_review == true'
+    detail_fields: [loss_run_review_detail]
   P0N_LARGE_LOSS_NARRATIVE:
     form: ASK
     title: Large loss narrative does not match its invoice or the loss run
     when_true: The narrative is unsigned, the invoice does not foot or is unpaid, or the loss date falls in a loss run that shows no losses
     when_false: No narrative is on file, or it is signed, paid, and outside any clean loss-run term
     cel: 'large_loss_present == true && large_loss_needs_review == true'
+    detail_fields: [large_loss_review_detail]
   P0T_TENANT_ROSTER:
     form: ASK
     title: Tenant roster does not foot or disagrees with the rent roll
     when_true: The roster is unsigned, the areas do not foot, a unit disagrees with the rent roll, or a tenant describes commercial cooking
     when_false: No roster is on file, or it is signed, fully occupied, and matches the rent roll
     cel: 'tenant_roster_present == true && tenant_roster_needs_review == true'
+    detail_fields: [tenant_roster_review_detail]
   P00_PROHIBITED_CLASS_CODE:
     form: ASK
     title: Industry class outside carrier underwriting appetite guidelines
@@ -148,7 +176,7 @@ probes:
     form: ASK
     title: Preferred risk meeting all frontline parameters for automated rating
     when_true: TIV, loss history, financial score, and flood zone meet straight-through terms
-    when_false: Straight-through terms are not met
+    when_false: Straight-through bind needs total insured value at or under 5000000, zero claims in 36 months, a financial score of at least 680, and a flood zone other than A or V
     cel: 'total_insured_value <= 5000000 && claims_count_36m == 0.0 && financial_score >= 680 && !(["A", "V"].exists(z, z == flood_zone))'
 
 actions:

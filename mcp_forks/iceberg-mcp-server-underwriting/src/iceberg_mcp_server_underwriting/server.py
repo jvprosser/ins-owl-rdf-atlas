@@ -57,8 +57,10 @@ def run_named_query(
     Flat Action Input example:
       {"label":"get_submission_spine","claim_id":"SUB-9102"}
     Read labels: get_submission_spine, get_submission_routing_signals,
-    get_senior_uw_referral_context, list_underwriter_open_submissions, get_schema.
+    get_senior_uw_referral_context, list_underwriter_open_submissions,
+    list_low_confidence_fields, get_schema.
     claim_id is the submission id. list_underwriter_open_submissions takes party_id.
+    list_low_confidence_fields takes optional min_confidence_score (default 0.8).
     """
     return catalog.run_named_query(
         label,

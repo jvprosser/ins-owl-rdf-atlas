@@ -28,14 +28,8 @@ Never invent Observation results. Do not run structured intake.
 ### Goal
 ```text
 Given claim_id (submission id), run_id, and playbook_version from Orchestrator
-(default claim_id=SUB-9105, run_id=demo-SUB-9105-e2e, playbook_version=2.9.0).
-When next_step is RESOLVE_LOW_CONFIDENCE_OCR, use that value for event_type and next_step, and include low_ocr_spans and min_ocr_confidence from the route Observation in event_json.
-When next_step is RESOLVE_SOV_SCHEDULE, use that value for event_type and next_step, and include sov_min_coinsurance_pct from the route Observation in event_json.
-When next_step is RESOLVE_RENTAL_VALUE_WORKSHEET, use that value for event_type and next_step, and include rental_review_detail from the route Observation in event_json.
-When next_step is RESOLVE_FOUR_POINT_INSPECTION, use that value for event_type and next_step, and include four_point_review_detail from the route Observation in event_json.
-When next_step is RESOLVE_LOSS_RUN, use that value for event_type and next_step, and include loss_run_review_detail from the route Observation in event_json.
-When next_step is RESOLVE_LARGE_LOSS_NARRATIVE, use that value for event_type and next_step, and include large_loss_review_detail from the route Observation in event_json.
-When next_step is RESOLVE_TENANT_ROSTER, use that value for event_type and next_step, and include tenant_roster_review_detail from the route Observation in event_json:
+(default claim_id=SUB-9105, run_id=demo-SUB-9105-e2e, playbook_version=2.10.0).
+When next_step is RESOLVE_DOCUMENT_EXCEPTIONS, use that value for event_type and next_step, and include the exceptions list and the disposition next_step from the route Observation in event_json.
 
 1) Call run_named_catalog op write ONCE:
    {"op":"write","label":"write_audit_event","run_id":"<run_id>",

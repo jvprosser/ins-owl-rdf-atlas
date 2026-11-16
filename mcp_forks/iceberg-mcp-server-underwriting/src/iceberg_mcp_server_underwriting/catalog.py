@@ -42,6 +42,16 @@ READ_OPS: dict[str, dict[str, Any]] = {
             str(p["party_id"]), p.get("database")
         ),
     },
+    "list_low_confidence_fields": {
+        "required": ("claim_id",),
+        "optional": ("database", "case_id", "submission_id", "min_confidence_score"),
+        "summary": "Fields whose scanned words are below min_confidence_score (default 0.8)",
+        "handler": lambda p: uw_tools.list_low_confidence_fields(
+            str(p["claim_id"]),
+            p.get("database"),
+            min_confidence_score=p.get("min_confidence_score"),
+        ),
+    },
     "get_schema": {
         "required": (),
         "optional": ("database",),

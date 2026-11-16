@@ -22,7 +22,7 @@ from iceberg_mcp_server_underwriting.tools.uw_tools import load_snapshot
 QueryFn = Callable[[str], list[dict[str, Any]]]
 DmlFn = Callable[[str], str]
 
-PLAYBOOK_VERSION = "2.9.0"
+PLAYBOOK_VERSION = "2.10.0"
 
 PROBE_CEL = {
     "P00_PROHIBITED_CLASS_CODE": (

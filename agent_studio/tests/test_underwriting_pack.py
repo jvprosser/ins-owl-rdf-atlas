@@ -40,7 +40,7 @@ def test_submission_9100_class_knockout(monkeypatch):
     assert decision["write"] == "write_submission_decline"
     assert decision["reason_code"] == "OUT_OF_APPETITE"
     assert decision["letter_on_request"] is True
-    assert decision["playbook_version"] == "2.9.0"
+    assert decision["playbook_version"] == "2.10.0"
     assert decision["checks"][-1]["probe_id"] == "P00_PROHIBITED_CLASS_CODE"
 
 
@@ -64,11 +64,15 @@ def test_low_ocr_confidence_routes_before_class_knockout(monkeypatch):
     assert "55.28" in graph["low_ocr_spans"]
     assert "Vance" in graph["low_ocr_spans"]
     decision = route_claim(graph, "SUB-9100")
-    assert decision["next_step"] == "RESOLVE_LOW_CONFIDENCE_OCR"
+    assert decision["next_step"] == "RESOLVE_DOCUMENT_EXCEPTIONS"
     assert decision["coworker"] == "Underwriting Review Agent"
     assert decision["write"] == "write_audit_event"
     assert decision["lane"] == "REVIEW"
-    assert decision["checks"][-1]["probe_id"] == "P0C_LOW_OCR_CONFIDENCE"
+    assert decision["exceptions"][0]["probe_id"] == "P0C_LOW_OCR_CONFIDENCE"
+    assert decision["exceptions"][0]["next_step"] == "RESOLVE_LOW_CONFIDENCE_OCR"
+    assert "Rostova" in decision["exceptions"][0]["fields"]["low_ocr_spans"]
+    assert decision["disposition"]["next_step"] == "DECLINE_UNINSURABLE_CLASS"
+    assert decision["checks"][-1]["probe_id"] == "P00_PROHIBITED_CLASS_CODE"
 
 
 def test_sov_coinsurance_under_80_routes_before_class_knockout(monkeypatch):
@@ -77,11 +81,12 @@ def test_sov_coinsurance_under_80_routes_before_class_knockout(monkeypatch):
     signals["signals"]["sov_schedule_incomplete"] = False
     signals["signals"]["sov_min_coinsurance_pct"] = 70
     _, decision = _route_case(monkeypatch, "SUB-9100", signals=signals)
-    assert decision["next_step"] == "RESOLVE_SOV_SCHEDULE"
+    assert decision["next_step"] == "RESOLVE_DOCUMENT_EXCEPTIONS"
+    assert decision["exceptions"][0]["next_step"] == "RESOLVE_SOV_SCHEDULE"
+    assert decision["exceptions"][0]["fields"]["sov_min_coinsurance_pct"] == 70
+    assert decision["disposition"]["next_step"] == "DECLINE_UNINSURABLE_CLASS"
     assert decision["coworker"] == "Underwriting Review Agent"
     assert decision["write"] == "write_audit_event"
-    assert decision["lane"] == "REVIEW"
-    assert decision["checks"][-1]["probe_id"] == "P0V_SOV_SCHEDULE"
 
 
 def test_rental_worksheet_mismatch_routes_before_class_knockout(monkeypatch):
@@ -101,11 +106,11 @@ def test_rental_worksheet_mismatch_routes_before_class_knockout(monkeypatch):
     )
     assert "business income schedule" in graph["rental_review_detail"]
     decision = route_claim(graph, "SUB-9100")
-    assert decision["next_step"] == "RESOLVE_RENTAL_VALUE_WORKSHEET"
+    assert decision["next_step"] == "RESOLVE_DOCUMENT_EXCEPTIONS"
+    assert decision["exceptions"][0]["next_step"] == "RESOLVE_RENTAL_VALUE_WORKSHEET"
+    assert "business income schedule" in decision["exceptions"][0]["fields"]["rental_review_detail"]
+    assert decision["disposition"]["next_step"] == "DECLINE_UNINSURABLE_CLASS"
     assert decision["coworker"] == "Underwriting Review Agent"
-    assert decision["write"] == "write_audit_event"
-    assert decision["lane"] == "REVIEW"
-    assert decision["checks"][-1]["probe_id"] == "P0W_RENTAL_VALUE_WORKSHEET"
 
 
 def test_oakridge_rental_worksheet_keeps_class_knockout(monkeypatch):
@@ -133,11 +138,10 @@ def test_four_point_aluminum_routes_before_class_knockout(monkeypatch):
     )
     assert "aluminum" in graph["four_point_review_detail"]
     decision = route_claim(graph, "SUB-9100")
-    assert decision["next_step"] == "RESOLVE_FOUR_POINT_INSPECTION"
-    assert decision["coworker"] == "Underwriting Review Agent"
-    assert decision["write"] == "write_audit_event"
-    assert decision["lane"] == "REVIEW"
-    assert decision["checks"][-1]["probe_id"] == "P0I_FOUR_POINT_INSPECTION"
+    assert decision["next_step"] == "RESOLVE_DOCUMENT_EXCEPTIONS"
+    assert decision["exceptions"][0]["next_step"] == "RESOLVE_FOUR_POINT_INSPECTION"
+    assert "aluminum" in decision["exceptions"][0]["fields"]["four_point_review_detail"]
+    assert decision["disposition"]["next_step"] == "DECLINE_UNINSURABLE_CLASS"
 
 
 def test_oakridge_four_point_keeps_class_knockout(monkeypatch):
@@ -165,11 +169,10 @@ def test_unsigned_loss_run_routes_before_class_knockout(monkeypatch):
     )
     assert "authorized signature" in graph["loss_run_review_detail"]
     decision = route_claim(graph, "SUB-9100")
-    assert decision["next_step"] == "RESOLVE_LOSS_RUN"
-    assert decision["coworker"] == "Underwriting Review Agent"
-    assert decision["write"] == "write_audit_event"
-    assert decision["lane"] == "REVIEW"
-    assert decision["checks"][-1]["probe_id"] == "P0L_LOSS_RUN"
+    assert decision["next_step"] == "RESOLVE_DOCUMENT_EXCEPTIONS"
+    assert decision["exceptions"][0]["next_step"] == "RESOLVE_LOSS_RUN"
+    assert "authorized signature" in decision["exceptions"][0]["fields"]["loss_run_review_detail"]
+    assert decision["disposition"]["next_step"] == "DECLINE_UNINSURABLE_CLASS"
 
 
 def test_signed_loss_run_keeps_class_knockout(monkeypatch):
@@ -197,11 +200,10 @@ def test_large_loss_invoice_routes_before_class_knockout(monkeypatch):
     )
     assert "invoice total" in graph["large_loss_review_detail"]
     decision = route_claim(graph, "SUB-9100")
-    assert decision["next_step"] == "RESOLVE_LARGE_LOSS_NARRATIVE"
-    assert decision["coworker"] == "Underwriting Review Agent"
-    assert decision["write"] == "write_audit_event"
-    assert decision["lane"] == "REVIEW"
-    assert decision["checks"][-1]["probe_id"] == "P0N_LARGE_LOSS_NARRATIVE"
+    assert decision["next_step"] == "RESOLVE_DOCUMENT_EXCEPTIONS"
+    assert decision["exceptions"][0]["next_step"] == "RESOLVE_LARGE_LOSS_NARRATIVE"
+    assert "invoice total" in decision["exceptions"][0]["fields"]["large_loss_review_detail"]
+    assert decision["disposition"]["next_step"] == "DECLINE_UNINSURABLE_CLASS"
 
 
 def test_oakridge_large_loss_keeps_class_knockout(monkeypatch):
@@ -229,11 +231,27 @@ def test_tenant_roster_mismatch_routes_before_class_knockout(monkeypatch):
     )
     assert "rent roll" in graph["tenant_roster_review_detail"]
     decision = route_claim(graph, "SUB-9100")
-    assert decision["next_step"] == "RESOLVE_TENANT_ROSTER"
+    assert decision["next_step"] == "RESOLVE_DOCUMENT_EXCEPTIONS"
+    assert decision["exceptions"][0]["next_step"] == "RESOLVE_TENANT_ROSTER"
+    assert "rent roll" in decision["exceptions"][0]["fields"]["tenant_roster_review_detail"]
+    assert decision["disposition"]["next_step"] == "DECLINE_UNINSURABLE_CLASS"
+
+
+def test_ocr_and_loss_run_exceptions_are_both_returned(monkeypatch):
+    signals = _payload("get_submission_routing_signals", "SUB-9100")
+    signals["signals"]["ocr_document_present"] = True
+    signals["signals"]["min_ocr_confidence"] = 0.658
+    signals["signals"]["low_ocr_spans"] = "page 0 Rostova 0.658"
+    signals["signals"]["loss_run_present"] = True
+    signals["signals"]["loss_run_needs_review"] = True
+    signals["signals"]["loss_run_review_detail"] = "loss run has no authorized signature"
+    _, decision = _route_case(monkeypatch, "SUB-9100", signals=signals)
+    steps = [item["next_step"] for item in decision["exceptions"]]
+    assert steps == ["RESOLVE_LOW_CONFIDENCE_OCR", "RESOLVE_LOSS_RUN"]
+    assert decision["next_step"] == "RESOLVE_DOCUMENT_EXCEPTIONS"
     assert decision["coworker"] == "Underwriting Review Agent"
-    assert decision["write"] == "write_audit_event"
-    assert decision["lane"] == "REVIEW"
-    assert decision["checks"][-1]["probe_id"] == "P0T_TENANT_ROSTER"
+    assert decision["disposition"]["next_step"] == "DECLINE_UNINSURABLE_CLASS"
+    assert decision["disposition"]["write"] == "write_submission_decline"
 
 
 def test_oakridge_tenant_roster_keeps_class_knockout(monkeypatch):
@@ -325,6 +343,23 @@ def test_unassigned_9100_still_declines(monkeypatch):
     _, decision = _route_case(monkeypatch, "SUB-9100", signals=signals)
     assert decision["next_step"] == "DECLINE_UNINSURABLE_CLASS"
     assert decision["checks"][-1]["probe_id"] == "P00_PROHIBITED_CLASS_CODE"
+
+
+def test_manual_triage_names_the_straight_through_gap(monkeypatch):
+    signals = _payload("get_submission_routing_signals", "SUB-9107")
+    signals["signals"]["has_underwriter"] = True
+    signals["signals"]["claims_count_36m"] = 1
+    signals["signals"]["financial_score"] = None
+    signals["signals"]["ocr_document_present"] = True
+    signals["signals"]["min_ocr_confidence"] = 0.658
+    signals["signals"]["low_ocr_spans"] = "page 0 Rostova 0.658"
+    _, decision = _route_case(monkeypatch, "SUB-9107", signals=signals)
+    assert decision["next_step"] == "RESOLVE_DOCUMENT_EXCEPTIONS"
+    assert decision["disposition"]["next_step"] == "HOLD_FOR_MANUAL_TRIAGE"
+    note = decision["disposition_note"]
+    assert "HOLD_FOR_MANUAL_TRIAGE" in note
+    assert "1 claim in 36 months" in note
+    assert "no financial score" in note
 
 
 def test_submission_9107_assign_then_bind(monkeypatch):

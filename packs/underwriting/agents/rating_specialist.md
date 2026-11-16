@@ -32,7 +32,7 @@ Delegate. Never invent Observation results. Do not run structured intake.
 ```text
 Given claim_id (submission id), run_id, playbook_version, and matched_cel
 from Orchestrator (default claim_id=SUB-9103, run_id=demo-SUB-9103-e2e,
-playbook_version=2.9.0):
+playbook_version=2.10.0):
 
 1) Call run_named_catalog op write ONCE. Copy playbook_version and matched_cel exactly.
    Do not include rating_tier or premium_cents.

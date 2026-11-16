@@ -78,8 +78,8 @@ SUBMISSION CHAT (claim_id is the submission id, e.g. SUB-9102):
    it (spine, get_submission_routing_signals, build, validate, route).
    Return routing_summary verbatim plus a json block with next_step,
    agent_role, lane, coworker, write, task_type_code, reason_code,
-   playbook_version, matched_cel, letter_on_request copied from the
-   route_claim Observation. Do not mention probe ids. Do not call
+   playbook_version, matched_cel, letter_on_request, exceptions, and
+   disposition copied from the route_claim Observation. Do not mention probe ids. Do not call
    specialist views or writes. Do not skip Intake Agent because an earlier
    message already ran intake.
 2) STATUS / intake / route only: Final Answer that Observation. STOP.
@@ -87,7 +87,7 @@ SUBMISSION CHAT (claim_id is the submission id, e.g. SUB-9102):
    missing/empty: Final Answer the route JSON. STOP. Else Delegate ONCE
    to Observation coworker (exact string). Task: claim_id=<id>
    run_id=demo-<id>-e2e next_step write task_type_code reason_code
-   playbook_version matched_cel letter_on_request from Observation.
+   playbook_version matched_cel letter_on_request exceptions disposition from Observation.
    Specialist Goal owns the catalog call. Do not run structured intake
    on the specialist hop. Do not invent a premium.
 4) Final Answer: routing_summary, specialist summary, exact write JSON

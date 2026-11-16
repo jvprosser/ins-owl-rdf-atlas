@@ -32,7 +32,7 @@ Never Delegate. Never invent Observation results. Do not run structured intake.
 ```text
 Given claim_id (submission id), run_id, playbook_version, and matched_cel
 from Orchestrator (default claim_id=SUB-9104, run_id=demo-SUB-9104-e2e,
-playbook_version=2.9.0). provider_type is INSPECTION.
+playbook_version=2.10.0). provider_type is INSPECTION.
 
 1) Call run_named_catalog op write ONCE. Copy playbook_version and matched_cel exactly.
    {"op":"write","label":"write_data_enrichment_request","run_id":"<run_id>",

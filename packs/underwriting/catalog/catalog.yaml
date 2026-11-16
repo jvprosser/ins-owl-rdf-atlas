@@ -27,6 +27,11 @@ reads:
     optional: [database]
     summary: Open submissions currently assigned to an underwriter
     handler: list_underwriter_open_submissions
+  list_low_confidence_fields:
+    required: [claim_id]
+    optional: [database, case_id, submission_id, min_confidence_score]
+    summary: Fields whose scanned words are below min_confidence_score (default 0.8)
+    handler: list_low_confidence_fields
   get_schema:
     required: []
     optional: [database]

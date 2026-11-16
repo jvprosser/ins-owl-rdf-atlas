@@ -67,6 +67,7 @@ def test_list_named_queries_is_underwriting_only():
         "get_submission_routing_signals",
         "get_senior_uw_referral_context",
         "list_underwriter_open_submissions",
+        "list_low_confidence_fields",
         "get_schema",
     } <= reads
     assert {
@@ -79,6 +80,27 @@ def test_list_named_queries_is_underwriting_only():
     } <= writes
     assert "get_claim_spine" not in reads
     assert "send_client_notice" not in writes
+
+
+def test_low_confidence_accepts_optional_score(monkeypatch):
+    seen = {}
+
+    def fake(claim_id, database=None, min_confidence_score=None):
+        seen["claim_id"] = claim_id
+        seen["score"] = min_confidence_score
+        return json.dumps({"claim_id": claim_id, "fields": []})
+
+    monkeypatch.setattr(catalog.uw_tools, "list_low_confidence_fields", fake)
+    payload = json.loads(
+        catalog.run_named_query(
+            "list_low_confidence_fields",
+            json.dumps({"claim_id": "SUB-9200", "min_confidence_score": 0.7}),
+        )
+    )
+    assert payload["named_op"] == "list_low_confidence_fields"
+    assert seen == {"claim_id": "SUB-9200", "score": 0.7}
+    missing = json.loads(catalog.run_named_query("list_low_confidence_fields", "{}"))
+    assert missing["missing"] == ["claim_id"]
 
 
 def test_list_requires_party_id():

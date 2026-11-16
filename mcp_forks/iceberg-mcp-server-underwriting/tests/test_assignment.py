@@ -95,3 +95,45 @@ def test_snapshot_sql_projects_current_underwriter():
     assert "tenant_roster_unit" in statement
     assert "tenant_roster_needs_review" in statement
     assert "no commercial cooking" in statement
+
+
+def test_low_confidence_sql_joins_word_to_field():
+    statement = uw_sql.list_low_confidence_fields_sql("SUB-9200", "underwriting", 0.7)
+    assert "underwriting.ocr_word" in statement
+    assert "underwriting.ocr_field" in statement
+    assert "instr(f.field_value, w.word_text) > 0" in statement
+    assert "w.submission_id = 'SUB-9200'" in statement
+    assert "w.confidence < 0.7" in statement
+
+
+def test_low_confidence_defaults_to_review_line():
+    seen = []
+
+    def query_rows(sql):
+        seen.append(sql)
+        return [
+            {
+                "document_id": "OCR-810",
+                "page_index": 0,
+                "word_text": "Rostova",
+                "confidence": 0.658,
+                "field_path": "signatures.prepared_by",
+                "field_value": "Elena Rostova",
+            }
+        ]
+
+    payload = json.loads(
+        uw_tools.list_low_confidence_fields("SUB-9200", query_rows=query_rows)
+    )
+    assert "w.confidence < 0.8" in seen[0]
+    assert payload["min_confidence_score"] == 0.8
+    assert payload["submission_id"] == "SUB-9200"
+    assert payload["fields"][0]["field_path"] == "signatures.prepared_by"
+    assert payload["fields"][0]["confidence"] == 0.658
+
+
+def test_low_confidence_rejects_a_score_outside_0_to_1():
+    payload = json.loads(
+        uw_tools.list_low_confidence_fields("SUB-9200", min_confidence_score=1.5)
+    )
+    assert "min_confidence_score" in payload["error"]

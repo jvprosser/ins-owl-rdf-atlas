@@ -15,6 +15,22 @@ def validate_ident(name: str, kind: str = "identifier") -> str:
     return name
 
 
+def validate_min_confidence(value: Any, default: float = 0.8) -> float:
+    """Review line for low-confidence words. Omitted uses 0.8."""
+    if value in (None, ""):
+        score = default
+    else:
+        try:
+            score = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "min_confidence_score must be a number from 0 to 1"
+            ) from exc
+    if score != score or score < 0 or score > 1:
+        raise ValueError("min_confidence_score must be a number from 0 to 1")
+    return score
+
+
 def validate_submission_id(value: Any) -> str:
     sid = str(value or "").strip()
     if not _SUBMISSION_RE.match(sid):
@@ -510,6 +526,37 @@ LEFT JOIN (
   ON tm.submission_id = s.submission_id
 WHERE s.submission_id = {sid}
 LIMIT 1
+""".strip()
+
+
+def list_low_confidence_fields_sql(
+    submission_id: str,
+    database: str,
+    min_confidence_score: Any = None,
+) -> str:
+    """Words below the score, joined to the field value that contains each word."""
+    db = validate_ident(database, "database")
+    sid = sql_quote(validate_submission_id(submission_id))
+    score = validate_min_confidence(min_confidence_score)
+    cutoff = format(score, "f").rstrip("0").rstrip(".") or "0"
+    return f"""
+SELECT
+  w.document_id,
+  w.page_index,
+  w.word_text,
+  w.confidence,
+  f.field_path,
+  f.field_value
+FROM {db}.ocr_word w
+JOIN {db}.ocr_field f
+  ON f.submission_id = w.submission_id
+ AND f.document_id = w.document_id
+ AND instr(f.field_value, w.word_text) > 0
+WHERE w.submission_id = {sid}
+  AND w.word_text IS NOT NULL
+  AND TRIM(w.word_text) != ''
+  AND w.confidence < {cutoff}
+ORDER BY w.confidence, f.field_path
 """.strip()
 
 

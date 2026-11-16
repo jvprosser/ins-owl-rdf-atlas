@@ -29,7 +29,7 @@ def _snapshot_row():
 def _event(**extra):
     body = {
         "claim_id": "SUB-9103",
-        "playbook_version": "2.9.0",
+        "playbook_version": "2.10.0",
         "probe_id": _P40,
         "cel": PROBE_CEL[_P40],
     }
@@ -66,7 +66,7 @@ def test_quote_computes_premium_from_snapshot():
     assert payload["audit_table"] == "agent_run_audit"
     assert len(calls) == 2
     assert "499999" in calls[0]
-    assert "2.9.0" in calls[1]
+    assert "2.10.0" in calls[1]
     assert "P40_ELIGIBLE_FOR_CLEAN_AUTO_BIND" in calls[1]
     assert "financial_score >= 680" in calls[1]
     assert "1999999" in calls[1]
@@ -79,7 +79,7 @@ def test_decline_rejects_invented_reason():
             {
                 "claim_id": "SUB-9100",
                 "reason_code": "TOO_RISKY",
-                "playbook_version": "2.9.0",
+                "playbook_version": "2.10.0",
                 "probe_id": "P00_PROHIBITED_CLASS_CODE",
                 "cel": PROBE_CEL["P00_PROHIBITED_CLASS_CODE"],
             }
@@ -98,7 +98,7 @@ def test_enrichment_rejects_other_provider():
             {
                 "claim_id": "SUB-9101",
                 "provider_type": "CREDIT",
-                "playbook_version": "2.9.0",
+                "playbook_version": "2.10.0",
                 "probe_id": "P20_HIGH_TIV_REQUIRES_RISK_ENGINEERING",
                 "cel": PROBE_CEL["P20_HIGH_TIV_REQUIRES_RISK_ENGINEERING"],
             }

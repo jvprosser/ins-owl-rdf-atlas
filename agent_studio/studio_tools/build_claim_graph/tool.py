@@ -26,15 +26,24 @@ class UserParameters(BaseModel):
 
 
 class ToolParameters(BaseModel):
-    claim_id: str = Field(description="Claim surrogate id (e.g. 401)")
+    claim_id: str = Field(
+        description=(
+            "Id exactly as given. A submission id keeps the SUB- prefix (SUB-9102). "
+            "A claim id stays numeric (401)."
+        )
+    )
     spine_json: str = Field(
-        description="JSON from MCP get_claim_spine (stringified tool result)"
+        description=(
+            "Exact spine JSON, unmodified. Underwriting: get_submission_spine. "
+            "Claims: get_claim_spine."
+        )
     )
     signals_json: str = Field(
         default="{}",
         description=(
-            "Exact JSON from MCP run_named_query get_claim_routing_signals "
-            "(must include named_op). Do not pass claim_*_case.json or a rebuilt object."
+            "Exact signals JSON, unmodified. Underwriting: get_submission_routing_signals. "
+            "Claims: get_claim_routing_signals or get_fnol_routing_signals. "
+            "Do not rebuild the object or pass claim_*_case.json."
         ),
     )
     database: Optional[str] = Field(

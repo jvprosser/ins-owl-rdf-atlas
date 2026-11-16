@@ -25,7 +25,12 @@ class UserParameters(BaseModel):
 
 
 class ToolParameters(BaseModel):
-    claim_id: str = Field(description="Claim surrogate id whose case JSON to validate")
+    claim_id: str = Field(
+        description=(
+            "Id exactly as given, whose case JSON to validate. A submission id keeps "
+            "the SUB- prefix (SUB-9102). A claim id stays numeric (401)."
+        )
+    )
     graph_path: Optional[str] = Field(
         default=None,
         description="Optional case JSON path; default SESSION_DIRECTORY/claim_{id}_case.json",

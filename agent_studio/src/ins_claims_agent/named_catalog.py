@@ -85,6 +85,7 @@ UNDERWRITING_HANDLERS = _AUDIT_HANDLERS | frozenset(
         "get_submission_routing_signals",
         "get_senior_uw_referral_context",
         "list_underwriter_open_submissions",
+        "list_low_confidence_fields",
         "get_schema",
         "write_submission_decline",
         "write_quote_issuance",
@@ -642,6 +643,11 @@ def _underwriting_handlers() -> dict[str, Callable[[dict[str, Any]], str]]:
             ),
             "list_underwriter_open_submissions": lambda p: uw_tools.list_underwriter_open_submissions(
                 str(p["party_id"]), database(p)
+            ),
+            "list_low_confidence_fields": lambda p: uw_tools.list_low_confidence_fields(
+                str(p["claim_id"]),
+                database(p),
+                min_confidence_score=p.get("min_confidence_score"),
             ),
             "get_schema": lambda p: impala_tools.get_schema(database(p)),
             "write_submission_decline": lambda p: uw_writes.write_submission_decline(

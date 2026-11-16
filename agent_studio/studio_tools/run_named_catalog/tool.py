@@ -29,9 +29,22 @@ class UserParameters(BaseModel):
 class ToolParameters(BaseModel):
     op: str = Field(description="query, write, or list")
     label: Optional[str] = Field(default=None, description="Catalog label")
-    claim_id: Optional[str] = Field(default=None, description="Claim surrogate id")
+    claim_id: Optional[str] = Field(
+        default=None,
+        description=(
+            "Id exactly as given. A submission id keeps the SUB- prefix (SUB-9102). "
+            "A claim id stays numeric (401)."
+        ),
+    )
     fnol_id: Optional[str] = Field(default=None, description="FNOL id or FNOL-2026-00088")
     party_id: Optional[str] = Field(default=None, description="Adjuster party id")
+    min_confidence_score: Optional[str] = Field(
+        default=None,
+        description=(
+            "Optional cutoff for list_low_confidence_fields. "
+            "Words below this score are returned. Default 0.8."
+        ),
+    )
     database: Optional[str] = Field(default=None, description="Impala database")
     run_id: Optional[str] = Field(default=None, description="Agent run id")
     event_json: Optional[str] = Field(default=None, description="Write event JSON")
@@ -56,6 +69,7 @@ def run_tool(config: UserParameters, args: ToolParameters) -> Any:
         "claim_id",
         "fnol_id",
         "party_id",
+        "min_confidence_score",
         "database",
         "run_id",
         "event_json",

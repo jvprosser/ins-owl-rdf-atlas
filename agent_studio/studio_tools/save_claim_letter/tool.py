@@ -28,7 +28,12 @@ class UserParameters(BaseModel):
 
 
 class ToolParameters(BaseModel):
-    claim_id: str = Field(description="Claim surrogate id (e.g. 402)")
+    claim_id: str = Field(
+        description=(
+            "Id exactly as given. A submission id keeps the SUB- prefix (SUB-9102). "
+            "A claim id stays numeric (401)."
+        )
+    )
     body: str = Field(description="Drafted letter text (include Subject: line)")
     run_id: Optional[str] = Field(
         default=None,

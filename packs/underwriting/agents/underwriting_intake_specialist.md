@@ -36,7 +36,7 @@ Do not run structured intake.
 ```text
 Given claim_id (submission id), run_id, playbook_version, and matched_cel
 from Orchestrator (default claim_id=SUB-9100, run_id=demo-SUB-9100-e2e,
-playbook_version=2.9.0). reason_code is OUT_OF_APPETITE. Do not change it.
+playbook_version=2.10.0). reason_code is OUT_OF_APPETITE. Do not change it.
 
 WRITE LETTER (only if the user asked to write, draft, or generate a letter):
 Call save_claim_letter ONCE. Body is only the reason code. Do not add
