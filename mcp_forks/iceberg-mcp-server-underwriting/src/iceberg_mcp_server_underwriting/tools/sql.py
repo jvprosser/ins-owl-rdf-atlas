@@ -6,7 +6,6 @@ import re
 from typing import Any
 
 _IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
-_SUBMISSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 
 
 def validate_ident(name: str, kind: str = "identifier") -> str:
@@ -31,13 +30,12 @@ def validate_min_confidence(value: Any, default: float = 0.8) -> float:
     return score
 
 
-def validate_submission_id(value: Any) -> str:
-    sid = str(value or "").strip()
-    if not _SUBMISSION_RE.match(sid):
-        raise ValueError(
-            "submission id must be 1–64 chars: letters, digits, underscore, hyphen"
-        )
-    return sid
+def validate_submission_id(value: Any) -> int:
+    """Surrogate submission id. SUB-9200 is the business key, not this value."""
+    text = str(value if value is not None else "").strip()
+    if not text.isdigit():
+        raise ValueError("submission id must be an integer (9200)")
+    return int(text)
 
 
 def sql_quote(value: Any) -> str:
@@ -72,6 +70,7 @@ def submission_spine_sql(submission_id: str, database: str) -> str:
     return f"""
 SELECT
   s.submission_id,
+  s.submission_number,
   s.producer_id,
   s.applicant_tax_id,
   s.line_of_business,
@@ -93,6 +92,7 @@ def submission_snapshot_sql(submission_id: str, database: str) -> str:
     return f"""
 SELECT
   s.submission_id,
+  s.submission_number,
   s.line_of_business,
   s.class_code,
   s.naics_code,

@@ -18,7 +18,7 @@ USE underwriting;
 
 CREATE TABLE IF NOT EXISTS underwriting.large_loss_narrative (
   narrative_id              STRING    COMMENT 'PK. One large loss narrative.',
-  submission_id             STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id             BIGINT    COMMENT 'FK -> submissions.submission_id.',
   named_insured             STRING    COMMENT 'Named insured.',
   date_prepared             STRING    COMMENT 'Date prepared, ISO-8601.',
   related_claim_date        STRING    COMMENT 'Date of loss, ISO-8601.',
@@ -52,7 +52,7 @@ TBLPROPERTIES (
 CREATE TABLE IF NOT EXISTS underwriting.large_loss_invoice_line (
   line_id                   STRING    COMMENT 'PK. One invoice line.',
   narrative_id              STRING    COMMENT 'FK -> large_loss_narrative.narrative_id.',
-  submission_id             STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id             BIGINT    COMMENT 'FK -> submissions.submission_id.',
   description               STRING    COMMENT 'Line description.',
   amount                    BIGINT    COMMENT 'Line amount in whole currency units.'
 )
@@ -74,7 +74,7 @@ TBLPROPERTIES (
 CREATE TABLE IF NOT EXISTS underwriting.large_loss_remediation (
   action_id                 STRING    COMMENT 'PK. One remediation step.',
   narrative_id              STRING    COMMENT 'FK -> large_loss_narrative.narrative_id.',
-  submission_id             STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id             BIGINT    COMMENT 'FK -> submissions.submission_id.',
   action_text               STRING    COMMENT 'Remediation action.'
 )
 COMMENT 'Remediation steps listed on a large loss narrative.'

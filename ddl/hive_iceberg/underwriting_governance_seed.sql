@@ -18,60 +18,60 @@ USE underwriting;
 
 UPDATE underwriting.submissions
 SET naics_code = CASE submission_id
-      WHEN 'SUB-9100' THEN '325120'
+      WHEN 9100 THEN '325120'
       ELSE '541110'
     END,
     has_ofac_match = CASE submission_id
-      WHEN 'SUB-9101' THEN TRUE
+      WHEN 9101 THEN TRUE
       ELSE FALSE
     END,
     siu_score = CASE submission_id
-      WHEN 'SUB-9103' THEN 90
+      WHEN 9103 THEN 90
       ELSE 0
     END,
     tax_lien_unresolved = FALSE,
     total_insured_value = CASE submission_id
-      WHEN 'SUB-9104' THEN CAST(6000000 AS BIGINT)
+      WHEN 9104 THEN CAST(6000000 AS BIGINT)
       ELSE total_insured_value
     END
 WHERE submission_id IN (
-  'SUB-9100', 'SUB-9101', 'SUB-9102', 'SUB-9103',
-  'SUB-9104', 'SUB-9105', 'SUB-9106', 'SUB-9107'
+  9100, 9101, 9102, 9103,
+  9104, 9105, 9106, 9107
 );
 
 UPDATE underwriting.property_risk_scores
 SET has_survey_on_file = CASE submission_id
-      WHEN 'SUB-9104' THEN FALSE
+      WHEN 9104 THEN FALSE
       ELSE TRUE
     END,
     survey_age_months = 12,
     wind_tier = 0,
     has_recent_cat_run = TRUE,
     construction_type = CASE submission_id
-      WHEN 'SUB-9104' THEN 'FRAME'
+      WHEN 9104 THEN 'FRAME'
       ELSE 'MASONRY'
     END,
     year_built = 1990,
     wiring_updated = TRUE,
     protection_class = CASE submission_id
-      WHEN 'SUB-9105' THEN '9'
+      WHEN 9105 THEN '9'
       ELSE '3'
     END,
     has_sprinklers = TRUE,
     square_footage = 10000
 WHERE submission_id IN (
-  'SUB-9100', 'SUB-9101', 'SUB-9102', 'SUB-9103',
-  'SUB-9104', 'SUB-9105', 'SUB-9106', 'SUB-9107'
+  9100, 9101, 9102, 9103,
+  9104, 9105, 9106, 9107
 );
 
 UPDATE underwriting.loss_history_summary
 SET claims_count_36m = CASE submission_id
-      WHEN 'SUB-9102' THEN 3
+      WHEN 9102 THEN 3
       ELSE 0
     END,
     total_incurred_36m = CAST(0 AS BIGINT),
     financial_score = 700
 WHERE submission_id IN (
-  'SUB-9100', 'SUB-9101', 'SUB-9102', 'SUB-9103',
-  'SUB-9104', 'SUB-9105', 'SUB-9106', 'SUB-9107'
+  9100, 9101, 9102, 9103,
+  9104, 9105, 9106, 9107
 );

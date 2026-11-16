@@ -27,8 +27,8 @@ class UserParameters(BaseModel):
 class ToolParameters(BaseModel):
     claim_id: str = Field(
         description=(
-            "Id exactly as given, whose case JSON to validate. A submission id keeps "
-            "the SUB- prefix (SUB-9102). A claim id stays numeric (401)."
+            "Numeric surrogate id whose case JSON to validate. "
+            "A submission id is 9200, the same as a claim id (401)."
         )
     )
     graph_path: Optional[str] = Field(

@@ -1,6 +1,6 @@
 {
-  "claim_id": "SUB-9102",
-  "case_id": "SUB-9102",
+  "claim_id": 9102,
+  "case_id": 9102,
   "referral": {
     "line_of_business": "COMMERCIAL_PROPERTY",
     "class_code": "5411",

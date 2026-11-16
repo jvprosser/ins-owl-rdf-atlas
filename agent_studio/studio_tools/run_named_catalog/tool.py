@@ -32,8 +32,7 @@ class ToolParameters(BaseModel):
     claim_id: Optional[str] = Field(
         default=None,
         description=(
-            "Id exactly as given. A submission id keeps the SUB- prefix (SUB-9102). "
-            "A claim id stays numeric (401)."
+            "Numeric surrogate id. A submission id is 9200, the same as a claim id (401)."
         ),
     )
     fnol_id: Optional[str] = Field(default=None, description="FNOL id or FNOL-2026-00088")

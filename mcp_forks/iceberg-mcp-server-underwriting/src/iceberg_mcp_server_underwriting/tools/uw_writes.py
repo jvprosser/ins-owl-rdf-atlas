@@ -118,7 +118,7 @@ def rate_quote(total_insured_value: int, financial_stability_tier: str | None) -
     return rating_tier, (tiv * rate) // 100
 
 
-def _row_id(run_id: str, submission_id: str, kind: str) -> str:
+def _row_id(run_id: str, submission_id: int | str, kind: str) -> str:
     digest = hashlib.sha256(f"{run_id}:{submission_id}:{kind}".encode()).hexdigest()
     return digest[:16]
 
@@ -186,7 +186,7 @@ def _audit_and_write(
     meta = _META[probe_id]
     audit_event = {
         "run_id": rid,
-        "claim_id": snap["submission_id"],
+        "claim_id": str(snap["submission_id"]),
         "event_type": meta["next_step"],
         "next_step": meta["next_step"],
         "agent_role": meta["agent_role"],

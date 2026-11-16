@@ -1,18 +1,18 @@
 {
-  "claim_id": "SUB-9103",
-  "case_id": "SUB-9103",
+  "claim_id": 9102,
+  "case_id": 9102,
   "signals": {
-    "is_in_flood_plain": false,
+    "is_in_flood_plain": true,
     "has_open_loss_past_36m": false,
-    "prior_claims_count": 0,
+    "prior_claims_count": 1,
     "financial_stability_tier": "B",
     "inspection_completed": false,
     "has_underwriter": true,
     "naics_code": "541110",
     "has_ofac_match": false,
-    "claims_count_36m": 0,
+    "claims_count_36m": 3,
     "total_incurred_36m": 0,
-    "siu_score": 90,
+    "siu_score": 0,
     "tax_lien_unresolved": false,
     "has_survey_on_file": true,
     "survey_age_months": 12,
@@ -25,6 +25,6 @@
     "has_sprinklers": true,
     "square_footage": 10000,
     "financial_score": 700,
-    "flood_zone": "NONE"
+    "flood_zone": "AE"
   }
 }

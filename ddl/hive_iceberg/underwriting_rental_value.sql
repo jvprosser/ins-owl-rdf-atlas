@@ -19,7 +19,7 @@ USE underwriting;
 
 CREATE TABLE IF NOT EXISTS underwriting.rental_value_worksheet (
   worksheet_id                  STRING    COMMENT 'PK. One ACORD 810 worksheet.',
-  submission_id                 STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id                 BIGINT    COMMENT 'FK -> submissions.submission_id.',
   form_number                   STRING    COMMENT 'ACORD 810.',
   form_edition                  STRING    COMMENT '2015/12.',
   worksheet_date                STRING    COMMENT 'Worksheet date, ISO-8601.',
@@ -62,7 +62,7 @@ TBLPROPERTIES (
 CREATE TABLE IF NOT EXISTS underwriting.rental_value_tenant (
   tenant_id                     STRING    COMMENT 'PK. One rent-roll unit.',
   worksheet_id                  STRING    COMMENT 'FK -> rental_value_worksheet.worksheet_id.',
-  submission_id                 STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id                 BIGINT    COMMENT 'FK -> submissions.submission_id.',
   unit                          STRING    COMMENT 'Unit letter or number.',
   tenant_name                   STRING    COMMENT 'Tenant name.',
   square_footage                INT       COMMENT 'Unit area in square feet.',

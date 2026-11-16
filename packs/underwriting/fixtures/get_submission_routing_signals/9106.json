@@ -1,6 +1,6 @@
 {
-  "claim_id": "SUB-9106",
-  "case_id": "SUB-9106",
+  "claim_id": 9106,
+  "case_id": 9106,
   "signals": {
     "is_in_flood_plain": false,
     "has_open_loss_past_36m": false,

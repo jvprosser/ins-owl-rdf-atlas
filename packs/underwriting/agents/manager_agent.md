@@ -2,7 +2,7 @@
 
 CrewAI `coworker` must match **Role** exactly: `Intake Agent`.
 
-Studio `claim_id` is the submission id (`SUB-9102`).
+Studio `claim_id` is the numeric submission id (`9200`), the same as a claim id (`401`).
 
 ## Studio fields
 
@@ -48,14 +48,13 @@ is no MCP tool and no execute_query tool on this agent.
    Return submission_id + submission_status_code for each row. Do not build,
    validate, or route. STOP.
 
-4) claim_id is the full submission id, including the SUB- prefix (SUB-9100).
-Pass that string unchanged to run_named_catalog. Do not strip the prefix.
-Do not send only the digits.
+4) claim_id is the numeric submission id (9200), the same as a claim id (401).
+Pass that number unchanged to run_named_catalog. Do not add a SUB- prefix.
 
 5) Only when asked to intake/route a claim_id (the submission id), run
    structured intake ONCE for THIS task (this user message), even if this
-   id was routed earlier in the chat. claim_id is the full submission id,
-   including the SUB- prefix. Do not strip it. Always call
+   id was routed earlier in the chat. claim_id is the numeric submission id
+   (9200). Do not add a SUB- prefix. Always call
    get_submission_routing_signals again; do not reuse a prior Observation
    or case JSON as signals_json.
    Order:

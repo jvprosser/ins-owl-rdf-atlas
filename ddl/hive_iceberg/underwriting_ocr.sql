@@ -24,7 +24,7 @@ USE underwriting;
 
 CREATE TABLE IF NOT EXISTS underwriting.ocr_document (
   document_id               STRING    COMMENT 'PK. One Mistral OCR response.',
-  submission_id             STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id             BIGINT    COMMENT 'FK -> submissions.submission_id.',
   ocr_model                 STRING    COMMENT 'OCR model name, e.g. mistral-ocr-2505.',
   pages_processed           INT       COMMENT 'usage_info.pages_processed.',
   doc_size_bytes            BIGINT    COMMENT 'usage_info.doc_size_bytes.',
@@ -49,7 +49,7 @@ TBLPROPERTIES (
 CREATE TABLE IF NOT EXISTS underwriting.ocr_form (
   form_id                   STRING    COMMENT 'PK. One detected form on a scan.',
   document_id               STRING    COMMENT 'FK -> ocr_document.document_id.',
-  submission_id             STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id             BIGINT    COMMENT 'FK -> submissions.submission_id.',
   form_label                STRING    COMMENT 'forms_detected entry, e.g. ACORD 126 (2016/03).'
 )
 COMMENT 'Forms detected on one scan. ACORD 125, 126, and 140 are separate rows.'
@@ -70,7 +70,7 @@ TBLPROPERTIES (
 CREATE TABLE IF NOT EXISTS underwriting.ocr_field (
   field_id                  STRING    COMMENT 'PK. One annotation value.',
   document_id               STRING    COMMENT 'FK -> ocr_document.document_id.',
-  submission_id             STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id             BIGINT    COMMENT 'FK -> submissions.submission_id.',
   field_path                STRING    COMMENT 'Dotted path. Repeating groups use a numeric index, e.g. acord_126_commercial_general_liability.schedule_of_hazards.1.class_code.',
   field_value               STRING    COMMENT 'Annotation value. No confidence; scores are on ocr_word.'
 )
@@ -92,7 +92,7 @@ TBLPROPERTIES (
 CREATE TABLE IF NOT EXISTS underwriting.ocr_page (
   page_id                   STRING    COMMENT 'PK. One page that carried confidence scores.',
   document_id               STRING    COMMENT 'FK -> ocr_document.document_id.',
-  submission_id             STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id             BIGINT    COMMENT 'FK -> submissions.submission_id.',
   page_index                INT       COMMENT 'pages[].index from the OCR response.',
   average_page_confidence   DOUBLE    COMMENT 'average_page_confidence_score.',
   minimum_page_confidence   DOUBLE    COMMENT 'minimum_page_confidence_score.'
@@ -115,7 +115,7 @@ TBLPROPERTIES (
 CREATE TABLE IF NOT EXISTS underwriting.ocr_word (
   word_id                   STRING    COMMENT 'PK. One scored token.',
   document_id               STRING    COMMENT 'FK -> ocr_document.document_id.',
-  submission_id             STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id             BIGINT    COMMENT 'FK -> submissions.submission_id.',
   page_index                INT       COMMENT 'Page index of the token.',
   word_text                 STRING    COMMENT 'word_confidence_scores[].text.',
   confidence                DOUBLE    COMMENT 'word_confidence_scores[].confidence.'

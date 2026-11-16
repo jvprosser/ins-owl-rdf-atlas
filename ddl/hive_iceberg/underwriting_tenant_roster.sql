@@ -17,7 +17,7 @@ USE underwriting;
 
 CREATE TABLE IF NOT EXISTS underwriting.tenant_roster (
   roster_id                     STRING    COMMENT 'PK. One tenant roster.',
-  submission_id                 STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id                 BIGINT    COMMENT 'FK -> submissions.submission_id.',
   named_insured                 STRING    COMMENT 'Named insured.',
   property_address              STRING    COMMENT 'Property address.',
   as_of_date                    STRING    COMMENT 'Roster date, ISO-8601.',
@@ -47,7 +47,7 @@ TBLPROPERTIES (
 CREATE TABLE IF NOT EXISTS underwriting.tenant_roster_unit (
   unit_id                       STRING    COMMENT 'PK. One roster unit.',
   roster_id                     STRING    COMMENT 'FK -> tenant_roster.roster_id.',
-  submission_id                 STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id                 BIGINT    COMMENT 'FK -> submissions.submission_id.',
   unit_number                   STRING    COMMENT 'Unit letter or number.',
   tenant_name                   STRING    COMMENT 'Tenant name.',
   area_sq_ft                    INT       COMMENT 'Unit area.',

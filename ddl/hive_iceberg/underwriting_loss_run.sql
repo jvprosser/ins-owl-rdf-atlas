@@ -20,7 +20,7 @@ USE underwriting;
 
 CREATE TABLE IF NOT EXISTS underwriting.loss_run_report (
   report_id                     STRING    COMMENT 'PK. One carrier loss run.',
-  submission_id                 STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id                 BIGINT    COMMENT 'FK -> submissions.submission_id.',
   carrier                       STRING    COMMENT 'Reporting carrier.',
   named_insured                 STRING    COMMENT 'Named insured.',
   valuation_date                STRING    COMMENT 'Valuation date, ISO-8601.',
@@ -52,7 +52,7 @@ TBLPROPERTIES (
 CREATE TABLE IF NOT EXISTS underwriting.loss_run_policy (
   policy_row_id                 STRING    COMMENT 'PK. One policy term on a loss run.',
   report_id                     STRING    COMMENT 'FK -> loss_run_report.report_id.',
-  submission_id                 STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id                 BIGINT    COMMENT 'FK -> submissions.submission_id.',
   policy_number                 STRING    COMMENT 'Policy number.',
   policy_term                   STRING    COMMENT 'Term as printed, e.g. 12/01/2024 to 12/01/2025.',
   line_of_business              STRING    COMMENT 'Line of business as printed.',

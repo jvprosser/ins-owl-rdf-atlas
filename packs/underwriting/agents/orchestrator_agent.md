@@ -4,7 +4,7 @@ You cannot call MCP from this agent. You only Delegate, then Final Answer.
 
 Studio coworker matching uses the **Role** field, not the Name. Intake Agent Role is exactly `Intake Agent`.
 
-Studio `claim_id` is the submission id (`SUB-9102`).
+Studio `claim_id` is the numeric submission id (`9200`), the same as a claim id (`401`).
 
 ## Studio fields
 
@@ -72,7 +72,7 @@ UNSTRUCTURED (no submission id):
 Delegate ONCE to Routing Agent. If the same message also has a submission id,
 skip Routing and treat it as a submission chat below.
 
-SUBMISSION CHAT (claim_id is the submission id, e.g. SUB-9102):
+SUBMISSION CHAT (claim_id is the numeric submission id, e.g. 9200):
 1) Delegate ONCE to Intake Agent (Role "Intake Agent"). Task: FRESH
    structured intake for this claim_id even if this chat already routed
    it (spine, get_submission_routing_signals, build, validate, route).
@@ -114,7 +114,7 @@ Paste these as the handler would type them. Do not put catalog labels, `run_id`,
 Prohibited NAICS:
 
 ```text
-Please evaluate submission SUB-9100.
+Please evaluate submission 9100.
 ```
 
 Expect Underwriting Intake Specialist (`DECLINE_UNINSURABLE_CLASS`, `write_submission_decline`). A letter is recommended. Draft it only if the user asks.
@@ -122,7 +122,7 @@ Expect Underwriting Intake Specialist (`DECLINE_UNINSURABLE_CLASS`, `write_submi
 Survey missing on a file over $5M:
 
 ```text
-Please evaluate submission SUB-9104.
+Please evaluate submission 9104.
 ```
 
 Expect Risk Engineering Specialist (`ORDER_RISK_ENGINEERING_SURVEY`, `write_data_enrichment_request`).
@@ -130,7 +130,7 @@ Expect Risk Engineering Specialist (`ORDER_RISK_ENGINEERING_SURVEY`, `write_data
 High value with a survey already on file:
 
 ```text
-Please evaluate submission SUB-9106.
+Please evaluate submission 9106.
 ```
 
 Expect Senior Underwriter (`REFER_SENIOR_PROPERTY_UW`, `write_referral_queue`).
@@ -138,7 +138,7 @@ Expect Senior Underwriter (`REFER_SENIOR_PROPERTY_UW`, `write_referral_queue`).
 Unassigned file (no current underwriter; coworker is omitted):
 
 ```text
-Please evaluate submission SUB-9107.
+Please evaluate submission 9107.
 ```
 
 Expect `AssignUnderwriter`. Final Answer the route JSON. Do not invent a Role. The lake insert is outside the agent. After it, the same sentence quotes.
@@ -149,6 +149,6 @@ Underwriter queue (Riley Cho, party_id 14; DECLINED and QUOTED are omitted):
 What are my current open submissions?
 ```
 
-Expect **SUB-9100** through **SUB-9106**. **SUB-9107** is not on the list.
+Expect **9100** through **9106**. **9107** is not on the list.
 
 Operator catalog check (not a handler chat): `Call run_named_catalog once with op list and stop.` The list must include `get_submission_spine` and must not include `get_claim_spine`.

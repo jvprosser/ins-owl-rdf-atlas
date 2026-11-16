@@ -19,7 +19,7 @@ USE underwriting;
 
 CREATE TABLE IF NOT EXISTS underwriting.four_point_inspection (
   inspection_id             STRING    COMMENT 'PK. One 4-point inspection.',
-  submission_id             STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id             BIGINT    COMMENT 'FK -> submissions.submission_id.',
   form_title                STRING    COMMENT '4-POINT SYSTEM UPDATE VERIFICATION.',
   inspection_date           STRING    COMMENT 'Inspection date, ISO-8601.',
   property_address          STRING    COMMENT 'Address printed on the inspection.',
@@ -49,7 +49,7 @@ TBLPROPERTIES (
 CREATE TABLE IF NOT EXISTS underwriting.four_point_system (
   system_id                 STRING    COMMENT 'PK. One inspected system.',
   inspection_id             STRING    COMMENT 'FK -> four_point_inspection.inspection_id.',
-  submission_id             STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id             BIGINT    COMMENT 'FK -> submissions.submission_id.',
   system_name               STRING    COMMENT 'roof, plumbing, electrical, or hvac.',
   system_type               STRING    COMMENT 'System description printed on the form.',
   year_last_updated         INT       COMMENT 'Year the system was last updated.',

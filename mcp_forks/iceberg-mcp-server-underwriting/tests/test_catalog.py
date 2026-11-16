@@ -36,7 +36,7 @@ def test_extra_param_rejected():
     payload = json.loads(
         catalog.run_named_query(
             "get_submission_spine",
-            json.dumps({"claim_id": "SUB-9102", "select": "*"}),
+            json.dumps({"claim_id": "9102", "select": "*"}),
         )
     )
     assert payload["extra"] == ["select"]
@@ -51,11 +51,11 @@ def test_submission_id_alias(monkeypatch):
     payload = json.loads(
         catalog.run_named_query(
             "get_submission_spine",
-            json.dumps({"submission_id": "SUB-9102"}),
+            json.dumps({"submission_id": "9102"}),
         )
     )
     assert payload["named_op"] == "get_submission_spine"
-    assert payload["claim_id"] == "SUB-9102"
+    assert payload["claim_id"] == "9102"
 
 
 def test_list_named_queries_is_underwriting_only():
@@ -94,11 +94,11 @@ def test_low_confidence_accepts_optional_score(monkeypatch):
     payload = json.loads(
         catalog.run_named_query(
             "list_low_confidence_fields",
-            json.dumps({"claim_id": "SUB-9200", "min_confidence_score": 0.7}),
+            json.dumps({"claim_id": "9200", "min_confidence_score": 0.7}),
         )
     )
     assert payload["named_op"] == "list_low_confidence_fields"
-    assert seen == {"claim_id": "SUB-9200", "score": 0.7}
+    assert seen == {"claim_id": "9200", "score": 0.7}
     missing = json.loads(catalog.run_named_query("list_low_confidence_fields", "{}"))
     assert missing["missing"] == ["claim_id"]
 

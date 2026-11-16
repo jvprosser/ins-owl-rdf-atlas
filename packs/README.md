@@ -8,14 +8,14 @@ Do **not** move `ontology/` / `playbook/` at the repo root. Claim **402** still 
 |---|---|---|
 | [`retirement_distributions/`](retirement_distributions/) | Request classification + exception handling | **7001** clean termination → Distribution Ops; **7002** hardship missing substantiation → Client Communications (`send_client_notice`); **7003** RMD underpaid → RMD Ops; **7011–7017** hardship / ERISA / SECURE 2.0 / QDRO |
 | [`retirement_rollovers/`](retirement_rollovers/) | Document processing / ERISA | **8001** missing spousal consent → ERISA Review; **8002** complete direct rollover → Rollover Ops |
-| [`underwriting/`](underwriting/) | Submission appetite, inspection, referral, quote | **SUB-9100** prohibited class → decline; **SUB-9101** TIV `2000001` → inspection; **SUB-9103** TIV `1999999` → straight-through quote; **SUB-9102** survey, then flood referral after inspection |
+| [`underwriting/`](underwriting/) | Submission appetite, inspection, referral, quote | **9100** prohibited class → decline; **9101** TIV `2000001` → inspection; **9103** TIV `1999999` → straight-through quote; **9102** survey, then flood referral after inspection |
 
 ## Studio setup (one pack at a time)
 
 Upload steps for Workflow Data are in each pack README (**Upload workflow data**).
 
 - **Distributions (live):** upload `catalog/` with the pack. `run_named_catalog` calls `iceberg-mcp-server-finserv` handlers. Impala database `retirement_distributions`. Do not upload `fixtures/`. The finserv MCP registration can stay.
-- **Underwriting (live):** upload `catalog/` with the pack. `run_named_catalog` calls `iceberg-mcp-server-underwriting` handlers. Impala database `underwriting`. Do not upload `fixtures/`. Studio `claim_id` is the submission id (`SUB-9102`). The underwriting MCP registration can stay.
+- **Underwriting (live):** upload `catalog/` with the pack. `run_named_catalog` calls `iceberg-mcp-server-underwriting` handlers. Impala database `underwriting`. Do not upload `fixtures/`. Studio `claim_id` is the numeric submission id (`9200`). The underwriting MCP registration can stay.
 - **Rollovers (fixtures):** upload `catalog/` and `fixtures/`. `run_named_catalog` reads those JSON files. No Impala and no `PACK_ROOT` on the tool.
 
 Primary customer prompt: intake **7002**. Probe/action chat prompts (claims + both packs): [`docs/probe-action-tests.md`](../docs/probe-action-tests.md).

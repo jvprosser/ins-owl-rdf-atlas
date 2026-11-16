@@ -1,6 +1,6 @@
 # Underwriting named catalog for the Studio tool run_named_catalog.
 # Upload this directory under Workflow Data so /workflow_data/catalog/catalog.yaml exists.
-# Handlers call iceberg-mcp-server-underwriting. claim_id is the submission id (SUB-9102).
+# Handlers call iceberg-mcp-server-underwriting. claim_id is the numeric submission id (9200).
 # Do not upload fixtures/. MCP servers are unchanged. A label not listed here fails closed.
 version: 1
 package: underwriting

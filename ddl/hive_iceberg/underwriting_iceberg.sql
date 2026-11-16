@@ -3,10 +3,11 @@
 -- =============================================================================
 -- Engine target : CDP Hive / Impala Iceberg v2
 -- Database      : underwriting
--- Demo cases    : SUB-9100 decline class, SUB-9101 inspection boundary,
---                 SUB-9102 survey then flood referral, SUB-9103 straight-through,
---                 SUB-9104 senior referral, SUB-9105 human review,
---                 SUB-9106 TIV knockout, SUB-9107 unassigned (then bind)
+-- Demo cases    : 9100 decline class, 9101 inspection boundary,
+--                 9102 survey then flood referral, 9103 straight-through,
+--                 9104 senior referral, 9105 human review,
+--                 9106 TIV knockout, 9107 unassigned (then bind)
+-- submission_id is the bigint surrogate. submission_number is SUB-9100.
 --
 -- JSON contract (Studio / MCP): packs/underwriting/fixtures/
 -- CREATE TABLE shape: not EXTERNAL; COMMENT before PARTITIONED BY SPEC.
@@ -17,7 +18,8 @@ USE underwriting;
 
 
 CREATE TABLE IF NOT EXISTS underwriting.submissions (
-  submission_id             STRING    COMMENT 'PK. Studio claim_id (SUB-9102).',
+  submission_id             BIGINT    COMMENT 'PK. Studio claim_id (9200).',
+  submission_number         STRING    COMMENT 'Business key (SUB-9200). Not the lookup id.',
   producer_id               STRING    COMMENT 'Producer / broker identifier.',
   applicant_tax_id          STRING    COMMENT 'Applicant tax id (demo values only).',
   line_of_business          STRING    COMMENT 'Primary line, e.g. COMMERCIAL_PROPERTY.',
@@ -42,7 +44,7 @@ TBLPROPERTIES (
 
 CREATE TABLE IF NOT EXISTS underwriting.mvr_reports (
   mvr_id                    STRING    COMMENT 'PK. Motor vehicle report id.',
-  submission_id             STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id             BIGINT    COMMENT 'FK -> submissions.submission_id.',
   violation_count           INT       COMMENT 'Count of violations on the report.',
   major_violation           BOOLEAN   COMMENT 'True when a major violation is present.',
   report_status_code        STRING    COMMENT 'ON_FILE | REQUESTED.'
@@ -64,7 +66,7 @@ TBLPROPERTIES (
 
 CREATE TABLE IF NOT EXISTS underwriting.property_risk_scores (
   risk_score_id             STRING    COMMENT 'PK. Property risk score id.',
-  submission_id             STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id             BIGINT    COMMENT 'FK -> submissions.submission_id.',
   is_in_flood_plain         BOOLEAN   COMMENT 'True when the location is in a flood plain.',
   inspection_completed      BOOLEAN   COMMENT 'True when the property inspection is on file.',
   flood_zone                STRING    COMMENT 'Flood zone code, or NONE.'
@@ -86,7 +88,7 @@ TBLPROPERTIES (
 
 CREATE TABLE IF NOT EXISTS underwriting.loss_history_summary (
   loss_summary_id           STRING    COMMENT 'PK. Loss history summary id.',
-  submission_id             STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id             BIGINT    COMMENT 'FK -> submissions.submission_id.',
   prior_claims_count        INT       COMMENT 'Prior claims counted for referral and bind.',
   has_open_loss_past_36m    BOOLEAN   COMMENT 'True when an open loss exists in the past 36 months.',
   financial_stability_tier  STRING    COMMENT 'A | B | C. Rating table key.'
@@ -126,7 +128,7 @@ TBLPROPERTIES (
 
 CREATE TABLE IF NOT EXISTS underwriting.submission_decline (
   decline_id                STRING    COMMENT 'PK. Decline row id.',
-  submission_id             STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id             BIGINT    COMMENT 'FK -> submissions.submission_id.',
   reason_code               STRING    COMMENT 'Allow-listed reason. OUT_OF_APPETITE.',
   run_id                    STRING    COMMENT 'Agent run id.',
   created_at                TIMESTAMP COMMENT 'Row creation timestamp.'
@@ -148,7 +150,7 @@ TBLPROPERTIES (
 
 CREATE TABLE IF NOT EXISTS underwriting.quote_issuance (
   quote_id                  STRING    COMMENT 'PK. Indicative quote id.',
-  submission_id             STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id             BIGINT    COMMENT 'FK -> submissions.submission_id.',
   rating_tier               STRING    COMMENT 'A | B | C | STANDARD. Computed by the catalog.',
   premium_cents             BIGINT    COMMENT 'Premium in cents. Computed by the catalog.',
   run_id                    STRING    COMMENT 'Agent run id.',
@@ -171,7 +173,7 @@ TBLPROPERTIES (
 
 CREATE TABLE IF NOT EXISTS underwriting.data_enrichment_request (
   enrichment_id             STRING    COMMENT 'PK. Third-party data request id.',
-  submission_id             STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id             BIGINT    COMMENT 'FK -> submissions.submission_id.',
   provider_type             STRING    COMMENT 'Allow-listed provider. INSPECTION.',
   run_id                    STRING    COMMENT 'Agent run id.',
   created_at                TIMESTAMP COMMENT 'Row creation timestamp.'
@@ -193,7 +195,7 @@ TBLPROPERTIES (
 
 CREATE TABLE IF NOT EXISTS underwriting.referral_queue (
   referral_id               STRING    COMMENT 'PK. Referral row id.',
-  submission_id             STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id             BIGINT    COMMENT 'FK -> submissions.submission_id.',
   queue_code                STRING    COMMENT 'SENIOR_UW.',
   run_id                    STRING    COMMENT 'Agent run id.',
   created_at                TIMESTAMP COMMENT 'Row creation timestamp.'
@@ -234,7 +236,7 @@ TBLPROPERTIES (
 
 CREATE TABLE IF NOT EXISTS underwriting.submission_party_role (
   submission_party_role_id  STRING    COMMENT 'PK. Surrogate for a party playing a role on a submission.',
-  submission_id             STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id             BIGINT    COMMENT 'FK -> submissions.submission_id.',
   party_id                  BIGINT    COMMENT 'FK -> person.party_id.',
   role_type_code            STRING    COMMENT 'UNDERWRITER.',
   assigned_at               TIMESTAMP COMMENT 'When the role assignment started.',

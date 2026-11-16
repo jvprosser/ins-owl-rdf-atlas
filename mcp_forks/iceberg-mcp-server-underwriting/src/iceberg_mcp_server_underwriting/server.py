@@ -55,11 +55,11 @@ def run_named_query(
     """Curated READ by catalog label. No free-form SQL.
 
     Flat Action Input example:
-      {"label":"get_submission_spine","claim_id":"SUB-9102"}
+      {"label":"get_submission_spine","claim_id":"9102"}
     Read labels: get_submission_spine, get_submission_routing_signals,
     get_senior_uw_referral_context, list_underwriter_open_submissions,
     list_low_confidence_fields, get_schema.
-    claim_id is the submission id. list_underwriter_open_submissions takes party_id.
+    claim_id is the numeric submission id (9102). list_underwriter_open_submissions takes party_id.
     list_low_confidence_fields takes optional min_confidence_score (default 0.8).
     """
     return catalog.run_named_query(
@@ -86,7 +86,7 @@ def run_named_write(
     """Curated WRITE by catalog label.
 
     Flat Action Input example:
-      {"label":"write_quote_issuance","run_id":"demo-SUB-9103-e2e","event_json":"{\\"claim_id\\":\\"SUB-9103\\"}"}
+      {"label":"write_quote_issuance","run_id":"demo-9103-e2e","event_json":"{\\"claim_id\\":\\"9103\\"}"}
     Write labels: write_submission_decline, write_quote_issuance,
     write_data_enrichment_request, write_referral_queue, write_audit_event,
     promote_audit_run, begin_agent_audit_run, append_agent_audit_event,

@@ -2,22 +2,22 @@
 
 Same control plane as claims and retirement distributions. The playbook decides whether to decline, order an inspection, refer to a senior underwriter, issue an indicative quote, or wait for a human. The LLM does not invent appetite or price.
 
-Studio tools stay `build_claim_graph`, `validate_claim_graph`, and `route_claim`. `claim_id` is the submission id (`SUB-9102`).
+Studio tools stay `build_claim_graph`, `validate_claim_graph`, and `route_claim`. `claim_id` is the numeric submission id (`9200`), the same as a claim id (`401`).
 
 Live lake + MCP: `ddl/hive_iceberg/underwriting_iceberg.sql`, `ddl/hive_iceberg/underwriting_seed_data.sql`, and [`mcp_forks/iceberg-mcp-server-underwriting`](../../mcp_forks/iceberg-mcp-server-underwriting/README.md). Fixture JSON stays golden for `agent_studio/tests/test_underwriting_pack.py`.
 
 | Case | Story | Route |
 |---|---|---|
-| **SUB-9100** | NAICS `325120` | `DECLINE_UNINSURABLE_CLASS` / `Underwriting Intake Specialist` (P00) |
-| **SUB-9101** | OFAC match | `HOLD_COMPLIANCE_FREEZE` / `Underwriting Review Agent` (P01) |
-| **SUB-9102** | 3 property losses in 36 months | `DECLINE_ADVERSE_LOSS_HISTORY` / `Underwriting Intake Specialist` (P02) |
-| **SUB-9103** | SIU score `90` | `REFER_TO_SPECIAL_INVESTIGATIONS` / `Underwriting Review Agent` (P10) |
-| **SUB-9104** | TIV `6000000`, no survey | `ORDER_RISK_ENGINEERING_SURVEY` / `Risk Engineering Specialist` (P20) |
-| **SUB-9105** | Protection class `9` | `REFER_PROPERTY_FACULTATIVE_DESK` / `Senior Underwriter` (P31) |
-| **SUB-9106** | TIV `25000001`, survey on file | `REFER_SENIOR_PROPERTY_UW` / `Senior Underwriter` (P30) |
-| **SUB-9107** | Clean file, no owner | `AssignUnderwriter`. After party 14 is assigned, the same prompt quotes (P40) |
+| **9100** | NAICS `325120` | `DECLINE_UNINSURABLE_CLASS` / `Underwriting Intake Specialist` (P00) |
+| **9101** | OFAC match | `HOLD_COMPLIANCE_FREEZE` / `Underwriting Review Agent` (P01) |
+| **9102** | 3 property losses in 36 months | `DECLINE_ADVERSE_LOSS_HISTORY` / `Underwriting Intake Specialist` (P02) |
+| **9103** | SIU score `90` | `REFER_TO_SPECIAL_INVESTIGATIONS` / `Underwriting Review Agent` (P10) |
+| **9104** | TIV `6000000`, no survey | `ORDER_RISK_ENGINEERING_SURVEY` / `Risk Engineering Specialist` (P20) |
+| **9105** | Protection class `9` | `REFER_PROPERTY_FACULTATIVE_DESK` / `Senior Underwriter` (P31) |
+| **9106** | TIV `25000001`, survey on file | `REFER_SENIOR_PROPERTY_UW` / `Senior Underwriter` (P30) |
+| **9107** | Clean file, no owner | `AssignUnderwriter`. After party 14 is assigned, the same prompt quotes (P40) |
 
-Quote premium is computed in the catalog (cents per $100 of TIV): tier A `15`, B `25`, C `40`, anything else `STANDARD` at `30`. `premium_cents = total_insured_value * rate // 100`. **SUB-9103** (tier B) is `499999` cents. The agent does not pass a premium.
+Quote premium is computed in the catalog (cents per $100 of TIV): tier A `15`, B `25`, C `40`, anything else `STANDARD` at `30`. `premium_cents = total_insured_value * rate // 100`. **9103** (tier B) is `499999` cents. The agent does not pass a premium.
 
 ## Upload workflow data (Studio)
 
@@ -67,7 +67,7 @@ Check: Delegate Intake Agent `run_named_catalog` with `op` `list`. The list must
 Paste agents from `agents/`. Roles must be exactly `Intake Agent`, `Underwriting Intake Specialist`, `Risk Engineering Specialist`, `Senior Underwriter`, `Rating Specialist`, and `Underwriting Review Agent`. Decline letters need Studio `save_claim_letter` on the intake specialist only.
 
 ```text
-Please evaluate submission SUB-9104.
+Please evaluate submission 9104.
 ```
 
 Expect `ORDER_RISK_ENGINEERING_SURVEY`, `Risk Engineering Specialist`, `write_data_enrichment_request`.
@@ -78,19 +78,19 @@ After the survey is on file, flip the lake row and send the same sentence again:
 UPDATE underwriting.property_risk_scores
 SET has_survey_on_file = TRUE,
     survey_age_months = 12
-WHERE submission_id = 'SUB-9104';
+WHERE submission_id = 9104;
 ```
 
 TIV stays at `6000000`, so the next chat is `REFER_SENIOR_PROPERTY_UW` / `Senior Underwriter` / `write_referral_queue`.
 
 ## Assignment
 
-Party **14** (Riley Cho) is the current `UNDERWRITER` on **SUB-9100** through **SUB-9106**. **SUB-9107** has no role, so evaluation stops at `AssignUnderwriter` (no coworker; the agent does not pick a person). Insert the role, then send the same sentence again:
+Party **14** (Riley Cho) is the current `UNDERWRITER` on **9100** through **9106**. **9107** has no role, so evaluation stops at `AssignUnderwriter` (no coworker; the agent does not pick a person). Insert the role, then send the same sentence again:
 
 ```sql
 INSERT INTO TABLE underwriting.submission_party_role
 SELECT 'SPR-9107' AS submission_party_role_id,
-       'SUB-9107' AS submission_id,
+       CAST(9107 AS BIGINT) AS submission_id,
        CAST(14 AS BIGINT) AS party_id,
        'UNDERWRITER' AS role_type_code,
        CAST('2026-11-04 11:00:00' AS TIMESTAMP) AS assigned_at,
@@ -107,4 +107,4 @@ Open queue (DECLINED and QUOTED omitted):
 What are my current open submissions?
 ```
 
-Expect **SUB-9100** through **SUB-9106** for party 14.
+Expect **9100** through **9106** for party 14.

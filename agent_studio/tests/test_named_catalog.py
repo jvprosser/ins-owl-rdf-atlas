@@ -164,7 +164,7 @@ def test_finserv_package_calls_the_finserv_handler(monkeypatch, tmp_path: Path):
     assert result["named_op"] == "write_audit_event"
 
 
-def test_submission_id_stays_a_string(tmp_path: Path):
+def test_submission_id_is_the_numeric_surrogate(tmp_path: Path):
     seen: list[str] = []
 
     def get_submission_spine(params: dict) -> str:
@@ -182,11 +182,11 @@ def test_submission_id_stays_a_string(tmp_path: Path):
     result = execute(
         op="query",
         label="get_submission_spine",
-        params={"submission_id": "SUB-9102"},
+        params={"claim_id": "9200"},
         catalog_file=catalog / "catalog.yaml",
         handlers={"get_submission_spine": get_submission_spine},
     )
-    assert seen == ["SUB-9102"]
+    assert seen == ["9200"]
     assert result["named_op"] == "get_submission_spine"
 
 

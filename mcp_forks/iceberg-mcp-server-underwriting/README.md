@@ -4,9 +4,9 @@ Compiled named-query catalog for **underwriting submissions only**. Same surface
 
 Identity: **`INS_UW_MCP_V1`**.
 
-Studio `claim_id` is `submissions.submission_id` (`SUB-9100` … `SUB-9107`).
+Studio `claim_id` is `submissions.submission_id` (`9100` … `9107`, and `9200`). `submission_number` (`SUB-9200`) is not the lookup id.
 
-Party **14** (Riley Cho) is the current underwriter on **SUB-9100** through **SUB-9106**. `list_underwriter_open_submissions` returns those open files. **SUB-9107** has no role.
+Party **14** (Riley Cho) is the current underwriter on **9100** through **9106**. `list_underwriter_open_submissions` returns those open files. **9107** has no role.
 
 ## Catalog labels
 
@@ -23,7 +23,7 @@ Write: `write_submission_decline`, `write_quote_issuance`, `write_data_enrichmen
 | C | 40 |
 | other | 30 (`STANDARD`) |
 
-`premium_cents = total_insured_value * rate // 100`. **SUB-9103** (tier B, TIV `1999999`) is `499999`.
+`premium_cents = total_insured_value * rate // 100`. **9103** (tier B, TIV `1999999`) is `499999`.
 
 Decline `reason_code` must be `OUT_OF_APPETITE`. Enrichment `provider_type` must be `INSPECTION`. Each domain write inserts `agent_run_audit` with playbook version `1.0.0`, the probe id, the playbook CEL text, and a snapshot re-read from Impala. The version string is the Git identifier. This process does not call `git rev-parse`.
 
@@ -36,14 +36,14 @@ Database: `underwriting`. Default env: `IMPALA_DATABASE=underwriting`.
 
 | Case | Route |
 |---|---|
-| **SUB-9100** | `DECLINE_UNINSURABLE` (P0, class `4812`) |
-| **SUB-9101** | `TRIGGER_SURVEY` (P1, TIV `2000001`) |
-| **SUB-9102** | `TRIGGER_SURVEY` until inspection is on file, then `REFER_TO_SENIOR_UW` |
-| **SUB-9103** | `AUTO_RATE_AND_BIND` (P3) |
-| **SUB-9104** | `REFER_TO_SENIOR_UW` (P2) |
-| **SUB-9105** | `HUMAN_UW_REVIEW` |
-| **SUB-9106** | `DECLINE_UNINSURABLE` (P0, TIV over $25M) |
-| **SUB-9107** | `AssignUnderwriter` until party 14 is the current `UNDERWRITER`, then `AUTO_RATE_AND_BIND` |
+| **9100** | `DECLINE_UNINSURABLE` (P0, class `4812`) |
+| **9101** | `TRIGGER_SURVEY` (P1, TIV `2000001`) |
+| **9102** | `TRIGGER_SURVEY` until inspection is on file, then `REFER_TO_SENIOR_UW` |
+| **9103** | `AUTO_RATE_AND_BIND` (P3) |
+| **9104** | `REFER_TO_SENIOR_UW` (P2) |
+| **9105** | `HUMAN_UW_REVIEW` |
+| **9106** | `DECLINE_UNINSURABLE` (P0, TIV over $25M) |
+| **9107** | `AssignUnderwriter` until party 14 is the current `UNDERWRITER`, then `AUTO_RATE_AND_BIND` |
 
 ## Agent Studio
 

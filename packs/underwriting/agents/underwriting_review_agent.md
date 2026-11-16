@@ -1,6 +1,6 @@
 # Underwriting Review Agent (configured in Agent Studio)
 
-Use when no earlier probe matches (`HUMAN_UW_REVIEW`, case **SUB-9105**:
+Use when no earlier probe matches (`HUMAN_UW_REVIEW`, case **9105**:
 one prior claim, not in a flood plain, total insured value at or under $2M).
 
 CrewAI `coworker` must match **Role** exactly: `Underwriting Review Agent`.
@@ -28,7 +28,7 @@ Never invent Observation results. Do not run structured intake.
 ### Goal
 ```text
 Given claim_id (submission id), run_id, and playbook_version from Orchestrator
-(default claim_id=SUB-9105, run_id=demo-SUB-9105-e2e, playbook_version=2.10.0).
+(default claim_id=9105, run_id=demo-9105-e2e, playbook_version=2.10.0).
 When next_step is RESOLVE_DOCUMENT_EXCEPTIONS, use that value for event_type and next_step, and include the exceptions list and the disposition next_step from the route Observation in event_json.
 
 1) Call run_named_catalog op write ONCE:

@@ -1,7 +1,7 @@
 # Rating Specialist (configured in Agent Studio)
 
 Use when `route_claim` assigns `RatingSpecialist` / `EXECUTE_AUTOMATED_BIND_AND_QUOTE`
-(case **SUB-9107** after an underwriter is assigned).
+(case **9107** after an underwriter is assigned).
 
 The catalog computes `rating_tier` and `premium_cents` from the lake snapshot
 and a fixed rate table. Do not pass either field.
@@ -31,7 +31,7 @@ Delegate. Never invent Observation results. Do not run structured intake.
 ### Goal
 ```text
 Given claim_id (submission id), run_id, playbook_version, and matched_cel
-from Orchestrator (default claim_id=SUB-9103, run_id=demo-SUB-9103-e2e,
+from Orchestrator (default claim_id=9103, run_id=demo-9103-e2e,
 playbook_version=2.10.0):
 
 1) Call run_named_catalog op write ONCE. Copy playbook_version and matched_cel exactly.

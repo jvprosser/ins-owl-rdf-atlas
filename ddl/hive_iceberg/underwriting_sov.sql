@@ -20,7 +20,7 @@ USE underwriting;
 
 CREATE TABLE IF NOT EXISTS underwriting.statement_of_values (
   sov_id                    STRING    COMMENT 'PK. One coverage line.',
-  submission_id             STRING    COMMENT 'FK -> submissions.submission_id.',
+  submission_id             BIGINT    COMMENT 'FK -> submissions.submission_id.',
   loc_number                STRING    COMMENT 'Location number, e.g. 001.',
   bldg_number               STRING    COMMENT 'Building number, e.g. 001.',
   named_insured             STRING    COMMENT 'Named insured on the schedule.',

@@ -1,7 +1,7 @@
 # Senior Underwriter (configured in Agent Studio)
 
 Use when `route_claim` assigns `SeniorUnderwriter` / `REFER_SENIOR_PROPERTY_UW`
-or `REFER_PROPERTY_FACULTATIVE_DESK` (cases **SUB-9106** and **SUB-9105**).
+or `REFER_PROPERTY_FACULTATIVE_DESK` (cases **9106** and **9105**).
 
 CrewAI `coworker` must match **Role** exactly: `Senior Underwriter`.
 
@@ -28,7 +28,7 @@ Never Delegate. Never invent Observation results. Do not run structured intake.
 ### Goal
 ```text
 Given claim_id (submission id), run_id, playbook_version, and matched_cel
-from Orchestrator (default claim_id=SUB-9104, run_id=demo-SUB-9104-e2e,
+from Orchestrator (default claim_id=9104, run_id=demo-9104-e2e,
 playbook_version=2.10.0):
 
 1) Call run_named_catalog op query ONCE:

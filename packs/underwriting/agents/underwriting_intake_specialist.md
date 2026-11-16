@@ -1,7 +1,7 @@
 # Underwriting Intake Specialist (configured in Agent Studio)
 
 Use when `route_claim` assigns `UnderwritingIntakeSpecialist` / `DECLINE_UNINSURABLE_CLASS`
-or `DECLINE_ADVERSE_LOSS_HISTORY` (cases **SUB-9100** prohibited NAICS, **SUB-9102** loss frequency).
+or `DECLINE_ADVERSE_LOSS_HISTORY` (cases **9100** prohibited NAICS, **9102** loss frequency).
 
 A decline letter is **recommended** (`letter_on_request`). Draft it only when
 the user asks. The only reason code is the playbook value `OUT_OF_APPETITE`.
@@ -35,7 +35,7 @@ Do not run structured intake.
 ### Goal
 ```text
 Given claim_id (submission id), run_id, playbook_version, and matched_cel
-from Orchestrator (default claim_id=SUB-9100, run_id=demo-SUB-9100-e2e,
+from Orchestrator (default claim_id=9100, run_id=demo-9100-e2e,
 playbook_version=2.10.0). reason_code is OUT_OF_APPETITE. Do not change it.
 
 WRITE LETTER (only if the user asked to write, draft, or generate a letter):

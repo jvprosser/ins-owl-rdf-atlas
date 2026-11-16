@@ -27,6 +27,7 @@ def _as_int(value: Any, default: int = 0) -> int:
 def _snapshot(row: dict[str, Any]) -> dict[str, Any]:
     return {
         "submission_id": row.get("submission_id"),
+        "submission_number": row.get("submission_number") or "",
         "line_of_business": row.get("line_of_business") or "",
         "class_code": str(row.get("class_code") or ""),
         "naics_code": str(row.get("naics_code") or ""),
@@ -108,8 +109,10 @@ def get_submission_spine(
             "claim_id": sid,
             "case_id": sid,
             "submission_id": sid,
+            "submission_number": row.get("submission_number") or "",
             "database": db,
             "spine": {
+                "submission_number": row.get("submission_number") or "",
                 "producer_id": row.get("producer_id"),
                 "applicant_tax_id": row.get("applicant_tax_id"),
                 "line_of_business": row.get("line_of_business"),
